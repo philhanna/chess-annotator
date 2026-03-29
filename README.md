@@ -197,7 +197,7 @@ That function prompts for:
 - move range
 - side
 - idea
-- trigger
+- what started this block
 - end condition
 - result
 - opponent plan
@@ -276,7 +276,7 @@ Label: Queenside minority attack
 Move range START-END: 14-20
 Side (white/black/both/none) [white]: white
 Idea: Create a weak c-pawn and play against it
-Trigger:
+What started this block?:
 End condition: Position opened in the center
 Result: I drifted and let Black seize the initiative
 Opponent plan: Counterplay against my king

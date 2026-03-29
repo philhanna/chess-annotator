@@ -124,7 +124,7 @@ def interactive_add_block(service: ReviewService, annotations: GameAnnotations, 
     move_range = interactive_prompt("Move range START-END", "")
     side = interactive_prompt("Side (white/black/both/none)", "white")
     idea = interactive_prompt("Idea", "")
-    trigger = interactive_prompt("Trigger", "")
+    trigger = interactive_prompt("What started this block?", "")
     end_condition = interactive_prompt("End condition", "")
     result = interactive_prompt("Result", "")
     opponent_plan = interactive_prompt("Opponent plan", "")
