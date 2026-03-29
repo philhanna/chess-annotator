@@ -80,6 +80,22 @@ Inside interactive mode, the available commands are:
 - `save`
 - `quit`
 
+What each command does:
+
+- `add`: prompts for a new move-range block and appends it to the in-memory review.
+- `summary`: prints the current review summary, recorded blocks, and big lessons without leaving interactive mode.
+- `summary-text`: updates the one-sentence overall summary for the game.
+- `lesson`: adds a single high-level takeaway to `big_lessons`.
+- `delete`: lists saved blocks and removes one by number.
+- `save`: writes the current annotations to the JSON sidecar file immediately.
+- `quit`: exits interactive mode and asks whether you want to save first.
+
+Notes about interactive mode:
+
+- Changes live only in memory until you run `save` or quit and answer `y` to the save prompt.
+- `quit` and `exit` both leave interactive mode.
+- `summary` shows your current in-memory state, including unsaved changes.
+
 ## Call Walkthrough For `mygame.pgn`
 
 This section walks through what happens in the code when you run:
