@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from chessplan.domain import Block, GameAnnotations, GameRecord
-from chessplan.ports.ports import AnnotationStore, GameLoader
+from chessplan.ports import AnnotationStore, GameLoader
 
 
 class ReviewService:

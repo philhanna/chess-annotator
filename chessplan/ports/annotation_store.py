@@ -6,10 +6,6 @@ from typing import Protocol
 from chessplan.domain import GameAnnotations, GameRecord
 
 
-class GameLoader(Protocol):
-    def load_game(self, pgn_path: Path) -> GameRecord: ...
-
-
 class AnnotationStore(Protocol):
     def load_annotations(self, annotation_path: Path, pgn_path: Path, game: GameRecord) -> GameAnnotations: ...
 

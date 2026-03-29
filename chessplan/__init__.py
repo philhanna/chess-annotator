@@ -1,3 +1,4 @@
+# chessplan
 """Top-level package for chessplan."""
 
 from .block import Block

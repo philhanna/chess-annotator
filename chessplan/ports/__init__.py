@@ -1,5 +1,7 @@
+# chessplan.ports
 """Port definitions for chessplan."""
 
-from .ports import AnnotationStore, GameLoader
+from .annotation_store import AnnotationStore
+from .game_loader import GameLoader
 
 __all__ = ["AnnotationStore", "GameLoader"]

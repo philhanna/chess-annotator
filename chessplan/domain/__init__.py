@@ -1,3 +1,4 @@
+# chessplan.domain
 """Domain models for chessplan."""
 
 from .block import Block
