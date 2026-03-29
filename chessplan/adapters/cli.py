@@ -211,17 +211,6 @@ def cmd_show(args: argparse.Namespace, service: ReviewService) -> int:
     return 0
 
 
-def cmd_book(args: argparse.Namespace, _service: ReviewService) -> int:
-    """Handle the `book` subcommand."""
-
-    from chessplan.bootstrap import build_chess_book_service
-
-    pgn_path = Path(args.pgn)
-    service = build_chess_book_service()
-    print(service.render_markdown(pgn_path, perspective=args.side), end="")
-    return 0
-
-
 def cmd_annotate(args: argparse.Namespace, service: ReviewService) -> int:
     """Handle the `annotate` subcommand."""
 
@@ -290,16 +279,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser_show = subparsers.add_parser("show", help="show headers and numbered moves")
     parser_show.add_argument("pgn", help="path to PGN file containing exactly one game")
     parser_show.set_defaults(handler=cmd_show)
-
-    parser_book = subparsers.add_parser("book", help="render PGN #chp chunks as Markdown")
-    parser_book.add_argument("pgn", help="path to PGN file containing exactly one game")
-    parser_book.add_argument(
-        "--side",
-        choices=("white", "black"),
-        required=True,
-        help="board orientation for inline SVG diagrams",
-    )
-    parser_book.set_defaults(handler=cmd_book)
 
     parser_annotate = subparsers.add_parser("annotate", help="interactive review mode")
     parser_annotate.add_argument("pgn", help="path to PGN file containing exactly one game")

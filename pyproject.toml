@@ -13,3 +13,4 @@ dependencies = [
 
 [project.scripts]
 chessplan = "chessplan.adapters.cli:main"
+chessbook = "chessbook:main"

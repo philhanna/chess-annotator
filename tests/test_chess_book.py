@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from chessplan.adapters.cli import main
+from chessbook import main
 from chessplan.adapters.pgn_reader import PythonChessGameLoader
 from chessplan.use_cases.chess_book import ChessBookService
 
@@ -26,7 +26,7 @@ def test_book_command_renders_markdown_chunks(capsys: pytest.CaptureFixture[str]
         encoding="utf-8",
     )
 
-    assert main(["book", str(pgn_path), "--side", "white"]) == 0
+    assert main([str(pgn_path), "--side", "white"]) == 0
 
     output = capsys.readouterr().out
     assert "**1. e4 e5**" in output
