@@ -14,3 +14,9 @@ dependencies = [
 [project.scripts]
 chessplan = "chessplan.adapters.cli:main"
 chessbook = "chessbook:main"
+
+[tool.setuptools]
+py-modules = ["chessbook"]
+
+[tool.setuptools.packages.find]
+include = ["chessplan*"]

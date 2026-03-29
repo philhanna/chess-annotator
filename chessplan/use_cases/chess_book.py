@@ -17,20 +17,42 @@ class ChessBookService:
 
         parsed_game = self._game_loader.load_chess_book(pgn_path)
         chunks = self._game_loader.build_book_chunks(parsed_game, perspective=perspective)
-        return self._render_chunks(chunks)
+        return self._render_document(parsed_game.headers, chunks)
 
-    def _render_chunks(self, chunks: list[BookChunk]) -> str:
-        """Serialize rendered chunks into the CLI's Markdown format."""
+    def _render_document(self, headers: object, chunks: list[BookChunk]) -> str:
+        """Serialize the PGN header summary plus rendered chunks into Markdown."""
 
         lines: list[str] = []
+        event = getattr(headers, "event", "").strip()
+        date = getattr(headers, "date", "").strip()
+        white = getattr(headers, "white", "").strip()
+        black = getattr(headers, "black", "").strip()
+
+        title = event
+        if event and date:
+            title = f"{event} ({date})"
+        elif date:
+            title = date
+
+        if title:
+            lines.append(f"# {title}")
+        if white or black:
+            lines.append(f"### {white} vs. {black}".strip())
+
+        if lines and chunks:
+            lines.append("")
+
         for index, chunk in enumerate(chunks):
             if index:
                 lines.append("")
-            lines.append(f"**{chunk.move_text}**")
-            if chunk.svg:
+            if chunk.label:
+                lines.append(f"### {chunk.label}")
                 lines.append("")
-                lines.append(chunk.svg)
+            lines.append(f"**{chunk.move_text}**")
             if chunk.comments.strip():
                 lines.append("")
                 lines.append(chunk.comments)
+            if chunk.svg:
+                lines.append("")
+                lines.append(chunk.svg)
         return "\n".join(lines).rstrip() + "\n"

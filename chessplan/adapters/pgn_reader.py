@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import copy
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from chessplan.domain import GameHeaders, GameRecord, MovePair
@@ -57,6 +59,7 @@ class PythonChessGameLoader:
                     move_number=board.fullmove_number,
                     side=side,
                     san=san,
+                    uci=move.uci(),
                 )
             )
             board.push(move)
@@ -64,15 +67,21 @@ class PythonChessGameLoader:
             if marker is not None:
                 chunk_markers[len(moves)] = marker
 
-        trailing_comments = ""
-        if moves:
-            last_marker = chunk_markers[max(chunk_markers)] if chunk_markers else None
-            trailing_comments = last_marker.comments if last_marker is not None else ""
-
         return ParsedChessBook(
+            headers=GameHeaders(
+                event=game.headers.get("Event", ""),
+                site=game.headers.get("Site", ""),
+                date=game.headers.get("Date", ""),
+                white=game.headers.get("White", ""),
+                black=game.headers.get("Black", ""),
+                result=game.headers.get("Result", ""),
+                white_elo=game.headers.get("WhiteElo", ""),
+                black_elo=game.headers.get("BlackElo", ""),
+                termination=game.headers.get("Termination", ""),
+            ),
             moves=moves,
             chunk_markers=chunk_markers,
-            trailing_comments=trailing_comments,
+            trailing_comments="",
         )
 
     def build_book_chunks(self, parsed_game: ParsedChessBook, *, perspective: str) -> list[BookChunk]:
@@ -98,11 +107,18 @@ class PythonChessGameLoader:
             board = self._board_after_ply(parsed_game.moves, end_index)
             chunks.append(
                 BookChunk(
+                    label=marker.label,
                     move_text=move_text,
                     comments=marker.comments,
                     svg=None
                     if end_index == total_moves
-                    else chess.svg.board(board=board, orientation=chess.WHITE if perspective == "white" else chess.BLACK),
+                    else self._inline_piece_symbols(
+                        chess.svg.board(
+                            board=board,
+                            orientation=chess.WHITE if perspective == "white" else chess.BLACK,
+                            size=300,
+                        )
+                    ),
                 )
             )
             start_index = end_index
@@ -111,6 +127,7 @@ class PythonChessGameLoader:
             move_text = self._format_move_text(parsed_game.moves[start_index:total_moves])
             chunks.append(
                 BookChunk(
+                    label=None,
                     move_text=move_text,
                     comments=parsed_game.trailing_comments,
                     svg=None,
@@ -200,6 +217,8 @@ class PythonChessGameLoader:
             key, value = part.split(":", 1)
             normalized_key = key.strip()
             normalized_value = value.strip()
+            if normalized_key == "comment":
+                normalized_key = "comments"
             if normalized_key not in {"label", "kind", "comments"}:
                 raise SystemExit(
                     f"Malformed #chp marker at {location}: unknown field '{normalized_key}'"
@@ -242,7 +261,7 @@ class PythonChessGameLoader:
 
         board = chess.Board()
         for move in moves[:ply_index]:
-            board.push_san(move.san)
+            board.push_uci(move.uci)
         return board
 
     def _format_move_text(self, moves: list[PlayedMove]) -> str:
@@ -261,3 +280,59 @@ class PythonChessGameLoader:
             previous_move = move
 
         return " ".join(tokens)
+
+    def _inline_piece_symbols(self, svg_markup: str) -> str:
+        """Expand ``<use>`` piece references into inline SVG groups."""
+
+        ET.register_namespace("", "http://www.w3.org/2000/svg")
+        ET.register_namespace("xlink", "http://www.w3.org/1999/xlink")
+        root = ET.fromstring(svg_markup)
+        defs_element: ET.Element | None = None
+        symbol_map: dict[str, ET.Element] = {}
+
+        for child in list(root):
+            if self._local_name(child.tag) != "defs":
+                continue
+            defs_element = child
+            for symbol in list(child):
+                symbol_id = symbol.attrib.get("id")
+                if symbol_id:
+                    symbol_map[symbol_id] = symbol
+            break
+
+        if defs_element is None or not symbol_map:
+            return svg_markup
+
+        expanded_children: list[ET.Element] = []
+        for child in list(root):
+            local_name = self._local_name(child.tag)
+            if local_name == "defs":
+                continue
+            if local_name != "use":
+                expanded_children.append(child)
+                continue
+
+            symbol_ref = child.attrib.get("href") or child.attrib.get("{http://www.w3.org/1999/xlink}href")
+            if not symbol_ref or not symbol_ref.startswith("#"):
+                expanded_children.append(child)
+                continue
+
+            symbol = symbol_map.get(symbol_ref[1:])
+            if symbol is None:
+                expanded_children.append(child)
+                continue
+
+            cloned = copy.deepcopy(symbol)
+            cloned.attrib.pop("id", None)
+            transform = child.attrib.get("transform")
+            if transform:
+                cloned.attrib["transform"] = transform
+            expanded_children.append(cloned)
+
+        root[:] = expanded_children
+        return ET.tostring(root, encoding="unicode")
+
+    def _local_name(self, tag: str) -> str:
+        """Strip any XML namespace from an element tag name."""
+
+        return tag.split("}", 1)[-1]

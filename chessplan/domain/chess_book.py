@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from chessplan.domain.game import GameHeaders
+
 
 ALLOWED_CHP_KINDS = frozenset({"plan", "transition", "defense"})
 
@@ -36,12 +38,14 @@ class PlayedMove:
     move_number: int
     side: str
     san: str
+    uci: str
 
 
 @dataclass(frozen=True, slots=True)
 class BookChunk:
     """One rendered chunk in the generated Markdown chess book."""
 
+    label: str | None
     move_text: str
     comments: str
     svg: str | None
@@ -51,6 +55,7 @@ class BookChunk:
 class ParsedChessBook:
     """Normalized PGN data needed to render the chess book output."""
 
+    headers: GameHeaders
     moves: list[PlayedMove]
     chunk_markers: dict[int, ChpMarker]
     trailing_comments: str
