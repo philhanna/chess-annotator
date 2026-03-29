@@ -22,8 +22,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from chessplan.application.services import ReviewService
 from chessplan.domain import GameAnnotations, GameRecord
+from chessplan.usecases.review_service import ReviewService
 
 
 def eprint(*args: object) -> None:
