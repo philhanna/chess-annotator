@@ -23,7 +23,7 @@ import sys
 from pathlib import Path
 
 from chessplan.domain import GameAnnotations, GameRecord
-from chessplan.usecases.review_service import ReviewService
+from chessplan.use_cases.review_service import ReviewService
 
 
 def eprint(*args: object) -> None:
