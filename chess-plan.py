@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Simple CLI for plan-oriented chess game review.
 
-Simplified version:
+Overview:
 - Always expects exactly one game in the PGN file
 - Shows numbered moves in order
 - Add labeled move-range annotations such as "Plan 1" or "Gap"
