@@ -43,7 +43,7 @@ class PlayedMove:
 
 @dataclass(frozen=True, slots=True)
 class BookChunk:
-    """One rendered chunk in the generated Markdown chess book."""
+    """One rendered chunk in the generated HTML chess book."""
 
     label: str | None
     move_text: str

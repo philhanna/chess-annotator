@@ -10,7 +10,7 @@ from chessplan.bootstrap import build_chess_book_service
 def build_parser() -> argparse.ArgumentParser:
     """Create the standalone chess book CLI parser."""
 
-    parser = argparse.ArgumentParser(description="Render a Markdown chess book from PGN #chp comments")
+    parser = argparse.ArgumentParser(description="Render an HTML chess book from PGN #chp comments")
     parser.add_argument("pgn", help="path to PGN file containing exactly one game")
     parser.add_argument(
         "--side",
@@ -22,13 +22,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Parse CLI arguments and render the chess book Markdown."""
+    """Parse CLI arguments and render the chess book HTML."""
 
     parser = build_parser()
     args = parser.parse_args(argv)
     service = build_chess_book_service()
     try:
-        print(service.render_markdown(Path(args.pgn), perspective=args.side), end="")
+        print(service.render_html(Path(args.pgn), perspective=args.side), end="")
         return 0
     except FileNotFoundError as exc:
         print(f"File not found: {exc.filename}", file=sys.stderr)

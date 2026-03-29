@@ -7,7 +7,7 @@ from chessplan.adapters.pgn_reader import PythonChessGameLoader
 from chessplan.use_cases.chess_book import ChessBookService
 
 
-def test_book_command_renders_markdown_chunks(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:
+def test_book_command_renders_html_chunks(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:
     pgn_path = tmp_path / "book.pgn"
     pgn_path.write_text(
         "\n".join(
@@ -30,20 +30,21 @@ def test_book_command_renders_markdown_chunks(capsys: pytest.CaptureFixture[str]
     assert main([str(pgn_path), "--side", "white"]) == 0
 
     output = capsys.readouterr().out
-    assert "# Book Test (2026.03.29)" in output
-    assert "### White vs. Black" in output
-    assert "### Open game" in output
-    assert "### Spanish setup" in output
-    assert "**1. e4 e5**" in output
-    assert "**2. Nf3**" in output
-    assert "**2... Nc6 3. Bb5 a6**" in output
+    assert "<!doctype html>" in output
+    assert "<h1>Book Test (2026.03.29)</h1>" in output
+    assert "<h3>White vs. Black</h3>" in output
+    assert "<h3>Open game</h3>" in output
+    assert "<h3>Spanish setup</h3>" in output
+    assert '<p class="moves">1. e4 e5</p>' in output
+    assert '<p class="moves">2. Nf3</p>' in output
+    assert '<p class="moves">2... Nc6 3. Bb5 a6</p>' in output
     assert "Fight for the center." in output
     assert "Switch into Ruy Lopez ideas." in output
-    assert output.rstrip().endswith("**2... Nc6 3. Bb5 a6**")
+    assert output.rstrip().endswith("</html>")
     assert "ordinary comment" not in output
     assert output.count("<svg") == 2
     assert output.index("Fight for the center.") < output.index("<svg")
-    assert "**1. e4 e5**\n\nFight for the center." in output
+    assert '<p class="moves">1. e4 e5</p>\n    <p class="comments">Fight for the center.</p>' in output
 
 
 def test_build_book_chunks_omits_svg_for_final_explicit_chunk() -> None:
@@ -126,13 +127,13 @@ def test_chess_book_service_renders_empty_comments_without_extra_paragraph(tmp_p
         encoding="utf-8",
     )
 
-    output = service.render_markdown(pgn_path, perspective="white")
+    output = service.render_html(pgn_path, perspective="white")
 
-    assert "# No Comments" in output
-    assert "### Equal start" in output
-    assert "**1. e4 e5**" in output
+    assert "<h1>No Comments</h1>" in output
+    assert "<h3>Equal start</h3>" in output
+    assert '<p class="moves">1. e4 e5</p>' in output
     assert output.count("<svg") == 1
-    assert "\n\n\n" not in output
+    assert '<p class="comments">' not in output
 
 
 def test_rendered_svg_inlines_piece_shapes_instead_of_use_references(tmp_path: Path) -> None:
@@ -146,10 +147,10 @@ def test_rendered_svg_inlines_piece_shapes_instead_of_use_references(tmp_path: P
         encoding="utf-8",
     )
 
-    output = service.render_markdown(pgn_path, perspective="white")
+    output = service.render_html(pgn_path, perspective="white")
 
-    assert "# Inline SVG" in output
-    assert "### Open game" in output
+    assert "<h1>Inline SVG</h1>" in output
+    assert "<h3>Open game</h3>" in output
     assert "<svg" in output
     assert "<use " not in output
     assert 'id="white-pawn"' not in output

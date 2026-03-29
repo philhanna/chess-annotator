@@ -4,7 +4,7 @@
 
 The tool is designed around reviewing a game as a sequence of strategic phases rather than a list of isolated mistakes. You can mark move ranges, describe the plan you were following, note what triggered a transition, record what your opponent was aiming for, and save a short summary of the game.
 
-The repo also includes a newer `chessbook` workflow that reads `#chp` comments embedded directly in the PGN and renders a Markdown review with inline SVG board diagrams.
+The repo also includes a newer `chessbook` workflow that reads `#chp` comments embedded directly in the PGN and renders an HTML review with inline SVG board diagrams.
 
 ## Installation
 
@@ -36,7 +36,7 @@ Print the saved summary and recorded blocks:
 python -m chessplan summary mygame.pgn
 ```
 
-Render a Markdown "chess book" from `#chp` PGN comments:
+Render an HTML "chess book" from `#chp` PGN comments:
 
 ```bash
 python chessbook.py mygame.pgn --side white

@@ -16,6 +16,6 @@ def build_review_service() -> ReviewService:
 
 
 def build_chess_book_service() -> ChessBookService:
-    """Assemble the Markdown chess book workflow."""
+    """Assemble the HTML chess book workflow."""
 
     return ChessBookService(game_loader=PythonChessGameLoader())
