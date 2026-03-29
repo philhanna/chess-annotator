@@ -7,4 +7,8 @@ from chessplan.domain import GameRecord
 
 
 class GameLoader(Protocol):
-    def load_game(self, pgn_path: Path) -> GameRecord: ...
+    """Port for loading a single chess game from external storage."""
+
+    def load_game(self, pgn_path: Path) -> GameRecord:
+        """Load a game from `pgn_path` and return a normalized record."""
+        ...

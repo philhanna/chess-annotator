@@ -6,7 +6,17 @@ from chessplan.domain import GameHeaders, GameRecord, MovePair
 
 
 class PythonChessGameLoader:
+    """Load PGN data using the `python-chess` parser."""
+
     def load_game(self, pgn_path: Path) -> GameRecord:
+        """Read exactly one game from a PGN file and normalize its fields.
+
+        Raises
+        ------
+        SystemExit
+            If the file contains zero games or more than one game.
+        """
+
         import chess
         import chess.pgn
 
@@ -37,6 +47,8 @@ class PythonChessGameLoader:
         )
 
     def _move_pairs(self, game: object) -> list[MovePair]:
+        """Convert a python-chess game into display-friendly move pairs."""
+
         import chess
 
         board = game.board()

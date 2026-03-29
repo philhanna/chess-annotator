@@ -7,6 +7,12 @@ from chessplan.domain import GameAnnotations, GameRecord
 
 
 class AnnotationStore(Protocol):
-    def load_annotations(self, annotation_path: Path, pgn_path: Path, game: GameRecord) -> GameAnnotations: ...
+    """Port for reading and writing persisted review annotations."""
 
-    def save_annotations(self, annotation_path: Path, annotations: GameAnnotations) -> None: ...
+    def load_annotations(self, annotation_path: Path, pgn_path: Path, game: GameRecord) -> GameAnnotations:
+        """Load annotations for a game or provide an initialized default."""
+        ...
+
+    def save_annotations(self, annotation_path: Path, annotations: GameAnnotations) -> None:
+        """Persist the supplied annotations to `annotation_path`."""
+        ...

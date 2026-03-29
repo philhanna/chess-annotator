@@ -7,20 +7,32 @@ from chessplan.ports import AnnotationStore, GameLoader
 
 
 class ReviewService:
+    """Coordinates game loading and annotation workflows for the CLI."""
+
     def __init__(self, game_loader: GameLoader, annotation_store: AnnotationStore) -> None:
+        """Create a review service backed by the supplied ports."""
+
         self._game_loader = game_loader
         self._annotation_store = annotation_store
 
     def load_game(self, pgn_path: Path) -> GameRecord:
+        """Load and normalize a single game from the given PGN path."""
+
         return self._game_loader.load_game(pgn_path)
 
     def default_annotation_path(self, pgn_path: Path) -> Path:
+        """Return the default sidecar JSON path for a PGN file."""
+
         return pgn_path.with_suffix(pgn_path.suffix + ".plans.json")
 
     def load_annotations(self, annotation_path: Path, pgn_path: Path, game: GameRecord) -> GameAnnotations:
+        """Load existing annotations or create an empty review scaffold."""
+
         return self._annotation_store.load_annotations(annotation_path, pgn_path, game)
 
     def save_annotations(self, annotation_path: Path, annotations: GameAnnotations) -> None:
+        """Persist annotations to the configured storage adapter."""
+
         self._annotation_store.save_annotations(annotation_path, annotations)
 
     def add_block(
@@ -40,6 +52,14 @@ class ReviewService:
         better_plan: str,
         notes: str,
     ) -> Block:
+        """Create, validate, and attach a review block to the annotations.
+
+        Raises
+        ------
+        SystemExit
+            If the proposed block fails domain validation.
+        """
+
         start_move, end_move = move_range
         block = Block(
             kind=kind,
@@ -62,4 +82,6 @@ class ReviewService:
         return block
 
     def set_summary(self, annotations: GameAnnotations, summary: str) -> None:
+        """Replace the stored one-line summary for the reviewed game."""
+
         annotations.summary = summary

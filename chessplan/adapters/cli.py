@@ -27,10 +27,14 @@ from chessplan.use_cases.review_service import ReviewService
 
 
 def eprint(*args: object) -> None:
+    """Print a message to standard error."""
+
     print(*args, file=sys.stderr)
 
 
 def print_game_moves(game: GameRecord) -> None:
+    """Render game headers and numbered SAN move pairs to standard output."""
+
     headers = game.headers
     print(f"Event: {headers.event}")
     print(f"White: {headers.white} ({headers.white_elo})")
@@ -47,6 +51,8 @@ def print_game_moves(game: GameRecord) -> None:
 
 
 def print_summary(annotations: GameAnnotations) -> None:
+    """Print the stored review summary, blocks, and lessons."""
+
     print(f"{annotations.white} vs {annotations.black} ({annotations.result})")
     if annotations.event:
         print(f"Event: {annotations.event}")
@@ -86,6 +92,8 @@ def print_summary(annotations: GameAnnotations) -> None:
 
 
 def parse_range(value: str) -> tuple[int, int]:
+    """Parse a move range string in `START-END` form for argparse."""
+
     parts = value.split("-")
     if len(parts) != 2:
         raise argparse.ArgumentTypeError("range must look like START-END, for example 12-23")
@@ -98,12 +106,16 @@ def parse_range(value: str) -> tuple[int, int]:
 
 
 def interactive_prompt(prompt: str, default: str = "") -> str:
+    """Prompt interactively and fall back to `default` when input is blank."""
+
     suffix = f" [{default}]" if default else ""
     value = input(f"{prompt}{suffix}: ").strip()
     return value if value else default
 
 
 def interactive_add_block(service: ReviewService, annotations: GameAnnotations, game: GameRecord) -> None:
+    """Collect block fields from the terminal and append a new block."""
+
     print()
     print("Add a plan block")
     print("Kinds: plan, gap, opponent, transition, note")
@@ -137,6 +149,8 @@ def interactive_add_block(service: ReviewService, annotations: GameAnnotations, 
 
 
 def interactive_review(service: ReviewService, pgn_path: Path, annotation_path: Path) -> int:
+    """Run the interactive annotation loop for a single game."""
+
     game = service.load_game(pgn_path)
     annotations = service.load_annotations(annotation_path, pgn_path, game)
 
@@ -190,18 +204,24 @@ def interactive_review(service: ReviewService, pgn_path: Path, annotation_path: 
 
 
 def cmd_show(args: argparse.Namespace, service: ReviewService) -> int:
+    """Handle the `show` subcommand."""
+
     game = service.load_game(Path(args.pgn))
     print_game_moves(game)
     return 0
 
 
 def cmd_annotate(args: argparse.Namespace, service: ReviewService) -> int:
+    """Handle the `annotate` subcommand."""
+
     pgn_path = Path(args.pgn)
     annotation_path = Path(args.annotations) if args.annotations else service.default_annotation_path(pgn_path)
     return interactive_review(service, pgn_path, annotation_path)
 
 
 def cmd_summary(args: argparse.Namespace, service: ReviewService) -> int:
+    """Handle the `summary` subcommand."""
+
     pgn_path = Path(args.pgn)
     game = service.load_game(pgn_path)
     annotation_path = Path(args.annotations) if args.annotations else service.default_annotation_path(pgn_path)
@@ -211,6 +231,8 @@ def cmd_summary(args: argparse.Namespace, service: ReviewService) -> int:
 
 
 def cmd_add_block(args: argparse.Namespace, service: ReviewService) -> int:
+    """Handle the `add-block` subcommand."""
+
     pgn_path = Path(args.pgn)
     game = service.load_game(pgn_path)
     annotation_path = Path(args.annotations) if args.annotations else service.default_annotation_path(pgn_path)
@@ -236,6 +258,8 @@ def cmd_add_block(args: argparse.Namespace, service: ReviewService) -> int:
 
 
 def cmd_set_summary(args: argparse.Namespace, service: ReviewService) -> int:
+    """Handle the `set-summary` subcommand."""
+
     pgn_path = Path(args.pgn)
     game = service.load_game(pgn_path)
     annotation_path = Path(args.annotations) if args.annotations else service.default_annotation_path(pgn_path)
@@ -247,6 +271,8 @@ def cmd_set_summary(args: argparse.Namespace, service: ReviewService) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Create the top-level command-line parser and subcommands."""
+
     parser = argparse.ArgumentParser(description="Chessplan: plan-oriented chess review CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -290,6 +316,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Parse CLI arguments, dispatch the selected command, and map common errors."""
+
     from chessplan.bootstrap import build_review_service
 
     service = build_review_service()

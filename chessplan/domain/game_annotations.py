@@ -8,6 +8,12 @@ from .block import Block
 
 @dataclass(slots=True)
 class GameAnnotations:
+    """Stores the persisted review notes associated with one PGN game.
+
+    The annotation file mirrors game metadata, a free-form summary, broad
+    lessons, and the move-range blocks collected during review.
+    """
+
     pgn_path: str
     event: str = ""
     white: str = ""
@@ -18,6 +24,8 @@ class GameAnnotations:
     blocks: list[Block] = field(default_factory=list)
 
     def to_json_dict(self) -> dict[str, Any]:
+        """Convert the annotation model into a JSON-serializable mapping."""
+
         return {
             "pgn_path": self.pgn_path,
             "event": self.event,
@@ -31,6 +39,12 @@ class GameAnnotations:
 
     @classmethod
     def from_json_dict(cls, data: dict[str, Any]) -> "GameAnnotations":
+        """Build annotations from a mapping loaded from JSON.
+
+        Missing optional fields fall back to the same defaults used by the
+        dataclass so older or partial files remain readable.
+        """
+
         blocks = [Block(**item) for item in data.get("blocks", [])]
         return cls(
             pgn_path=data["pgn_path"],

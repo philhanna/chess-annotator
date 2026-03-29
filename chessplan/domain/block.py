@@ -5,6 +5,13 @@ from dataclasses import dataclass
 
 @dataclass(slots=True)
 class Block:
+    """Describes a labeled review block covering a range of moves.
+
+    Blocks capture the plan, trigger, outcome, and follow-up notes for a
+    phase of the game so summaries can group strategic observations instead
+    of isolated moves.
+    """
+
     kind: str
     label: str
     start_move: int
@@ -19,6 +26,20 @@ class Block:
     notes: str = ""
 
     def validate(self, max_move: int) -> list[str]:
+        """Validate the block fields against domain rules.
+
+        Parameters
+        ----------
+        max_move:
+            The largest full-move number available in the reviewed game.
+
+        Returns
+        -------
+        list[str]
+            Human-readable validation messages. The list is empty when the
+            block is valid.
+        """
+
         errors: list[str] = []
         if not self.kind.strip():
             errors.append("kind must not be empty")
