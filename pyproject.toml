@@ -11,6 +11,7 @@ dependencies = [
     "python-chess",
     "weasyprint",
     "mistune",
+    "pyyaml",
 ]
 
 [project.optional-dependencies]
