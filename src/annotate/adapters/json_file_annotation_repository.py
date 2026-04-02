@@ -48,7 +48,7 @@ def from_dict(data: dict) -> Annotation:
     segments = [
         Segment(
             start_ply=s["start_ply"],
-            label=s.get("label"),
+            label=s.get("label", ""),
             commentary=s.get("commentary", ""),
             show_diagram=s.get("show_diagram", False),
         )

@@ -34,6 +34,7 @@ class _Session:
 
     annotation: Annotation | None = None
     dirty: bool = False
+    current_segment: int | None = None  # 1-based segment number
 
     @property
     def open(self) -> bool:
@@ -103,10 +104,8 @@ def fmt_move_range(annotation: Annotation, index: int) -> str:
 
 
 def cmd_show(_tokens: list[str]) -> None:
-    """Display a tabular summary of the currently open annotation.
+    """Display a list of segments with their move ranges and labels.
 
-    The summary includes each segment's move range, label status,
-    whether commentary is present, and whether a diagram is enabled.
     Unsaved state is shown in the heading when appropriate.
     """
 
@@ -115,23 +114,15 @@ def cmd_show(_tokens: list[str]) -> None:
     from annotate.domain.model import total_plies
     total = total_plies(ann.pgn)
     total_moves = (total + 1) // 2
-    side_label = ann.player_side
-    header = f"{ann.title}  ({side_label}, {total_moves} moves){unsaved}"
+    header = f"{ann.title}  ({ann.player_side}, {total_moves} moves){unsaved}"
     print(header)
     print()
     col_w = max(len(fmt_move_range(ann, i)) for i in range(len(ann.segments)))
-    label_w = max(
-        (len(seg.label) if seg.label else len("(no label)"))
-        for seg in ann.segments
-    )
-    label_w = max(label_w, len("Label"))
-    fmt = f"  {{:>3}}  {{:<{col_w}}}  {{:<{label_w}}}  {{:<11}}  {{}}"
-    print(fmt.format("#", "Moves", "Label", "Commentary", "Diagram"))
+    fmt = f"  {{:>3}}  {{:<{col_w}}}  {{}}"
+    print(fmt.format("#", "Moves", "Label"))
     for i, seg in enumerate(ann.segments):
-        label = seg.label if seg.label else "(no label)"
-        commentary = "yes" if seg.commentary.strip() else "no"
-        diagram = "yes" if seg.show_diagram else "no"
-        print(fmt.format(i + 1, fmt_move_range(ann, i), label, commentary, diagram))
+        marker = " *" if _session.current_segment == i + 1 else ""
+        print(fmt.format(i + 1, fmt_move_range(ann, i), seg.label + marker))
     print()
 
 
@@ -377,8 +368,9 @@ def cmd_split(tokens: list[str]) -> None:
     ply = _parse_move_side(tokens, "split <move>")
     if ply is None:
         return
+    label = prompt("Label for new segment")
     try:
-        _session.annotation = split_segment(_session.annotation, ply)
+        _session.annotation = split_segment(_session.annotation, ply, label)
         _session.dirty = True
         print("Segment split.")
     except ValueError as exc:
@@ -416,10 +408,18 @@ def cmd_merge(tokens: list[str]) -> None:
         print("Merge cancelled.")
 
 
-def cmd_label(tokens: list[str]) -> None:
-    """Set or replace the label for a segment (1-based segment number)."""
-    if len(tokens) < 2:
-        err("Usage: label <segment#> <text>")
+def _require_current_segment() -> int | None:
+    """Return the current segment number, or print an error and return None."""
+    if _session.current_segment is None:
+        err("No segment selected. Use: segment <#>")
+        return None
+    return _session.current_segment
+
+
+def cmd_segment(tokens: list[str]) -> None:
+    """Set the current segment by its 1-based segment number."""
+    if not tokens:
+        err("Usage: segment <#>")
         return
     try:
         seg_num = int(tokens[0])
@@ -430,29 +430,34 @@ def cmd_label(tokens: list[str]) -> None:
     if not (1 <= seg_num <= len(segments)):
         err(f"Segment number must be between 1 and {len(segments)}")
         return
-    segments[seg_num - 1].label = " ".join(tokens[1:])
+    _session.current_segment = seg_num
+    print(f"Current segment: {seg_num} — {segments[seg_num - 1].label}")
+
+
+def cmd_label(tokens: list[str]) -> None:
+    """Set or replace the label for the current segment."""
+    seg_num = _require_current_segment()
+    if seg_num is None:
+        return
+    if not tokens:
+        err("Usage: label <text>")
+        return
+    segments = _session.annotation.segments
+    segments[seg_num - 1].label = " ".join(tokens)
     _session.dirty = True
     print(f"Label updated for segment {seg_num}.")
 
 
 def cmd_diagram(tokens: list[str]) -> None:
-    """Toggle the end-of-segment diagram for a segment on or off."""
-    if len(tokens) < 2:
-        err("Usage: diagram <segment#> on|off")
+    """Toggle the end-of-segment diagram for the current segment on or off."""
+    seg_num = _require_current_segment()
+    if seg_num is None:
         return
-    try:
-        seg_num = int(tokens[0])
-    except ValueError:
-        err(f"Segment number must be an integer, got {tokens[0]!r}")
+    if not tokens or tokens[0].lower() not in ("on", "off"):
+        err("Usage: diagram on|off")
         return
-    toggle = tokens[1].lower()
-    if toggle not in ("on", "off"):
-        err("Value must be 'on' or 'off'")
-        return
+    toggle = tokens[0].lower()
     segments = _session.annotation.segments
-    if not (1 <= seg_num <= len(segments)):
-        err(f"Segment number must be between 1 and {len(segments)}")
-        return
     segments[seg_num - 1].show_diagram = toggle == "on"
     _session.dirty = True
     print(f"Diagram {'enabled' if toggle == 'on' else 'disabled'} for segment {seg_num}.")
@@ -496,20 +501,12 @@ def cmd_json(_tokens: list[str]) -> None:
     print(json.dumps(to_dict(_session.annotation), indent=2))
 
 
-def cmd_comment(tokens: list[str]) -> None:
-    """Open $EDITOR to write or edit commentary for a segment."""
-    if not tokens:
-        err("Usage: comment <segment#>")
-        return
-    try:
-        seg_num = int(tokens[0])
-    except ValueError:
-        err(f"Segment number must be an integer, got {tokens[0]!r}")
+def cmd_comment(_tokens: list[str]) -> None:
+    """Open $EDITOR to write or edit commentary for the current segment."""
+    seg_num = _require_current_segment()
+    if seg_num is None:
         return
     segments = _session.annotation.segments
-    if not (1 <= seg_num <= len(segments)):
-        err(f"Segment number must be between 1 and {len(segments)}")
-        return
     seg = segments[seg_num - 1]
     launcher = SystemEditorLauncher()
     updated = launcher.edit(seg.commentary)
@@ -532,12 +529,13 @@ Commands (no session open):
 
 _HELP_SESSION = """\
 Commands (session open):
-  show                        Display current annotation state
+  show                        List segments with their labels
+  segment <#>                 Set the current segment
   split <move>                Add a turning point; split the containing segment
   merge <move>                Remove a turning point; merge with previous segment
-  label <#> <text>            Set or update the label for a segment
-  comment <#>                 Open $EDITOR to write commentary for a segment
-  diagram <#> on|off          Toggle the end-of-segment diagram
+  label <text>                Set or update the label for the current segment
+  comment                     Open $EDITOR to write commentary for the current segment
+  diagram on|off              Toggle the end-of-segment diagram for the current segment
   orientation <white|black>   Set the diagram orientation for this annotation
   see                         Open Lichess analysis for this game
   json                        Print the current annotation as JSON
@@ -570,6 +568,7 @@ _COMMANDS_NO_SESSION: dict[str, tuple] = {
 
 _COMMANDS_SESSION: dict[str, tuple] = {
     "show": (cmd_show, True),
+    "segment": (cmd_segment, True),
     "split": (cmd_split, True),
     "merge": (cmd_merge, True),
     "label": (cmd_label, True),

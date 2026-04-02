@@ -5,12 +5,13 @@ from annotate.domain.model import find_segment_index, total_plies
 from annotate.domain.segment import Segment
 
 
-def split_segment(annotation: Annotation, ply: int) -> Annotation:
+def split_segment(annotation: Annotation, ply: int, label: str) -> Annotation:
     """Split the segment containing ``ply`` into two segments.
 
     The earlier half retains the original segment's ``label`` and
     ``commentary``; its ``show_diagram`` is reset to ``False``. The
-    later half starts at ``ply`` with all fields empty.
+    later half starts at ``ply`` with the supplied ``label`` and all
+    other fields empty.
 
     Raises ``ValueError`` when:
 
@@ -28,7 +29,7 @@ def split_segment(annotation: Annotation, ply: int) -> Annotation:
 
     idx = find_segment_index(annotation, ply)
     earlier = replace(annotation.segments[idx], show_diagram=False)
-    later = Segment(start_ply=ply)
+    later = Segment(start_ply=ply, label=label)
 
     new_segments = (
         list(annotation.segments[:idx])
@@ -65,11 +66,7 @@ def merge_segment(
         raise ValueError("Cannot merge the first segment — nothing precedes it")
 
     later = segments[idx]
-    has_content = (
-        bool(later.label)
-        or bool(later.commentary.strip())
-        or later.show_diagram
-    )
+    has_content = bool(later.commentary.strip()) or later.show_diagram
     if has_content and not force:
         return annotation, False
 

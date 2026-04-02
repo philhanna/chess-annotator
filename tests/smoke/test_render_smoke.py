@@ -33,11 +33,10 @@ def test_render_produces_non_empty_pdf(tmp_path):
     )
 
     # Split into two segments at move 6 white (ply 11)
-    annotation = split_segment(annotation, ply_from_move(6, "white"))
+    annotation = split_segment(annotation, ply_from_move(6, "white"), "The Middlegame")
 
-    # Label both segments
+    # Label the first segment
     annotation.segments[0].label = "The Opening"
-    annotation.segments[1].label = "The Middlegame"
 
     # Add commentary and a diagram to the first segment
     annotation.segments[0].commentary = "White opens with the Ruy Lopez."

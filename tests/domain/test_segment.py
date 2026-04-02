@@ -82,7 +82,7 @@ def test_total_plies():
 
 def make_annotation(*start_plies: int) -> Annotation:
     """Build an Annotation with segments starting at the given plies."""
-    segments = [Segment(start_ply=p) for p in start_plies]
+    segments = [Segment(start_ply=p, label=f"Segment {i + 1}") for i, p in enumerate(start_plies)]
     return Annotation(
         annotation_id=1,
         title="Test",
@@ -162,7 +162,7 @@ def test_find_segment_index_out_of_range():
 
 def test_split_segment_produces_two_segments():
     ann = make_annotation(1)
-    result = split_segment(ann, 11)
+    result = split_segment(ann, 11, "Middlegame")
     assert len(result.segments) == 2
     assert result.segments[0].start_ply == 1
     assert result.segments[1].start_ply == 11
@@ -175,25 +175,25 @@ def test_split_segment_earlier_retains_content():
         pgn=_RUY_LOPEZ_PGN, player_side="white", diagram_orientation="white",
         segments=segments,
     )
-    result = split_segment(ann, 11)
+    result = split_segment(ann, 11, "Middlegame")
     earlier = result.segments[0]
     assert earlier.label == "Opening"
     assert earlier.commentary == "Some notes"
     assert earlier.show_diagram is False  # reset
 
 
-def test_split_segment_later_is_empty():
+def test_split_segment_later_has_supplied_label():
     ann = make_annotation(1)
-    result = split_segment(ann, 11)
+    result = split_segment(ann, 11, "Middlegame")
     later = result.segments[1]
-    assert later.label is None
+    assert later.label == "Middlegame"
     assert later.commentary == ""
     assert later.show_diagram is False
 
 
 def test_split_segment_middle_of_three():
     ann = make_annotation(1, 11)
-    result = split_segment(ann, 15)
+    result = split_segment(ann, 15, "Endgame")
     assert len(result.segments) == 3
     assert [s.start_ply for s in result.segments] == [1, 11, 15]
 
@@ -201,21 +201,21 @@ def test_split_segment_middle_of_three():
 def test_split_segment_at_ply_1_fails():
     ann = make_annotation(1)
     with pytest.raises(ValueError):
-        split_segment(ann, 1)
+        split_segment(ann, 1, "Impossible")
 
 
 def test_split_segment_out_of_range_fails():
     ann = make_annotation(1)
     with pytest.raises(ValueError):
-        split_segment(ann, 21)
+        split_segment(ann, 21, "Too far")
     with pytest.raises(ValueError):
-        split_segment(ann, 0)
+        split_segment(ann, 0, "Too early")
 
 
 def test_split_segment_at_existing_boundary_fails():
     ann = make_annotation(1, 11)
     with pytest.raises(ValueError):
-        split_segment(ann, 11)
+        split_segment(ann, 11, "Duplicate")
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +233,7 @@ def test_merge_segment_basic():
 def test_merge_segment_earlier_content_retained():
     segments = [
         Segment(start_ply=1, label="Opening", commentary="Notes"),
-        Segment(start_ply=11),
+        Segment(start_ply=11, label="Middlegame"),
     ]
     ann = Annotation(
         annotation_id=1, title="T", author="A", date="2024-01-01",
@@ -246,8 +246,11 @@ def test_merge_segment_earlier_content_retained():
     assert result.segments[0].commentary == "Notes"
 
 
-def test_merge_segment_returns_false_when_later_has_label():
-    segments = [Segment(start_ply=1), Segment(start_ply=11, label="Middlegame")]
+def test_merge_segment_returns_false_when_later_has_commentary():
+    segments = [
+        Segment(start_ply=1, label="Opening"),
+        Segment(start_ply=11, label="Middlegame", commentary="Key moment."),
+    ]
     ann = Annotation(
         annotation_id=1, title="T", author="A", date="2024-01-01",
         pgn=_RUY_LOPEZ_PGN, player_side="white", diagram_orientation="white",
@@ -259,7 +262,10 @@ def test_merge_segment_returns_false_when_later_has_label():
 
 
 def test_merge_segment_force_discards_content():
-    segments = [Segment(start_ply=1), Segment(start_ply=11, label="Middlegame")]
+    segments = [
+        Segment(start_ply=1, label="Opening"),
+        Segment(start_ply=11, label="Middlegame", commentary="Key moment."),
+    ]
     ann = Annotation(
         annotation_id=1, title="T", author="A", date="2024-01-01",
         pgn=_RUY_LOPEZ_PGN, player_side="white", diagram_orientation="white",
