@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chess-plan"
+version = "0.1.0"
+description = "Tool for annotating chess games and rendering them as book-quality PDFs"
+requires-python = ">=3.11"
+dependencies = [
+    "python-chess",
+    "weasyprint",
+    "mistune",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+chess-annotate = "chess_annotate.cli.annotate:main"
+chess-render   = "chess_annotate.cli.render:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
