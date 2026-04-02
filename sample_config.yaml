@@ -1,0 +1,16 @@
+# Chess Plan — sample configuration file
+# Copy to ~/.config/chess-plan/config.yaml (Linux/macOS)
+#         or %APPDATA%\chess-plan\config.yaml (Windows)
+
+# Path to the annotation store directory.
+# Overrides the platform default and the CHESS_ANNOTATE_STORE env var.
+# store_dir: /path/to/your/store
+
+# Your name, pre-filled in the Author prompt when creating a new annotation.
+author: Your Name
+
+# Default diagram size in pixels for chess-render (square).
+diagram_size: 360
+
+# Default page size for chess-render. Accepted values: a4, letter.
+page_size: a4
