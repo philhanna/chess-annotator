@@ -13,4 +13,4 @@ author: Your Name
 diagram_size: 360
 
 # Default page size for chess-render. Accepted values: a4, letter.
-page_size: a4
+page_size: letter
