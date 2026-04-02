@@ -1,4 +1,4 @@
-"""Unit tests for domain model business-rule functions."""
+"""Unit tests for domain model business-rule functions and use-case interactors."""
 import pytest
 
 from annotate.domain.annotation import Annotation
@@ -10,6 +10,7 @@ from annotate.domain.model import (
     total_plies,
 )
 from annotate.domain.segment import Segment
+from annotate.use_cases.interactors import merge_segment, split_segment
 
 # A minimal but legal PGN for a short game (10 moves / 20 plies).
 _RUY_LOPEZ_PGN = (
@@ -153,3 +154,129 @@ def test_find_segment_index_out_of_range():
         find_segment_index(ann, 0)
     with pytest.raises(ValueError):
         find_segment_index(ann, 21)
+
+
+# ---------------------------------------------------------------------------
+# split_segment
+# ---------------------------------------------------------------------------
+
+def test_split_segment_produces_two_segments():
+    ann = make_annotation(1)
+    result = split_segment(ann, 11)
+    assert len(result.segments) == 2
+    assert result.segments[0].start_ply == 1
+    assert result.segments[1].start_ply == 11
+
+
+def test_split_segment_earlier_retains_content():
+    segments = [Segment(start_ply=1, label="Opening", commentary="Some notes", show_diagram=True)]
+    ann = Annotation(
+        annotation_id="t", title="T", author="A", date="2024-01-01",
+        pgn=_RUY_LOPEZ_PGN, player_side="white", diagram_orientation="white",
+        segments=segments,
+    )
+    result = split_segment(ann, 11)
+    earlier = result.segments[0]
+    assert earlier.label == "Opening"
+    assert earlier.commentary == "Some notes"
+    assert earlier.show_diagram is False  # reset
+
+
+def test_split_segment_later_is_empty():
+    ann = make_annotation(1)
+    result = split_segment(ann, 11)
+    later = result.segments[1]
+    assert later.label is None
+    assert later.commentary == ""
+    assert later.show_diagram is False
+
+
+def test_split_segment_middle_of_three():
+    ann = make_annotation(1, 11)
+    result = split_segment(ann, 15)
+    assert len(result.segments) == 3
+    assert [s.start_ply for s in result.segments] == [1, 11, 15]
+
+
+def test_split_segment_at_ply_1_fails():
+    ann = make_annotation(1)
+    with pytest.raises(ValueError):
+        split_segment(ann, 1)
+
+
+def test_split_segment_out_of_range_fails():
+    ann = make_annotation(1)
+    with pytest.raises(ValueError):
+        split_segment(ann, 21)
+    with pytest.raises(ValueError):
+        split_segment(ann, 0)
+
+
+def test_split_segment_at_existing_boundary_fails():
+    ann = make_annotation(1, 11)
+    with pytest.raises(ValueError):
+        split_segment(ann, 11)
+
+
+# ---------------------------------------------------------------------------
+# merge_segment
+# ---------------------------------------------------------------------------
+
+def test_merge_segment_basic():
+    ann = make_annotation(1, 11)
+    result, merged = merge_segment(ann, 11)
+    assert merged is True
+    assert len(result.segments) == 1
+    assert result.segments[0].start_ply == 1
+
+
+def test_merge_segment_earlier_content_retained():
+    segments = [
+        Segment(start_ply=1, label="Opening", commentary="Notes"),
+        Segment(start_ply=11),
+    ]
+    ann = Annotation(
+        annotation_id="t", title="T", author="A", date="2024-01-01",
+        pgn=_RUY_LOPEZ_PGN, player_side="white", diagram_orientation="white",
+        segments=segments,
+    )
+    result, merged = merge_segment(ann, 11)
+    assert merged is True
+    assert result.segments[0].label == "Opening"
+    assert result.segments[0].commentary == "Notes"
+
+
+def test_merge_segment_returns_false_when_later_has_label():
+    segments = [Segment(start_ply=1), Segment(start_ply=11, label="Middlegame")]
+    ann = Annotation(
+        annotation_id="t", title="T", author="A", date="2024-01-01",
+        pgn=_RUY_LOPEZ_PGN, player_side="white", diagram_orientation="white",
+        segments=segments,
+    )
+    result, merged = merge_segment(ann, 11)
+    assert merged is False
+    assert result is ann  # unchanged
+
+
+def test_merge_segment_force_discards_content():
+    segments = [Segment(start_ply=1), Segment(start_ply=11, label="Middlegame")]
+    ann = Annotation(
+        annotation_id="t", title="T", author="A", date="2024-01-01",
+        pgn=_RUY_LOPEZ_PGN, player_side="white", diagram_orientation="white",
+        segments=segments,
+    )
+    result, merged = merge_segment(ann, 11, force=True)
+    assert merged is True
+    assert len(result.segments) == 1
+
+
+def test_merge_first_segment_fails():
+    ann = make_annotation(1, 11)
+    with pytest.raises(ValueError):
+        merge_segment(ann, 1)
+
+
+def test_merge_nonexistent_ply_fails():
+    ann = make_annotation(1, 11)
+    with pytest.raises(ValueError):
+        merge_segment(ann, 5)

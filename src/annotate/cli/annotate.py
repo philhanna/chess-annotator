@@ -5,11 +5,13 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from annotate.adapters.python_chess_pgn_parser import PythonChessPGNParser
 from annotate.adapters.json_file_annotation_repository import JSONFileAnnotationRepository
+from annotate.adapters.python_chess_pgn_parser import PythonChessPGNParser
+from annotate.adapters.system_editor_launcher import SystemEditorLauncher
 from annotate.config import get_store_dir
 from annotate.domain.annotation import Annotation
-from annotate.domain.model import move_from_ply, segment_end_ply
+from annotate.domain.model import move_from_ply, ply_from_move, segment_end_ply
+from annotate.use_cases.interactors import merge_segment, split_segment
 
 
 # ---------------------------------------------------------------------------
@@ -337,6 +339,116 @@ def cmd_quit(_tokens: list[str]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Authoring commands (M2)
+# ---------------------------------------------------------------------------
+
+def _parse_move_side(tokens: list[str], usage: str) -> int | None:
+    """Parse ``<move> <white|black>`` tokens into a ply.
+
+    Returns the ply on success, or ``None`` after printing an error
+    message when the tokens are malformed.
+    """
+    if len(tokens) < 2:
+        err(f"Usage: {usage}")
+        return None
+    try:
+        move_number = int(tokens[0])
+    except ValueError:
+        err(f"Move number must be an integer, got {tokens[0]!r}")
+        return None
+    side = tokens[1].lower()
+    if side not in ("white", "black"):
+        err(f"Side must be 'white' or 'black', got {tokens[1]!r}")
+        return None
+    return ply_from_move(move_number, side)
+
+
+def cmd_split(tokens: list[str]) -> None:
+    """Split the segment containing the given move into two segments."""
+    ply = _parse_move_side(tokens, "split <move> <white|black>")
+    if ply is None:
+        return
+    try:
+        _session.annotation = split_segment(_session.annotation, ply)
+        _session.dirty = True
+        print("Segment split.")
+    except ValueError as exc:
+        err(str(exc))
+
+
+def cmd_merge(tokens: list[str]) -> None:
+    """Remove the turning point at the given move, merging with the previous segment."""
+    ply = _parse_move_side(tokens, "merge <move> <white|black>")
+    if ply is None:
+        return
+    try:
+        annotation, merged = merge_segment(_session.annotation, ply)
+    except ValueError as exc:
+        err(str(exc))
+        return
+    if merged:
+        _session.annotation = annotation
+        _session.dirty = True
+        print("Segments merged.")
+        return
+    # Later segment has content — ask the author to confirm.
+    idx = next(
+        i for i, s in enumerate(_session.annotation.segments)
+        if s.start_ply == ply
+    )
+    print(f"Segment {idx + 1} has content that will be discarded.")
+    answer = input("Discard and merge anyway? (yes/no): ").strip().lower()
+    if answer == "yes":
+        annotation, _ = merge_segment(_session.annotation, ply, force=True)
+        _session.annotation = annotation
+        _session.dirty = True
+        print("Segments merged.")
+    else:
+        print("Merge cancelled.")
+
+
+def cmd_label(tokens: list[str]) -> None:
+    """Set or replace the label for a segment (1-based segment number)."""
+    if len(tokens) < 2:
+        err("Usage: label <segment#> <text>")
+        return
+    try:
+        seg_num = int(tokens[0])
+    except ValueError:
+        err(f"Segment number must be an integer, got {tokens[0]!r}")
+        return
+    segments = _session.annotation.segments
+    if not (1 <= seg_num <= len(segments)):
+        err(f"Segment number must be between 1 and {len(segments)}")
+        return
+    segments[seg_num - 1].label = " ".join(tokens[1:])
+    _session.dirty = True
+    print(f"Label updated for segment {seg_num}.")
+
+
+def cmd_comment(tokens: list[str]) -> None:
+    """Open $EDITOR to write or edit commentary for a segment."""
+    if not tokens:
+        err("Usage: comment <segment#>")
+        return
+    try:
+        seg_num = int(tokens[0])
+    except ValueError:
+        err(f"Segment number must be an integer, got {tokens[0]!r}")
+        return
+    segments = _session.annotation.segments
+    if not (1 <= seg_num <= len(segments)):
+        err(f"Segment number must be between 1 and {len(segments)}")
+        return
+    seg = segments[seg_num - 1]
+    launcher = SystemEditorLauncher()
+    updated = launcher.edit(seg.commentary)
+    seg.commentary = updated
+    _session.dirty = True
+    print(f"Commentary updated for segment {seg_num}.")
+
+
+# ---------------------------------------------------------------------------
 # Help
 # ---------------------------------------------------------------------------
 
@@ -350,11 +462,15 @@ Commands (no session open):
 
 _HELP_SESSION = """\
 Commands (session open):
-  show             Display current annotation state
-  save             Save to main store (stay in session)
-  close            Close session (prompts if unsaved changes)
-  help             Show this help
-  quit             Close session and exit"""
+  show                      Display current annotation state
+  split <move> <white|black>  Add a turning point; split the containing segment
+  merge <move> <white|black>  Remove a turning point; merge with previous segment
+  label <#> <text>          Set or update the label for a segment
+  comment <#>               Open $EDITOR to write commentary for a segment
+  save                      Save to main store (stay in session)
+  close                     Close session (prompts if unsaved changes)
+  help                      Show this help
+  quit                      Close session and exit"""
 
 
 def cmd_help(_tokens: list[str]) -> None:
@@ -380,6 +496,10 @@ _COMMANDS_NO_SESSION: dict[str, tuple] = {
 
 _COMMANDS_SESSION: dict[str, tuple] = {
     "show": (cmd_show, True),
+    "split": (cmd_split, True),
+    "merge": (cmd_merge, True),
+    "label": (cmd_label, True),
+    "comment": (cmd_comment, True),
     "save": (cmd_save, True),
     "close": (cmd_close, True),
     "help": (cmd_help, True),
