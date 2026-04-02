@@ -514,7 +514,7 @@ def cmd_comment(tokens: list[str]) -> None:
 
 _HELP_NO_SESSION = """\
 Commands (no session open):
-  new <path>       Create a new annotation from a PGN file
+  new              Create a new annotation (prompts for PGN file and metadata)
   open <id>        Open an existing annotation
   list             List all annotations
   help             Show this help
@@ -523,13 +523,13 @@ Commands (no session open):
 _HELP_SESSION = """\
 Commands (session open):
   show                        Display current annotation state
-  split <move>  Add a turning point; split the containing segment
-  merge <move>  Remove a turning point; merge with previous segment
+  split <move>                Add a turning point; split the containing segment
+  merge <move>                Remove a turning point; merge with previous segment
   label <#> <text>            Set or update the label for a segment
   comment <#>                 Open $EDITOR to write commentary for a segment
   diagram <#> on|off          Toggle the end-of-segment diagram
   orientation <white|black>   Set the diagram orientation for this annotation
-  see <move>    Open Lichess analysis for that position
+  see                         Open Lichess analysis for this game
   save                        Save to main store (stay in session)
   close                       Close session (prompts if unsaved changes)
   help                        Show this help
