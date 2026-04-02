@@ -73,7 +73,7 @@ Store directory is configured via env var `CHESS_ANNOTATE_STORE` or a `~/.chess-
 
 ---
 
-## M1 — Foundation
+## M1 — Foundation ✓ Complete
 
 **Goal:** author can create, open, browse, and save annotations. No authoring or rendering.
 
