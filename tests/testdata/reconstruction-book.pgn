@@ -1,6 +1,0 @@
-[Event "Reconstruction"]
-[White "White"]
-[Black "Black"]
-[Result "1-0"]
-
-1. e4 e5 {#chp label: Open game; kind: plan; comments: Test board reconstruction.} 1-0
