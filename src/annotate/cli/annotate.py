@@ -489,6 +489,13 @@ def cmd_see(_tokens: list[str]) -> None:
     print("Opening Lichess analysis.")
 
 
+def cmd_json(_tokens: list[str]) -> None:
+    """Print the current annotation's JSON representation to standard output."""
+    from annotate.adapters.json_file_annotation_repository import to_dict
+    import json
+    print(json.dumps(to_dict(_session.annotation), indent=2))
+
+
 def cmd_comment(tokens: list[str]) -> None:
     """Open $EDITOR to write or edit commentary for a segment."""
     if not tokens:
@@ -533,6 +540,7 @@ Commands (session open):
   diagram <#> on|off          Toggle the end-of-segment diagram
   orientation <white|black>   Set the diagram orientation for this annotation
   see                         Open Lichess analysis for this game
+  json                        Print the current annotation as JSON
   save                        Save to main store (stay in session)
   close                       Close session (prompts if unsaved changes)
   help                        Show this help
@@ -569,6 +577,7 @@ _COMMANDS_SESSION: dict[str, tuple] = {
     "diagram": (cmd_diagram, True),
     "orientation": (cmd_orientation, True),
     "see": (cmd_see, True),
+    "json": (cmd_json, True),
     "save": (cmd_save, True),
     "close": (cmd_close, True),
     "help": (cmd_help, True),
