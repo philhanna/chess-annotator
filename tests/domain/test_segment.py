@@ -79,7 +79,7 @@ def test_total_plies():
 # Helpers for building test Annotations
 # ---------------------------------------------------------------------------
 
-def _make_annotation(*start_plies: int) -> Annotation:
+def make_annotation(*start_plies: int) -> Annotation:
     """Build an Annotation with segments starting at the given plies."""
     segments = [Segment(start_ply=p) for p in start_plies]
     return Annotation(
@@ -99,22 +99,22 @@ def _make_annotation(*start_plies: int) -> Annotation:
 # ---------------------------------------------------------------------------
 
 def test_segment_end_ply_single_segment():
-    ann = _make_annotation(1)
+    ann = make_annotation(1)
     assert segment_end_ply(ann, 0) == 20
 
 
 def test_segment_end_ply_first_of_two():
-    ann = _make_annotation(1, 11)
+    ann = make_annotation(1, 11)
     assert segment_end_ply(ann, 0) == 10
 
 
 def test_segment_end_ply_last_of_two():
-    ann = _make_annotation(1, 11)
+    ann = make_annotation(1, 11)
     assert segment_end_ply(ann, 1) == 20
 
 
 def test_segment_end_ply_middle():
-    ann = _make_annotation(1, 7, 15)
+    ann = make_annotation(1, 7, 15)
     assert segment_end_ply(ann, 0) == 6
     assert segment_end_ply(ann, 1) == 14
     assert segment_end_ply(ann, 2) == 20
@@ -125,13 +125,13 @@ def test_segment_end_ply_middle():
 # ---------------------------------------------------------------------------
 
 def test_find_segment_index_single():
-    ann = _make_annotation(1)
+    ann = make_annotation(1)
     for ply in range(1, 21):
         assert find_segment_index(ann, ply) == 0
 
 
 def test_find_segment_index_two_segments():
-    ann = _make_annotation(1, 11)
+    ann = make_annotation(1, 11)
     for ply in range(1, 11):
         assert find_segment_index(ann, ply) == 0
     for ply in range(11, 21):
@@ -139,7 +139,7 @@ def test_find_segment_index_two_segments():
 
 
 def test_find_segment_index_at_boundary():
-    ann = _make_annotation(1, 11, 15)
+    ann = make_annotation(1, 11, 15)
     # ply 10 belongs to segment 0; ply 11 starts segment 1
     assert find_segment_index(ann, 10) == 0
     assert find_segment_index(ann, 11) == 1
@@ -148,7 +148,7 @@ def test_find_segment_index_at_boundary():
 
 
 def test_find_segment_index_out_of_range():
-    ann = _make_annotation(1)
+    ann = make_annotation(1)
     with pytest.raises(ValueError):
         find_segment_index(ann, 0)
     with pytest.raises(ValueError):

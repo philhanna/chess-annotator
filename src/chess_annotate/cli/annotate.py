@@ -1,5 +1,6 @@
 """chess-annotate — interactive REPL for authoring chess game annotations."""
 
+import builtins
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,7 +29,7 @@ _session = _Session()
 _repo: JSONFileAnnotationRepository | None = None
 
 
-def _get_repo() -> JSONFileAnnotationRepository:
+def get_repo() -> JSONFileAnnotationRepository:
     global _repo
     if _repo is None:
         store_dir = get_store_dir()
@@ -40,19 +41,19 @@ def _get_repo() -> JSONFileAnnotationRepository:
 # Output helpers
 # ---------------------------------------------------------------------------
 
-def _print(msg: str = "") -> None:
-    print(msg)
+def print(msg: str = "") -> None:
+    builtins.print(msg)
 
 
-def _err(msg: str) -> None:
-    print(f"Error: {msg}", file=sys.stderr)
+def err(msg: str) -> None:
+    builtins.print(f"Error: {msg}", file=sys.stderr)
 
 
 # ---------------------------------------------------------------------------
 # Show command
 # ---------------------------------------------------------------------------
 
-def _fmt_move_range(annotation: Annotation, index: int) -> str:
+def fmt_move_range(annotation: Annotation, index: int) -> str:
     seg = annotation.segments[index]
     start_move, start_side = move_from_ply(seg.start_ply)
     end_ply = segment_end_ply(annotation, index)
@@ -62,7 +63,7 @@ def _fmt_move_range(annotation: Annotation, index: int) -> str:
     return f"{start_move}{start_side_char} \u2013 {end_move}{end_side_char}"
 
 
-def _cmd_show(_tokens: list[str]) -> None:
+def cmd_show(_tokens: list[str]) -> None:
     ann = _session.annotation
     unsaved = "  [unsaved changes]" if _session.dirty else ""
     from chess_annotate.domain.model import total_plies
@@ -70,29 +71,29 @@ def _cmd_show(_tokens: list[str]) -> None:
     total_moves = (total + 1) // 2
     side_label = ann.player_side
     header = f"{ann.title}  ({side_label}, {total_moves} moves){unsaved}"
-    _print(header)
-    _print()
-    col_w = max(len(_fmt_move_range(ann, i)) for i in range(len(ann.segments)))
+    print(header)
+    print()
+    col_w = max(len(fmt_move_range(ann, i)) for i in range(len(ann.segments)))
     label_w = max(
         (len(seg.label) if seg.label else len("(no label)"))
         for seg in ann.segments
     )
     label_w = max(label_w, len("Label"))
     fmt = f"  {{:>3}}  {{:<{col_w}}}  {{:<{label_w}}}  {{:<11}}  {{}}"
-    _print(fmt.format("#", "Moves", "Label", "Commentary", "Diagram"))
+    print(fmt.format("#", "Moves", "Label", "Commentary", "Diagram"))
     for i, seg in enumerate(ann.segments):
         label = seg.label if seg.label else "(no label)"
         commentary = "yes" if seg.commentary.strip() else "no"
         diagram = "yes" if seg.show_diagram else "no"
-        _print(fmt.format(i + 1, _fmt_move_range(ann, i), label, commentary, diagram))
-    _print()
+        print(fmt.format(i + 1, fmt_move_range(ann, i), label, commentary, diagram))
+    print()
 
 
 # ---------------------------------------------------------------------------
 # New command — interactive creation flow
 # ---------------------------------------------------------------------------
 
-def _prompt(prompt_text: str, default: str | None = None) -> str:
+def prompt(prompt_text: str, default: str | None = None) -> str:
     if default is not None:
         text = input(f"{prompt_text} [{default}]: ").strip()
         return text if text else default
@@ -100,17 +101,17 @@ def _prompt(prompt_text: str, default: str | None = None) -> str:
         text = input(f"{prompt_text}: ").strip()
         if text:
             return text
-        _print("This field is required.")
+        print("This field is required.")
 
 
-def _cmd_new(tokens: list[str]) -> None:
+def cmd_new(tokens: list[str]) -> None:
     if not tokens:
-        _err("Usage: new <path/to/game.pgn>")
+        err("Usage: new <path/to/game.pgn>")
         return
 
     pgn_path = Path(tokens[0])
     if not pgn_path.exists():
-        _err(f"File not found: {pgn_path}")
+        err(f"File not found: {pgn_path}")
         return
 
     pgn_text = pgn_path.read_text()
@@ -118,30 +119,30 @@ def _cmd_new(tokens: list[str]) -> None:
     try:
         info = parser.parse(pgn_text)
     except ValueError as exc:
-        _err(str(exc))
+        err(str(exc))
         return
 
     total_moves = (info["total_plies"] + 1) // 2
-    _print(
+    print(
         f"PGN loaded: {info['total_plies']} plies ({total_moves} moves), "
         f"White: {info['white']}, Black: {info['black']}"
     )
-    _print()
+    print()
 
-    title = _prompt("Title")
-    author = _prompt("Author")
+    title = prompt("Title")
+    author = prompt("Author")
 
     pgn_date = info["date"].replace("??", "").strip(".") or None
-    date = _prompt("Date", default=pgn_date or "")
+    date = prompt("Date", default=pgn_date or "")
 
     while True:
-        side = _prompt("You played (white/black/none)").lower()
+        side = prompt("You played (white/black/none)").lower()
         if side in ("white", "black", "none"):
             break
-        _print("Please enter white, black, or none.")
+        print("Please enter white, black, or none.")
 
     default_orientation = "black" if side == "black" else "white"
-    orientation = _prompt("Diagram orientation", default=default_orientation).lower()
+    orientation = prompt("Diagram orientation", default=default_orientation).lower()
     if orientation not in ("white", "black"):
         orientation = default_orientation
 
@@ -154,14 +155,14 @@ def _cmd_new(tokens: list[str]) -> None:
         diagram_orientation=orientation,
     )
 
-    repo = _get_repo()
+    repo = get_repo()
     repo.save_working_copy(annotation)
 
     _session.annotation = annotation
     _session.dirty = True
 
-    _print()
-    _print(
+    print()
+    print(
         f"Annotation created. 1 segment spanning moves 1\u2013{total_moves} ({side})."
     )
 
@@ -170,9 +171,9 @@ def _cmd_new(tokens: list[str]) -> None:
 # Open command
 # ---------------------------------------------------------------------------
 
-def _cmd_open(tokens: list[str]) -> None:
+def cmd_open(tokens: list[str]) -> None:
     if not tokens:
-        _err("Usage: open <annotation_id>")
+        err("Usage: open <annotation_id>")
         return
 
     annotation_id = tokens[0]
@@ -180,21 +181,21 @@ def _cmd_open(tokens: list[str]) -> None:
     if annotation_id.endswith(".json"):
         annotation_id = annotation_id[:-5]
 
-    repo = _get_repo()
+    repo = get_repo()
     try:
         annotation = repo.load(annotation_id)
     except FileNotFoundError:
-        _err(f"Annotation not found: {annotation_id}")
+        err(f"Annotation not found: {annotation_id}")
         return
 
     if repo.exists_working_copy(annotation_id):
-        _print(f"Working copy found for '{annotation.title}'.")
+        print(f"Working copy found for '{annotation.title}'.")
         answer = input("Resume previous session? (yes/no): ").strip().lower()
         if answer == "yes":
             annotation = repo.load_working_copy(annotation_id)
             _session.annotation = annotation
             _session.dirty = True
-            _print("Resumed working copy.")
+            print("Resumed working copy.")
             return
         else:
             repo.discard_working_copy(annotation_id)
@@ -202,56 +203,56 @@ def _cmd_open(tokens: list[str]) -> None:
     repo.save_working_copy(annotation)
     _session.annotation = annotation
     _session.dirty = False
-    _print(f"Opened: {annotation.title}")
+    print(f"Opened: {annotation.title}")
 
 
 # ---------------------------------------------------------------------------
 # List command
 # ---------------------------------------------------------------------------
 
-def _cmd_list(_tokens: list[str]) -> None:
-    repo = _get_repo()
+def cmd_list(_tokens: list[str]) -> None:
+    repo = get_repo()
     entries = repo.list_all()
     if not entries:
-        _print("No annotations found.")
+        print("No annotations found.")
         return
     for annotation_id, title in entries:
-        _print(f"  {annotation_id}  {title}")
+        print(f"  {annotation_id}  {title}")
 
 
 # ---------------------------------------------------------------------------
 # Save / close / quit
 # ---------------------------------------------------------------------------
 
-def _cmd_save(_tokens: list[str]) -> None:
-    repo = _get_repo()
+def cmd_save(_tokens: list[str]) -> None:
+    repo = get_repo()
     ann = _session.annotation
     repo.save_working_copy(ann)
     repo.commit_working_copy(ann.annotation_id)
     _session.dirty = False
-    _print("Saved.")
+    print("Saved.")
 
 
-def _do_close() -> None:
+def do_close() -> None:
     """Close the session, prompting to save if dirty. Returns after closing."""
     if _session.dirty:
         answer = input("You have unsaved changes. Save before closing? (yes/no): ").strip().lower()
         if answer == "yes":
-            _cmd_save([])
+            cmd_save([])
     ann = _session.annotation
-    _get_repo().discard_working_copy(ann.annotation_id)
+    get_repo().discard_working_copy(ann.annotation_id)
     _session.annotation = None
     _session.dirty = False
-    _print("Session closed.")
+    print("Session closed.")
 
 
-def _cmd_close(_tokens: list[str]) -> None:
-    _do_close()
+def cmd_close(_tokens: list[str]) -> None:
+    do_close()
 
 
-def _cmd_quit(_tokens: list[str]) -> None:
+def cmd_quit(_tokens: list[str]) -> None:
     if _session.open:
-        _do_close()
+        do_close()
     sys.exit(0)
 
 
@@ -276,11 +277,11 @@ Commands (session open):
   quit             Close session and exit"""
 
 
-def _cmd_help(_tokens: list[str]) -> None:
+def cmd_help(_tokens: list[str]) -> None:
     if _session.open:
-        _print(_HELP_SESSION)
+        print(_HELP_SESSION)
     else:
-        _print(_HELP_NO_SESSION)
+        print(_HELP_NO_SESSION)
 
 
 # ---------------------------------------------------------------------------
@@ -288,19 +289,19 @@ def _cmd_help(_tokens: list[str]) -> None:
 # ---------------------------------------------------------------------------
 
 _COMMANDS_NO_SESSION: dict[str, tuple] = {
-    "new": (_cmd_new, False),
-    "open": (_cmd_open, False),
-    "list": (_cmd_list, False),
-    "help": (_cmd_help, False),
-    "quit": (_cmd_quit, False),
+    "new": (cmd_new, False),
+    "open": (cmd_open, False),
+    "list": (cmd_list, False),
+    "help": (cmd_help, False),
+    "quit": (cmd_quit, False),
 }
 
 _COMMANDS_SESSION: dict[str, tuple] = {
-    "show": (_cmd_show, True),
-    "save": (_cmd_save, True),
-    "close": (_cmd_close, True),
-    "help": (_cmd_help, True),
-    "quit": (_cmd_quit, True),
+    "show": (cmd_show, True),
+    "save": (cmd_save, True),
+    "close": (cmd_close, True),
+    "help": (cmd_help, True),
+    "quit": (cmd_quit, True),
 }
 
 
@@ -308,8 +309,8 @@ _COMMANDS_SESSION: dict[str, tuple] = {
 # Crash recovery
 # ---------------------------------------------------------------------------
 
-def _check_stale_working_copies() -> None:
-    repo = _get_repo()
+def check_stale_working_copies() -> None:
+    repo = get_repo()
     stale = repo.stale_working_copies()
     if not stale:
         return
@@ -319,16 +320,16 @@ def _check_stale_working_copies() -> None:
         except Exception:
             repo.discard_working_copy(annotation_id)
             continue
-        _print(f"Working copy found for '{ann.title}' (from a previous session).")
+        print(f"Working copy found for '{ann.title}' (from a previous session).")
         answer = input("Resume? (yes/no): ").strip().lower()
         if answer == "yes":
             _session.annotation = ann
             _session.dirty = True
-            _print("Resumed.")
+            print("Resumed.")
             return
         else:
             repo.discard_working_copy(annotation_id)
-            _print("Discarded.")
+            print("Discarded.")
 
 
 # ---------------------------------------------------------------------------
@@ -336,18 +337,18 @@ def _check_stale_working_copies() -> None:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    _print("Chess Annotation System")
-    _print("Type 'help' for a list of commands.")
-    _print()
+    print("Chess Annotation System")
+    print("Type 'help' for a list of commands.")
+    print()
 
-    _check_stale_working_copies()
+    check_stale_working_copies()
 
     while True:
         try:
             line = input("> ").strip()
         except (EOFError, KeyboardInterrupt):
-            _print()
-            _cmd_quit([])
+            print()
+            cmd_quit([])
 
         if not line:
             continue
@@ -361,14 +362,14 @@ def main() -> None:
                 handler, _ = _COMMANDS_SESSION[cmd_name]
                 handler(tokens)
             elif cmd_name in _COMMANDS_NO_SESSION:
-                _print("Not available — an annotation is already open.")
+                print("Not available — an annotation is already open.")
             else:
-                _print(f"Unknown command: {cmd_name!r}. Type 'help' for a list.")
+                print(f"Unknown command: {cmd_name!r}. Type 'help' for a list.")
         else:
             if cmd_name in _COMMANDS_NO_SESSION:
                 handler, _ = _COMMANDS_NO_SESSION[cmd_name]
                 handler(tokens)
             elif cmd_name in _COMMANDS_SESSION:
-                _print("Not available — no annotation is open.")
+                print("Not available — no annotation is open.")
             else:
-                _print(f"Unknown command: {cmd_name!r}. Type 'help' for a list.")
+                print(f"Unknown command: {cmd_name!r}. Type 'help' for a list.")
