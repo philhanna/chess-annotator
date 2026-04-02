@@ -1,4 +1,3 @@
-# chess_annotate.adapters.repository
 
 import json
 import shutil

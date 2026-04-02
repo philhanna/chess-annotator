@@ -1,4 +1,3 @@
-# chess_annotate.adapters.pgn_parser
 
 import io
 

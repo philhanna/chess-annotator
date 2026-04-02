@@ -1,4 +1,3 @@
-# chess_annotate.ports.diagram_renderer
 
 from abc import ABC, abstractmethod
 

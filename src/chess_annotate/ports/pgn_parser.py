@@ -1,4 +1,3 @@
-# chess_annotate.ports.pgn_parser
 
 from abc import ABC, abstractmethod
 

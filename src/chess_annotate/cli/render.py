@@ -1,4 +1,3 @@
-# chess_annotate.cli.render
 """chess-render — render an annotation to PDF (implemented in M3)."""
 
 import sys

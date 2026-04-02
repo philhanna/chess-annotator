@@ -1,4 +1,3 @@
-# chess_annotate.config
 
 import json
 import os

@@ -1,4 +1,3 @@
-# chess_annotate.cli.annotate
 """chess-annotate — interactive REPL for authoring chess game annotations."""
 
 import sys

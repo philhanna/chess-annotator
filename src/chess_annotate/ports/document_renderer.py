@@ -1,4 +1,3 @@
-# chess_annotate.ports.document_renderer
 
 from abc import ABC, abstractmethod
 

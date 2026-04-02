@@ -1,4 +1,3 @@
-# tests.domain.test_segment
 """Unit tests for domain model business-rule functions."""
 import pytest
 

@@ -1,4 +1,3 @@
-# chess_annotate.domain.model
 
 import io
 import uuid

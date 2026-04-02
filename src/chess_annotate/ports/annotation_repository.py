@@ -1,4 +1,3 @@
-# chess_annotate.ports.annotation_repository
 
 from abc import ABC, abstractmethod
 
