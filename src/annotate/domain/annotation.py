@@ -49,7 +49,7 @@ class Annotation:
         """
         if diagram_orientation is None:
             diagram_orientation = "black" if player_side == "black" else "white"
-        initial_segment = Segment(start_ply=1)
+        initial_segment = Segment(start_ply=1, label="Initial segment")
         return cls(
             annotation_id=annotation_id,
             title=title,
