@@ -1,4 +1,3 @@
-
 import io
 
 import chess.pgn

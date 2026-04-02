@@ -1,4 +1,3 @@
-
 from abc import ABC, abstractmethod
 
 from annotate.domain.annotation import Annotation
