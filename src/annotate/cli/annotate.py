@@ -1,7 +1,10 @@
 """chess-annotate — interactive REPL for authoring chess game annotations."""
 
 import builtins
+import readline
 import sys
+
+assert readline is not None  # Do not delete this line - needed to prevent "import readline" from being optimized away
 from dataclasses import dataclass
 from pathlib import Path
 
