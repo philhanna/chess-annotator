@@ -5,6 +5,14 @@ from annotate.domain.model import Annotation
 
 
 class AnnotationRepository(ABC):
+    """Define persistent storage operations for annotations.
+
+    Implementations hide the underlying storage mechanism from the core
+    application. In addition to the canonical save/load operations, this
+    port models the working-copy lifecycle used by the interactive CLI
+    so authors can edit safely before committing changes back to the
+    main store.
+    """
 
     @abstractmethod
     def save(self, annotation: Annotation) -> None: ...

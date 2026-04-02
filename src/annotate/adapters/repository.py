@@ -8,6 +8,14 @@ from annotate.ports import AnnotationRepository
 
 
 def to_dict(annotation: Annotation) -> dict:
+    """Convert an :class:`Annotation` domain object into JSON-ready data.
+
+    The returned dictionary mirrors the on-disk schema used by the file
+    repository. Nested :class:`Segment` instances are flattened into
+    plain dictionaries so the structure can be serialized directly with
+    :mod:`json`.
+    """
+
     return {
         "annotation_id": annotation.annotation_id,
         "title": annotation.title,
@@ -29,6 +37,14 @@ def to_dict(annotation: Annotation) -> dict:
 
 
 def from_dict(data: dict) -> Annotation:
+    """Build an :class:`Annotation` from a decoded JSON dictionary.
+
+    This is the inverse of :func:`to_dict` for repository persistence.
+    Missing optional segment fields are normalized to the defaults used
+    by the domain model so older or partial JSON documents can still be
+    loaded safely.
+    """
+
     segments = [
         Segment(
             start_ply=s["start_ply"],
@@ -73,6 +89,10 @@ class JSONFileAnnotationRepository(AnnotationRepository):
       :meth:`load_working_copy`, :meth:`discard_working_copy`, and
       :meth:`commit_working_copy`, which support the author's edit
       session lifecycle.
+
+    Data is serialized with the module-level ``to_dict`` and
+    ``from_dict`` helpers, which map between domain objects and the
+    JSON structure stored on disk.
 
     Instances eagerly create the required directory structure during
     initialization, so callers can assume the repository is immediately

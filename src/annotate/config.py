@@ -10,10 +10,13 @@ _DEFAULT_STORE = Path.home() / ".chess-annotate" / "store"
 def get_store_dir() -> Path:
     """Resolve the annotation store directory.
 
-    Resolution order:
-    1. CHESS_ANNOTATE_STORE environment variable
-    2. ~/.chess-annotate/config.json  key "store_dir"
-    3. Default: ~/.chess-annotate/store
+    The lookup order is:
+    1. ``CHESS_ANNOTATE_STORE`` environment variable
+    2. ``~/.chess-annotate/config.json`` key ``"store_dir"``
+    3. the built-in default ``~/.chess-annotate/store``
+
+    Invalid or unreadable JSON configuration files are ignored so the
+    application can continue using the fallback location.
     """
     env = os.environ.get("CHESS_ANNOTATE_STORE")
     if env:

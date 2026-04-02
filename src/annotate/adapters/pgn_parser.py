@@ -7,6 +7,14 @@ from annotate.ports import PGNParser
 
 
 class PythonChessPGNParser(PGNParser):
+    """Parse PGN text with ``python-chess`` and expose basic game metadata.
+
+    This adapter converts raw PGN text into the small metadata structure
+    needed by the current annotation workflow: player names, the PGN
+    date header, and the number of plies in the main line. It performs
+    no chess analysis beyond parsing the game structure and counting
+    moves.
+    """
 
     def parse(self, pgn_text: str) -> dict:
         """Parse PGN text and return metadata dict.

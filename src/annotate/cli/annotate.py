@@ -17,6 +17,15 @@ from annotate.domain.model import Annotation, move_from_ply, segment_end_ply
 
 @dataclass
 class _Session:
+    """Track the mutable state of one interactive CLI authoring session.
+
+    The REPL keeps a single global instance of this data class to know
+    whether an annotation is currently open and whether that in-memory
+    state has unsaved changes. The ``open`` property provides the
+    command loop with a simple session-state check without duplicating
+    ``None`` comparisons throughout the module.
+    """
+
     annotation: Annotation | None = None
     dirty: bool = False
 
@@ -30,6 +39,13 @@ _repo: JSONFileAnnotationRepository | None = None
 
 
 def get_repo() -> JSONFileAnnotationRepository:
+    """Return the lazily initialized repository used by the CLI session.
+
+    The REPL shares a single repository instance for the lifetime of the
+    process so command handlers do not repeatedly recreate the on-disk
+    adapter or its directory checks.
+    """
+
     global _repo
     if _repo is None:
         store_dir = get_store_dir()
@@ -42,10 +58,19 @@ def get_repo() -> JSONFileAnnotationRepository:
 # ---------------------------------------------------------------------------
 
 def print(msg: str = "") -> None:
+    """Write a normal user-facing message to standard output.
+
+    This helper centralizes CLI output and intentionally shadows the
+    built-in name inside this module. It delegates to
+    :func:`builtins.print` to avoid recursion.
+    """
+
     builtins.print(msg)
 
 
 def err(msg: str) -> None:
+    """Write an error message to standard error with a standard prefix."""
+
     builtins.print(f"Error: {msg}", file=sys.stderr)
 
 
@@ -54,6 +79,13 @@ def err(msg: str) -> None:
 # ---------------------------------------------------------------------------
 
 def fmt_move_range(annotation: Annotation, index: int) -> str:
+    """Format a segment's move span for display in the ``show`` command.
+
+    The result uses move number plus side markers such as ``1w`` or
+    ``12b`` so users see author-facing boundaries instead of raw ply
+    numbers.
+    """
+
     seg = annotation.segments[index]
     start_move, start_side = move_from_ply(seg.start_ply)
     end_ply = segment_end_ply(annotation, index)
@@ -64,6 +96,13 @@ def fmt_move_range(annotation: Annotation, index: int) -> str:
 
 
 def cmd_show(_tokens: list[str]) -> None:
+    """Display a tabular summary of the currently open annotation.
+
+    The summary includes each segment's move range, label status,
+    whether commentary is present, and whether a diagram is enabled.
+    Unsaved state is shown in the heading when appropriate.
+    """
+
     ann = _session.annotation
     unsaved = "  [unsaved changes]" if _session.dirty else ""
     from annotate.domain.model import total_plies
@@ -94,6 +133,13 @@ def cmd_show(_tokens: list[str]) -> None:
 # ---------------------------------------------------------------------------
 
 def prompt(prompt_text: str, default: str | None = None) -> str:
+    """Prompt the user for required or defaultable text input.
+
+    When ``default`` is provided, pressing Enter accepts that default.
+    Otherwise the prompt repeats until the user supplies a non-empty
+    value.
+    """
+
     if default is not None:
         text = input(f"{prompt_text} [{default}]: ").strip()
         return text if text else default
@@ -105,6 +151,13 @@ def prompt(prompt_text: str, default: str | None = None) -> str:
 
 
 def cmd_new(tokens: list[str]) -> None:
+    """Create a new annotation interactively from a PGN file path.
+
+    The command parses the supplied PGN, asks the user for the remaining
+    metadata needed to create an annotation, writes an initial working
+    copy, and opens the new annotation in the current session.
+    """
+
     if not tokens:
         err("Usage: new <path/to/game.pgn>")
         return
@@ -172,6 +225,13 @@ def cmd_new(tokens: list[str]) -> None:
 # ---------------------------------------------------------------------------
 
 def cmd_open(tokens: list[str]) -> None:
+    """Open an existing annotation into the current interactive session.
+
+    If a working copy already exists, the user is asked whether to
+    resume it. Otherwise the canonical saved annotation is loaded and a
+    fresh working copy is created for editing.
+    """
+
     if not tokens:
         err("Usage: open <annotation_id>")
         return
@@ -211,6 +271,8 @@ def cmd_open(tokens: list[str]) -> None:
 # ---------------------------------------------------------------------------
 
 def cmd_list(_tokens: list[str]) -> None:
+    """List all saved annotations in the repository."""
+
     repo = get_repo()
     entries = repo.list_all()
     if not entries:
@@ -225,6 +287,13 @@ def cmd_list(_tokens: list[str]) -> None:
 # ---------------------------------------------------------------------------
 
 def cmd_save(_tokens: list[str]) -> None:
+    """Persist the current session's annotation to the main store.
+
+    The current in-memory annotation is first written to the working
+    copy, then committed to the canonical store file so the main copy
+    and working copy remain in sync.
+    """
+
     repo = get_repo()
     ann = _session.annotation
     repo.save_working_copy(ann)
@@ -234,7 +303,12 @@ def cmd_save(_tokens: list[str]) -> None:
 
 
 def do_close() -> None:
-    """Close the session, prompting to save if dirty. Returns after closing."""
+    """Close the current session and discard its working copy.
+
+    If the session has unsaved changes, the user is prompted to save
+    first. Once closing completes, the in-memory session state is reset
+    and the temporary working copy is removed.
+    """
     if _session.dirty:
         answer = input("You have unsaved changes. Save before closing? (yes/no): ").strip().lower()
         if answer == "yes":
@@ -247,10 +321,14 @@ def do_close() -> None:
 
 
 def cmd_close(_tokens: list[str]) -> None:
+    """Handle the ``close`` command by ending the current session."""
+
     do_close()
 
 
 def cmd_quit(_tokens: list[str]) -> None:
+    """Exit the REPL, closing the current session first if needed."""
+
     if _session.open:
         do_close()
     sys.exit(0)
@@ -278,6 +356,8 @@ Commands (session open):
 
 
 def cmd_help(_tokens: list[str]) -> None:
+    """Print the help text appropriate to the current session state."""
+
     if _session.open:
         print(_HELP_SESSION)
     else:
@@ -310,6 +390,14 @@ _COMMANDS_SESSION: dict[str, tuple] = {
 # ---------------------------------------------------------------------------
 
 def check_stale_working_copies() -> None:
+    """Offer recovery for any leftover working copies from prior sessions.
+
+    At startup, the CLI scans for working copies that may have been left
+    behind by a crash or interrupted session. Each one is offered to the
+    user for resume-or-discard handling before normal command processing
+    begins.
+    """
+
     repo = get_repo()
     stale = repo.stale_working_copies()
     if not stale:
@@ -337,6 +425,13 @@ def check_stale_working_copies() -> None:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+    """Run the interactive ``chess-annotate`` REPL.
+
+    This function prints the initial banner, performs crash-recovery
+    checks for stale working copies, and then loops reading and
+    dispatching commands until the process exits.
+    """
+
     print("Chess Annotation System")
     print("Type 'help' for a list of commands.")
     print()
