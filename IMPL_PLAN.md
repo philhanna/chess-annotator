@@ -9,23 +9,30 @@
 ```
 chess-plan/
 ├── pyproject.toml
+├── DESIGN.md
+├── IMPL_PLAN.md
 ├── src/
 │   └── annotate/
 │       ├── __init__.py
+│       ├── config.py
 │       ├── domain/
 │       │   ├── __init__.py
-│       │   ├── model.py          ← Annotation, Segment dataclasses + business rules
-│       │   └── ports.py          ← abstract port interfaces
+│       │   ├── annotation.py     ← Annotation dataclass
+│       │   ├── segment.py        ← Segment dataclass
+│       │   └── model.py          ← business-rule functions
 │       ├── adapters/
 │       │   ├── __init__.py
-│       │   ├── repository.py     ← JSONFileAnnotationRepository
-│       │   ├── pgn_parser.py     ← PythonChessPGNParser
-│       │   ├── diagram_renderer.py  ← PythonChessDiagramRenderer
-│       │   ├── document_renderer.py ← MarkdownHTMLPDFRenderer
-│       │   └── editor_launcher.py   ← SystemEditorLauncher
-│       ├── use_cases/
+│       │   ├── json_file_annotation_repository.py  ← JSONFileAnnotationRepository
+│       │   └── python_chess_pgn_parser.py          ← PythonChessPGNParser
+│       ├── ports/
 │       │   ├── __init__.py
-│       │   └── interactors.py    ← one function/class per use case
+│       │   ├── annotation_repository.py
+│       │   ├── diagram_renderer.py
+│       │   ├── document_renderer.py
+│       │   ├── editor_launcher.py
+│       │   └── pgn_parser.py
+│       ├── use_cases/
+│       │   └── __init__.py
 │       └── cli/
 │           ├── __init__.py
 │           ├── annotate.py       ← chess-annotate REPL entry point
@@ -36,15 +43,15 @@ chess-plan/
     │   ├── __init__.py
     │   └── test_segment.py
     └── smoke/
-        ├── __init__.py
-        └── test_render_smoke.py
+        └── __init__.py
 ```
 
 ---
 
 ## pyproject.toml
 
-Use `hatchling` as the build backend. Declare two entry points:
+Use `setuptools` as the build backend with package discovery rooted at `src/`.
+Declare two entry points:
 
 ```toml
 [project.scripts]
@@ -56,7 +63,7 @@ Dependencies:
 
 | Package | Purpose |
 |---|---|
-| `chess` | PGN parsing, move generation, SVG diagrams |
+| `python-chess` | PGN parsing, move generation, SVG diagrams |
 | `mistune` | Markdown → HTML |
 | `weasyprint` | HTML → PDF |
 
@@ -73,10 +80,10 @@ Store directory is configured via env var `CHESS_ANNOTATE_STORE` or a `~/.chess-
 ### Step 1 — Project scaffold
 
 - Create `pyproject.toml` with dependencies and entry points (above).
-- Create all `__init__.py` files with dotted package name comment per CLAUDE.md convention.
+- Create the package directories and `__init__.py` files under `src/`.
 - `pip install -e .[dev]` to wire up entry points.
 
-### Step 2 — Domain model (`domain/model.py`)
+### Step 2 — Domain model (`domain/annotation.py`, `domain/segment.py`, `domain/model.py`)
 
 Two dataclasses:
 
@@ -112,9 +119,9 @@ Business rules implemented as plain functions in `model.py`:
 - `move_from_ply(ply: int) -> tuple[int, str]` — inverse conversion, returns `(move_number, "white"|"black")`.
 - `find_segment_index(annotation: Annotation, ply: int) -> int` — return index of segment containing `ply`.
 
-No business logic outside `model.py` in this milestone.
+Keep `Annotation` in `domain/annotation.py`, `Segment` in `domain/segment.py`, and the standalone business-rule functions in `domain/model.py`.
 
-### Step 3 — Ports (`domain/ports.py`)
+### Step 3 — Ports (`ports/`)
 
 Abstract base classes (use `abc.ABC`):
 
@@ -143,7 +150,7 @@ class PGNParser(ABC):
     # Returns: {"white": str, "black": str, "date": str, "total_plies": int}
 ```
 
-### Step 4 — JSON repository adapter (`adapters/repository.py`)
+### Step 4 — JSON repository adapter (`adapters/json_file_annotation_repository.py`)
 
 `JSONFileAnnotationRepository` implements `AnnotationRepository`.
 
@@ -156,7 +163,7 @@ class PGNParser(ABC):
 - Use `json.dumps(..., indent=2)` for human-readable output.
 - Serialise/deserialise `Annotation` ↔ dict in a pair of pure functions: `to_dict` / `from_dict`.
 
-### Step 5 — PGN parser adapter (`adapters/pgn_parser.py`)
+### Step 5 — PGN parser adapter (`adapters/python_chess_pgn_parser.py`)
 
 `PythonChessPGNParser` implements `PGNParser`.
 
@@ -194,7 +201,7 @@ Commands wired up in M1:
 
 ### Step 7 — M1 tests (`tests/domain/test_segment.py`)
 
-Test `model.py` functions:
+Test `model.py` functions, importing `Annotation` and `Segment` from their standalone modules:
 
 - `ply_from_move` / `move_from_ply` round-trip for white and black
 - `segment_end_ply` with multiple segments and with the final segment
@@ -399,14 +406,12 @@ A `get_store_dir() -> Path` function in a small `config.py` module implements th
 
 ### Package data
 
-Include `chess_book.css` as package data in `pyproject.toml`:
+When `chess_book.css` is added, include it as package data in `pyproject.toml`
+using `setuptools` package-data configuration:
 
 ```toml
-[tool.hatch.build.targets.wheel]
-packages = ["src/annotate"]
-
-[tool.hatch.build.targets.wheel.sources]
-"src" = ""
+[tool.setuptools.package-data]
+annotate = ["adapters/chess_book.css"]
 ```
 
 Access at runtime via `importlib.resources.files("annotate.adapters").joinpath("chess_book.css")`.

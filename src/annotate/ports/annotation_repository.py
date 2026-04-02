@@ -15,10 +15,14 @@ class AnnotationRepository(ABC):
     """
 
     @abstractmethod
-    def save(self, annotation: Annotation) -> None: ...
+    def save(self, annotation: Annotation) -> None:
+        """Persist ``annotation`` to the repository's canonical store."""
+        ...
 
     @abstractmethod
-    def load(self, annotation_id: str) -> Annotation: ...
+    def load(self, annotation_id: str) -> Annotation:
+        """Load and return the saved annotation identified by ``annotation_id``."""
+        ...
 
     @abstractmethod
     def list_all(self) -> list[tuple[str, str]]:
@@ -26,16 +30,24 @@ class AnnotationRepository(ABC):
         ...
 
     @abstractmethod
-    def exists_working_copy(self, annotation_id: str) -> bool: ...
+    def exists_working_copy(self, annotation_id: str) -> bool:
+        """Return whether a working copy exists for ``annotation_id``."""
+        ...
 
     @abstractmethod
-    def save_working_copy(self, annotation: Annotation) -> None: ...
+    def save_working_copy(self, annotation: Annotation) -> None:
+        """Write ``annotation`` to the temporary working-copy store."""
+        ...
 
     @abstractmethod
-    def load_working_copy(self, annotation_id: str) -> Annotation: ...
+    def load_working_copy(self, annotation_id: str) -> Annotation:
+        """Load and return the working copy for ``annotation_id``."""
+        ...
 
     @abstractmethod
-    def discard_working_copy(self, annotation_id: str) -> None: ...
+    def discard_working_copy(self, annotation_id: str) -> None:
+        """Delete the working copy for ``annotation_id`` if one exists."""
+        ...
 
     @abstractmethod
     def commit_working_copy(self, annotation_id: str) -> None:

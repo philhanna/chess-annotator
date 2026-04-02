@@ -101,6 +101,7 @@ class JSONFileAnnotationRepository(AnnotationRepository):
     """
 
     def __init__(self, store_dir: Path) -> None:
+        """Initialize the repository and create its backing directories."""
         self._store = store_dir
         self._annotations_dir = store_dir / "annotations"
         self._work_dir = store_dir / "work"
@@ -114,19 +115,31 @@ class JSONFileAnnotationRepository(AnnotationRepository):
     # ------------------------------------------------------------------
 
     def main_path(self, annotation_id: str) -> Path:
+        """Return the canonical JSON file path for ``annotation_id``."""
         return self._annotations_dir / f"{annotation_id}.json"
 
     def save(self, annotation: Annotation) -> None:
+        """Write ``annotation`` to its canonical JSON file in ``annotations/``."""
         path = self.main_path(annotation.annotation_id)
         path.write_text(json.dumps(to_dict(annotation), indent=2))
 
     def load(self, annotation_id: str) -> Annotation:
+        """Load an annotation from its canonical JSON file.
+
+        Raises ``FileNotFoundError`` when no saved annotation exists for
+        the requested identifier.
+        """
         path = self.main_path(annotation_id)
         if not path.exists():
             raise FileNotFoundError(f"No annotation found: {annotation_id}")
         return from_dict(json.loads(path.read_text()))
 
     def list_all(self) -> list[tuple[str, str]]:
+        """Return all saved annotations as ``(annotation_id, title)`` pairs.
+
+        Results are ordered by filename so listings are stable across
+        repeated invocations.
+        """
         result = []
         for p in sorted(self._annotations_dir.glob("*.json")):
             data = json.loads(p.read_text())
@@ -138,27 +151,42 @@ class JSONFileAnnotationRepository(AnnotationRepository):
     # ------------------------------------------------------------------
 
     def work_path(self, annotation_id: str) -> Path:
+        """Return the working-copy JSON path for ``annotation_id``."""
         return self._work_dir / f"{annotation_id}.json"
 
     def exists_working_copy(self, annotation_id: str) -> bool:
+        """Report whether a working-copy file exists for ``annotation_id``."""
         return self.work_path(annotation_id).exists()
 
     def save_working_copy(self, annotation: Annotation) -> None:
+        """Write ``annotation`` to the ``work/`` directory as a working copy."""
         path = self.work_path(annotation.annotation_id)
         path.write_text(json.dumps(to_dict(annotation), indent=2))
 
     def load_working_copy(self, annotation_id: str) -> Annotation:
+        """Load an annotation from its working-copy JSON file.
+
+        Raises ``FileNotFoundError`` when no working copy exists for the
+        requested identifier.
+        """
         path = self.work_path(annotation_id)
         if not path.exists():
             raise FileNotFoundError(f"No working copy found: {annotation_id}")
         return from_dict(json.loads(path.read_text()))
 
     def discard_working_copy(self, annotation_id: str) -> None:
+        """Remove the working-copy file for ``annotation_id`` if present."""
         path = self.work_path(annotation_id)
         if path.exists():
             path.unlink()
 
     def commit_working_copy(self, annotation_id: str) -> None:
+        """Promote a working copy into the canonical store and delete it.
+
+        The working-copy file is copied over the main annotation file so
+        metadata such as file timestamps are preserved where possible.
+        Raises ``FileNotFoundError`` if no working copy exists.
+        """
         work_path = self.work_path(annotation_id)
         if not work_path.exists():
             raise FileNotFoundError(f"No working copy to commit: {annotation_id}")
@@ -166,4 +194,5 @@ class JSONFileAnnotationRepository(AnnotationRepository):
         work_path.unlink()
 
     def stale_working_copies(self) -> list[str]:
+        """Return annotation ids that currently have working-copy files."""
         return [p.stem for p in self._work_dir.glob("*.json")]
