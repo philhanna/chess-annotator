@@ -154,22 +154,19 @@ def prompt(prompt_text: str, default: str | None = None) -> str:
         print("This field is required.")
 
 
-def cmd_new(tokens: list[str]) -> None:
-    """Create a new annotation interactively from a PGN file path.
+def cmd_new(_tokens: list[str]) -> None:
+    """Create a new annotation interactively from a PGN file.
 
-    The command parses the supplied PGN, asks the user for the remaining
+    Prompts for a PGN file path first, then collects the remaining
     metadata needed to create an annotation, writes an initial working
     copy, and opens the new annotation in the current session.
     """
 
-    if not tokens:
-        err("Usage: new <path/to/game.pgn>")
-        return
-
-    pgn_path = Path(tokens[0])
-    if not pgn_path.exists():
+    while True:
+        pgn_path = Path(prompt(".pgn file"))
+        if pgn_path.exists():
+            break
         err(f"File not found: {pgn_path}")
-        return
 
     pgn_text = pgn_path.read_text()
     parser = PythonChessPGNParser()
@@ -186,10 +183,14 @@ def cmd_new(tokens: list[str]) -> None:
     )
     print()
 
-    title = prompt("Title")
-    author = prompt("Author", default=get_config().author)
+    white = info["white"] if info["white"] != "?" else "N/A"
+    black = info["black"] if info["black"] != "?" else "N/A"
+    pgn_date_raw = info["date"].replace("?", "").strip(".") or "N/A"
+    title = f"{white} - {black} {pgn_date_raw}"
 
-    pgn_date = info["date"].replace("??", "").strip(".") or None
+    author = get_config().author or ""
+
+    pgn_date = info["date"].replace("?", "").strip(".") or None
     date = prompt("Date", default=pgn_date or "")
 
     while True:
@@ -203,7 +204,9 @@ def cmd_new(tokens: list[str]) -> None:
     if orientation not in ("white", "black"):
         orientation = default_orientation
 
+    repo = get_repo()
     annotation = Annotation.create(
+        annotation_id=repo.next_id(),
         title=title,
         author=author,
         date=date,
@@ -211,8 +214,6 @@ def cmd_new(tokens: list[str]) -> None:
         player_side=side,
         diagram_orientation=orientation,
     )
-
-    repo = get_repo()
     repo.save_working_copy(annotation)
 
     _session.annotation = annotation
@@ -240,10 +241,14 @@ def cmd_open(tokens: list[str]) -> None:
         err("Usage: open <annotation_id>")
         return
 
-    annotation_id = tokens[0]
-    # Strip .json suffix if the user typed the filename
-    if annotation_id.endswith(".json"):
-        annotation_id = annotation_id[:-5]
+    raw = tokens[0]
+    if raw.endswith(".json"):
+        raw = raw[:-5]
+    try:
+        annotation_id = int(raw)
+    except ValueError:
+        err(f"Invalid annotation id: {raw!r}")
+        return
 
     repo = get_repo()
     try:
@@ -459,31 +464,34 @@ def cmd_orientation(tokens: list[str]) -> None:
     print(f"Diagram orientation set to {tokens[0].lower()}.")
 
 
+def import_pgn_to_lichess(pgn: str, move: int | None = None) -> str:
+    """Import a PGN to Lichess and return the game URL.
+
+    When ``move`` is given it is appended as a URL fragment so Lichess
+    jumps directly to that ply.
+    """
+    import requests
+    response = requests.post(
+        "https://lichess.org/api/import",
+        data={"pgn": pgn},
+    )
+    response.raise_for_status()
+    url = response.url
+    if move is not None:
+        url = f"{url}#{move}"
+    return url
+
+
 def cmd_see(tokens: list[str]) -> None:
     """Open Lichess analysis for the position after a given move."""
-    import io
     import webbrowser
-    from urllib.parse import quote
-    import chess
-    import chess.pgn
 
     ply = _parse_move_side(tokens, "see <move> <white|black>")
     if ply is None:
         return
 
     ann = _session.annotation
-    game = chess.pgn.read_game(io.StringIO(ann.pgn))
-    board = game.board()
-    for i, move in enumerate(game.mainline_moves()):
-        board.push(move)
-        if i + 1 == ply:
-            break
-    else:
-        err("Move is beyond the end of the game")
-        return
-
-    fen = board.fen()
-    url = f"https://lichess.org/analysis/standard/{quote(fen, safe='')}"
+    url = import_pgn_to_lichess(ann.pgn, move=ply)
     webbrowser.open(url)
     print(f"Opening Lichess analysis for move {tokens[0]}{tokens[1][0]}.")
 

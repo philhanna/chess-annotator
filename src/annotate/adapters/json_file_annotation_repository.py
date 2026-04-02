@@ -55,7 +55,7 @@ def from_dict(data: dict) -> Annotation:
         for s in data["segments"]
     ]
     return Annotation(
-        annotation_id=data["annotation_id"],
+        annotation_id=int(data["annotation_id"]),
         title=data["title"],
         author=data["author"],
         date=data["date"],
@@ -113,16 +113,16 @@ class JSONFileAnnotationRepository(AnnotationRepository):
     # Main store
     # ------------------------------------------------------------------
 
-    def main_path(self, annotation_id: str) -> Path:
+    def main_path(self, annotation_id: int) -> Path:
         """Return the canonical JSON file path for ``annotation_id``."""
-        return self._annotations_dir / f"{annotation_id}.json"
+        return self._annotations_dir / f"{annotation_id!s}.json"
 
     def save(self, annotation: Annotation) -> None:
         """Write ``annotation`` to its canonical JSON file in ``annotations/``."""
         path = self.main_path(annotation.annotation_id)
         path.write_text(json.dumps(to_dict(annotation), indent=2))
 
-    def load(self, annotation_id: str) -> Annotation:
+    def load(self, annotation_id: int) -> Annotation:
         """Load an annotation from its canonical JSON file.
 
         Raises ``FileNotFoundError`` when no saved annotation exists for
@@ -133,7 +133,7 @@ class JSONFileAnnotationRepository(AnnotationRepository):
             raise FileNotFoundError(f"No annotation found: {annotation_id}")
         return from_dict(json.loads(path.read_text()))
 
-    def list_all(self) -> list[tuple[str, str]]:
+    def list_all(self) -> list[tuple[int, str]]:
         """Return all saved annotations as ``(annotation_id, title)`` pairs.
 
         Results are ordered by filename so listings are stable across
@@ -142,18 +142,18 @@ class JSONFileAnnotationRepository(AnnotationRepository):
         result = []
         for p in sorted(self._annotations_dir.glob("*.json")):
             data = json.loads(p.read_text())
-            result.append((data["annotation_id"], data["title"]))
+            result.append((int(data["annotation_id"]), data["title"]))
         return result
 
     # ------------------------------------------------------------------
     # Working copy
     # ------------------------------------------------------------------
 
-    def work_path(self, annotation_id: str) -> Path:
+    def work_path(self, annotation_id: int) -> Path:
         """Return the working-copy JSON path for ``annotation_id``."""
-        return self._work_dir / f"{annotation_id}.json"
+        return self._work_dir / f"{annotation_id!s}.json"
 
-    def exists_working_copy(self, annotation_id: str) -> bool:
+    def exists_working_copy(self, annotation_id: int) -> bool:
         """Report whether a working-copy file exists for ``annotation_id``."""
         return self.work_path(annotation_id).exists()
 
@@ -162,7 +162,7 @@ class JSONFileAnnotationRepository(AnnotationRepository):
         path = self.work_path(annotation.annotation_id)
         path.write_text(json.dumps(to_dict(annotation), indent=2))
 
-    def load_working_copy(self, annotation_id: str) -> Annotation:
+    def load_working_copy(self, annotation_id: int) -> Annotation:
         """Load an annotation from its working-copy JSON file.
 
         Raises ``FileNotFoundError`` when no working copy exists for the
@@ -173,13 +173,13 @@ class JSONFileAnnotationRepository(AnnotationRepository):
             raise FileNotFoundError(f"No working copy found: {annotation_id}")
         return from_dict(json.loads(path.read_text()))
 
-    def discard_working_copy(self, annotation_id: str) -> None:
+    def discard_working_copy(self, annotation_id: int) -> None:
         """Remove the working-copy file for ``annotation_id`` if present."""
         path = self.work_path(annotation_id)
         if path.exists():
             path.unlink()
 
-    def commit_working_copy(self, annotation_id: str) -> None:
+    def commit_working_copy(self, annotation_id: int) -> None:
         """Promote a working copy into the canonical store and delete it.
 
         The working-copy file is copied over the main annotation file so
@@ -192,6 +192,22 @@ class JSONFileAnnotationRepository(AnnotationRepository):
         shutil.copy2(work_path, self.main_path(annotation_id))
         work_path.unlink()
 
-    def stale_working_copies(self) -> list[str]:
+    def stale_working_copies(self) -> list[int]:
         """Return annotation ids that currently have working-copy files."""
-        return [p.stem for p in self._work_dir.glob("*.json")]
+        result = []
+        for p in self._work_dir.glob("*.json"):
+            try:
+                result.append(int(p.stem))
+            except ValueError:
+                pass
+        return result
+
+    def next_id(self) -> int:
+        """Return the next annotation id: one greater than the highest id in the store."""
+        max_id = 0
+        for p in self._annotations_dir.glob("*.json"):
+            try:
+                max_id = max(max_id, int(p.stem))
+            except ValueError:
+                pass
+        return max_id + 1

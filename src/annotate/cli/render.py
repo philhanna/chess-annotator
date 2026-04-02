@@ -45,9 +45,14 @@ def main() -> None:
     store_dir = config.store_dir
     repo = JSONFileAnnotationRepository(store_dir)
 
-    annotation_id = args.filename
-    if annotation_id.endswith(".json"):
-        annotation_id = annotation_id[:-5]
+    raw = args.filename
+    if raw.endswith(".json"):
+        raw = raw[:-5]
+    try:
+        annotation_id = int(raw)
+    except ValueError:
+        print(f"Error: invalid annotation id: {raw!r}", file=sys.stderr)
+        sys.exit(1)
 
     try:
         annotation = repo.load(annotation_id)

@@ -142,7 +142,7 @@ class MarkdownHTMLPDFRenderer(DocumentRenderer):
             raise ValueError("Cannot render: PGN contains no moves")
 
         # Step 2 — Render diagrams
-        cache_dir = Path(store_dir) / "cache" / annotation.annotation_id
+        cache_dir = Path(store_dir) / "cache" / str(annotation.annotation_id)
         diagram_renderer = PythonChessDiagramRenderer()
         diagram_paths: dict[int, Path] = {}
         for i, seg in enumerate(annotation.segments):

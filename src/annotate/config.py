@@ -7,41 +7,41 @@ import yaml
 
 
 def config_dir() -> Path:
-    """Return the platform config directory for chess-plan.
+    """Return the platform config directory for chess-annotator.
 
     On Linux and macOS the XDG Base Directory Specification is followed:
-    ``$XDG_CONFIG_HOME/chess-plan`` when the variable is set, otherwise
-    ``~/.config/chess-plan``.  On Windows the standard location is
-    ``%APPDATA%\\chess-plan``.
+    ``$XDG_CONFIG_HOME/chess-annotator`` when the variable is set, otherwise
+    ``~/.config/chess-annotator``.  On Windows the standard location is
+    ``%APPDATA%\\chess-annotator``.
     """
     if sys.platform == "win32":
         appdata = os.environ.get("APPDATA")
         if appdata:
-            return Path(appdata) / "chess-plan"
-        return Path.home() / "AppData" / "Roaming" / "chess-plan"
+            return Path(appdata) / "chess-annotator"
+        return Path.home() / "AppData" / "Roaming" / "chess-annotator"
     xdg = os.environ.get("XDG_CONFIG_HOME")
     if xdg:
-        return Path(xdg) / "chess-plan"
-    return Path.home() / ".config" / "chess-plan"
+        return Path(xdg) / "chess-annotator"
+    return Path.home() / ".config" / "chess-annotator"
 
 
 def default_store_dir() -> Path:
     """Return the built-in default store directory for the current platform.
 
     On Linux and macOS this follows the XDG Base Directory Specification:
-    ``$XDG_DATA_HOME/chess-plan/store`` when the variable is set, otherwise
-    ``~/.local/share/chess-plan/store``.  On Windows the default is
-    ``%LOCALAPPDATA%\\chess-plan\\store``.
+    ``$XDG_DATA_HOME/chess-annotator/store`` when the variable is set, otherwise
+    ``~/.local/share/chess-annotator/store``.  On Windows the default is
+    ``%LOCALAPPDATA%\\chess-annotator\\store``.
     """
     if sys.platform == "win32":
         localappdata = os.environ.get("LOCALAPPDATA")
         if localappdata:
-            return Path(localappdata) / "chess-plan" / "store"
-        return Path.home() / "AppData" / "Local" / "chess-plan" / "store"
+            return Path(localappdata) / "chess-annotator" / "store"
+        return Path.home() / "AppData" / "Local" / "chess-annotator" / "store"
     xdg = os.environ.get("XDG_DATA_HOME")
     if xdg:
-        return Path(xdg) / "chess-plan" / "store"
-    return Path.home() / ".local" / "share" / "chess-plan" / "store"
+        return Path(xdg) / "chess-annotator" / "store"
+    return Path.home() / ".local" / "share" / "chess-annotator" / "store"
 
 
 @dataclass

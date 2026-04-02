@@ -84,7 +84,7 @@ def make_annotation(*start_plies: int) -> Annotation:
     """Build an Annotation with segments starting at the given plies."""
     segments = [Segment(start_ply=p) for p in start_plies]
     return Annotation(
-        annotation_id="test-id",
+        annotation_id=1,
         title="Test",
         author="Tester",
         date="2024-01-01",
@@ -171,7 +171,7 @@ def test_split_segment_produces_two_segments():
 def test_split_segment_earlier_retains_content():
     segments = [Segment(start_ply=1, label="Opening", commentary="Some notes", show_diagram=True)]
     ann = Annotation(
-        annotation_id="t", title="T", author="A", date="2024-01-01",
+        annotation_id=1, title="T", author="A", date="2024-01-01",
         pgn=_RUY_LOPEZ_PGN, player_side="white", diagram_orientation="white",
         segments=segments,
     )
@@ -236,7 +236,7 @@ def test_merge_segment_earlier_content_retained():
         Segment(start_ply=11),
     ]
     ann = Annotation(
-        annotation_id="t", title="T", author="A", date="2024-01-01",
+        annotation_id=1, title="T", author="A", date="2024-01-01",
         pgn=_RUY_LOPEZ_PGN, player_side="white", diagram_orientation="white",
         segments=segments,
     )
@@ -249,7 +249,7 @@ def test_merge_segment_earlier_content_retained():
 def test_merge_segment_returns_false_when_later_has_label():
     segments = [Segment(start_ply=1), Segment(start_ply=11, label="Middlegame")]
     ann = Annotation(
-        annotation_id="t", title="T", author="A", date="2024-01-01",
+        annotation_id=1, title="T", author="A", date="2024-01-01",
         pgn=_RUY_LOPEZ_PGN, player_side="white", diagram_orientation="white",
         segments=segments,
     )
@@ -261,7 +261,7 @@ def test_merge_segment_returns_false_when_later_has_label():
 def test_merge_segment_force_discards_content():
     segments = [Segment(start_ply=1), Segment(start_ply=11, label="Middlegame")]
     ann = Annotation(
-        annotation_id="t", title="T", author="A", date="2024-01-01",
+        annotation_id=1, title="T", author="A", date="2024-01-01",
         pgn=_RUY_LOPEZ_PGN, player_side="white", diagram_orientation="white",
         segments=segments,
     )

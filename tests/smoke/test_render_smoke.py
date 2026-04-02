@@ -24,6 +24,7 @@ _RUY_LOPEZ_PGN = (
 
 def test_render_produces_non_empty_pdf(tmp_path):
     annotation = Annotation.create(
+        annotation_id=1,
         title="Test Game",
         author="Tester",
         date="2024-01-01",

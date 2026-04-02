@@ -1,4 +1,3 @@
-import uuid
 from dataclasses import dataclass, field
 
 from annotate.domain.segment import Segment
@@ -15,12 +14,14 @@ class Annotation:
     placement.
 
     The ``create`` classmethod is the preferred constructor for new
-    annotations. It assigns a fresh identifier, chooses a default
-    diagram orientation when one is not supplied, and seeds the
-    annotation with a single initial segment that starts at ply 1.
+    annotations. The caller supplies the ``annotation_id``, which in
+    the CLI is system-assigned by the repository as one greater than the
+    highest id currently in the store. The method also chooses a default
+    diagram orientation when one is not supplied and seeds the annotation
+    with a single initial segment that starts at ply 1.
     """
 
-    annotation_id: str
+    annotation_id: int
     title: str
     author: str
     date: str                   # ISO 8601
@@ -32,6 +33,7 @@ class Annotation:
     @classmethod
     def create(
         cls,
+        annotation_id: int,
         title: str,
         author: str,
         date: str,
@@ -39,10 +41,14 @@ class Annotation:
         player_side: str,
         diagram_orientation: str | None = None,
     ) -> "Annotation":
-        """Build a new annotation with an initial segment and fresh id."""
+        """Build a new annotation with an initial segment.
+
+        ``annotation_id`` is supplied by the caller; in the CLI it comes
+        from ``AnnotationRepository.next_id()``, which returns one greater
+        than the highest id currently in the store.
+        """
         if diagram_orientation is None:
             diagram_orientation = "black" if player_side == "black" else "white"
-        annotation_id = str(uuid.uuid4())
         initial_segment = Segment(start_ply=1)
         return cls(
             annotation_id=annotation_id,
