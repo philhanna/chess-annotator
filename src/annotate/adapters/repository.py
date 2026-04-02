@@ -3,8 +3,8 @@ import json
 import shutil
 from pathlib import Path
 
-from chess_annotate.domain.model import Annotation, Segment
-from chess_annotate.ports import AnnotationRepository
+from annotate.domain.model import Annotation, Segment
+from annotate.ports import AnnotationRepository
 
 
 def to_dict(annotation: Annotation) -> dict:

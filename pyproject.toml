@@ -17,8 +17,8 @@ dependencies = [
 dev = ["pytest"]
 
 [project.scripts]
-chess-annotate = "chess_annotate.cli.annotate:main"
-chess-render   = "chess_annotate.cli.render:main"
+chess-annotate = "annotate.cli.annotate:main"
+chess-render   = "annotate.cli.render:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -10,7 +10,7 @@
 chess-plan/
 ├── pyproject.toml
 ├── src/
-│   └── chess_annotate/
+│   └── annotate/
 │       ├── __init__.py
 │       ├── domain/
 │       │   ├── __init__.py
@@ -48,8 +48,8 @@ Use `hatchling` as the build backend. Declare two entry points:
 
 ```toml
 [project.scripts]
-chess-annotate = "chess_annotate.cli.annotate:main"
-chess-render   = "chess_annotate.cli.render:main"
+chess-annotate = "annotate.cli.annotate:main"
+chess-render   = "annotate.cli.render:main"
 ```
 
 Dependencies:
@@ -331,7 +331,7 @@ For inline SVG: read the cached `.svg` file and embed its content directly in th
 
 **HTML conversion (Step 4):** `mistune.html(markdown_str)`. Wrap in a full HTML document with `<link>` to the CSS stylesheet.
 
-**CSS stylesheet:** write `src/chess_annotate/adapters/chess_book.css` — a static asset included in the package via `pyproject.toml`. It provides:
+**CSS stylesheet:** write `src/annotate/adapters/chess_book.css` — a static asset included in the package via `pyproject.toml`. It provides:
 - A4 or letter `@page` rule with margins and `counter(page)` footer
 - Body font: Georgia or a CSS serif stack
 - `h1`, `h2` styles for annotation title and segment headings
@@ -403,10 +403,10 @@ Include `chess_book.css` as package data in `pyproject.toml`:
 
 ```toml
 [tool.hatch.build.targets.wheel]
-packages = ["src/chess_annotate"]
+packages = ["src/annotate"]
 
 [tool.hatch.build.targets.wheel.sources]
 "src" = ""
 ```
 
-Access at runtime via `importlib.resources.files("chess_annotate.adapters").joinpath("chess_book.css")`.
+Access at runtime via `importlib.resources.files("annotate.adapters").joinpath("chess_book.css")`.

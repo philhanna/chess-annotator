@@ -5,10 +5,10 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from chess_annotate.adapters.pgn_parser import PythonChessPGNParser
-from chess_annotate.adapters.repository import JSONFileAnnotationRepository
-from chess_annotate.config import get_store_dir
-from chess_annotate.domain.model import Annotation, move_from_ply, segment_end_ply
+from annotate.adapters.pgn_parser import PythonChessPGNParser
+from annotate.adapters.repository import JSONFileAnnotationRepository
+from annotate.config import get_store_dir
+from annotate.domain.model import Annotation, move_from_ply, segment_end_ply
 
 
 # ---------------------------------------------------------------------------
@@ -66,7 +66,7 @@ def fmt_move_range(annotation: Annotation, index: int) -> str:
 def cmd_show(_tokens: list[str]) -> None:
     ann = _session.annotation
     unsaved = "  [unsaved changes]" if _session.dirty else ""
-    from chess_annotate.domain.model import total_plies
+    from annotate.domain.model import total_plies
     total = total_plies(ann.pgn)
     total_moves = (total + 1) // 2
     side_label = ann.player_side

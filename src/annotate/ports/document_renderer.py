@@ -1,7 +1,7 @@
 
 from abc import ABC, abstractmethod
 
-from chess_annotate.domain.model import Annotation
+from annotate.domain.model import Annotation
 
 
 class DocumentRenderer(ABC):

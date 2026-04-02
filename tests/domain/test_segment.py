@@ -1,7 +1,7 @@
 """Unit tests for domain model business-rule functions."""
 import pytest
 
-from chess_annotate.domain.model import (
+from annotate.domain.model import (
     Annotation,
     Segment,
     find_segment_index,

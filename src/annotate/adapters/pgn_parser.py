@@ -3,7 +3,7 @@ import io
 
 import chess.pgn
 
-from chess_annotate.ports import PGNParser
+from annotate.ports import PGNParser
 
 
 class PythonChessPGNParser(PGNParser):
