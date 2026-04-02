@@ -3,7 +3,8 @@ import json
 import shutil
 from pathlib import Path
 
-from annotate.domain.model import Annotation, Segment
+from annotate.domain.annotation import Annotation
+from annotate.domain.segment import Segment
 from annotate.ports import AnnotationRepository
 
 

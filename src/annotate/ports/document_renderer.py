@@ -1,7 +1,7 @@
 
 from abc import ABC, abstractmethod
 
-from annotate.domain.model import Annotation
+from annotate.domain.annotation import Annotation
 
 
 class DocumentRenderer(ABC):

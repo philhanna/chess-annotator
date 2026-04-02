@@ -1,15 +1,15 @@
 """Unit tests for domain model business-rule functions."""
 import pytest
 
+from annotate.domain.annotation import Annotation
 from annotate.domain.model import (
-    Annotation,
-    Segment,
     find_segment_index,
     move_from_ply,
     ply_from_move,
     segment_end_ply,
     total_plies,
 )
+from annotate.domain.segment import Segment
 
 # A minimal but legal PGN for a short game (10 moves / 20 plies).
 _RUY_LOPEZ_PGN = (

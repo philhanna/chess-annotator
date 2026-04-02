@@ -8,7 +8,8 @@ from pathlib import Path
 from annotate.adapters.pgn_parser import PythonChessPGNParser
 from annotate.adapters.repository import JSONFileAnnotationRepository
 from annotate.config import get_store_dir
-from annotate.domain.model import Annotation, move_from_ply, segment_end_ply
+from annotate.domain.annotation import Annotation
+from annotate.domain.model import move_from_ply, segment_end_ply
 
 
 # ---------------------------------------------------------------------------
