@@ -70,7 +70,7 @@ Dependencies:
 
 Dev dependencies: `pytest`.
 
-Store directory is configured via env var `CHESS_ANNOTATE_STORE` or a `config.yaml` file in the platform config directory. Default: built-in platform default (see §7 of DESIGN.md).
+Configuration is loaded from `config.yaml` in the platform config directory via a shared `get_config()` function (see §7 of DESIGN.md). Keys: `store_dir`, `author`, `diagram_size`, `page_size`.
 
 ---
 
@@ -399,12 +399,18 @@ Domain functions (`split_segment`, `merge_segment`) return new `Annotation` obje
 
 ### Config resolution order
 
+For `store_dir`:
 1. Env var `CHESS_ANNOTATE_STORE`
 2. `store_dir` key in the platform config file (`~/.config/chess-plan/config.yaml`
    on Linux/macOS, `%APPDATA%\chess-plan\config.yaml` on Windows)
 3. Built-in platform default
 
-A `get_store_dir() -> Path` function in a small `config.py` module implements this. Both CLI tools call it at startup.
+For `author`, `diagram_size`, `page_size`: config file value, else built-in default
+(`None`, `360`, `"a4"` respectively).
+
+A `get_config() -> Config` function in `config.py` loads the full config.
+`get_store_dir()` is retained as a convenience wrapper. Both CLI tools call
+`get_config()` at startup.
 
 ### Package data
 

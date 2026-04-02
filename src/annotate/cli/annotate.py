@@ -8,7 +8,7 @@ from pathlib import Path
 from annotate.adapters.json_file_annotation_repository import JSONFileAnnotationRepository
 from annotate.adapters.python_chess_pgn_parser import PythonChessPGNParser
 from annotate.adapters.system_editor_launcher import SystemEditorLauncher
-from annotate.config import get_store_dir
+from annotate.config import get_config, get_store_dir
 from annotate.domain.annotation import Annotation
 from annotate.domain.model import move_from_ply, ply_from_move, segment_end_ply
 from annotate.use_cases.interactors import merge_segment, split_segment
@@ -187,7 +187,7 @@ def cmd_new(tokens: list[str]) -> None:
     print()
 
     title = prompt("Title")
-    author = prompt("Author")
+    author = prompt("Author", default=get_config().author)
 
     pgn_date = info["date"].replace("??", "").strip(".") or None
     date = prompt("Date", default=pgn_date or "")

@@ -368,7 +368,7 @@ The `new` command triggers an interactive creation flow:
 PGN loaded: 42 moves, White: Fischer, Black: Spassky
 
 Title: My Game vs Spassky, 1972
-Author: John
+Author [John]:
 Date [1972-07-11]:
 You played (white/black): white
 Diagram orientation [white]:
@@ -380,7 +380,8 @@ Annotation created. 1 segment spanning moves 1–42 (white).
 Fields with defaults shown in brackets may be accepted by pressing
 Enter. `player_side` has no default and must be answered.
 `diagram_orientation` defaults as per D-023 and may be accepted or
-overridden.
+overridden. The `author` default is taken from `config.yaml` when
+present; the author is prompted without a default otherwise.
 
 ### 6.4 The Show Command
 
@@ -426,21 +427,27 @@ location:
 
 ### 7.1 Configuration Keys
 
-| Key | Description |
-|---|---|
-| `store_dir` | Path to the annotation store directory |
+| Key | Type | Description | Default |
+|---|---|---|---|
+| `store_dir` | path | Path to the annotation store directory | Platform default |
+| `author` | string | Author name pre-filled in the `new` annotation prompt | *(prompted)* |
+| `diagram_size` | integer | Default diagram size in pixels for `chess-render` | `360` |
+| `page_size` | string | Default page size for `chess-render` (`a4` or `letter`) | `a4` |
 
 ### 7.2 Resolution Order
 
-The store directory is resolved in this order:
+`store_dir` is resolved in this order:
 
 1. `CHESS_ANNOTATE_STORE` environment variable
 2. `store_dir` key in the config file
 3. Built-in platform default
 
-The config file is optional. If it is absent, the built-in default is used.
-Both CLI tools (`chess-annotate` and `chess-render`) use the same resolution
-logic via a shared `get_store_dir()` function in `config.py`.
+`author`, `diagram_size`, and `page_size` are resolved from the config file
+only, falling back to their built-in defaults when absent.
+
+The config file is optional. If it is absent, all built-in defaults apply.
+Both CLI tools (`chess-annotate` and `chess-render`) load configuration via
+a shared `get_config()` function in `config.py`.
 
 ---
 
@@ -571,6 +578,7 @@ it straightforward to test in isolation.
 | D-021 | Segment has `show_diagram` (boolean, default false) as its only diagram attribute. Orientation is an Annotation-level concern. | Per-segment orientation overrides are unnecessary — orientation is consistent throughout an annotation. |
 | D-022 | Annotation gains `player_side` — `white` or `black`. Required at creation time, set immediately after PGN import. | Captures the author's colour in the game. Drives diagram orientation default. |
 | D-037 | `player_side` is restricted to `white` or `black`; `none` is not supported. Every annotated game is one the author played. | Simplifies the model. Annotating third-party games is not a use case for this tool. |
+| D-038 | `config.yaml` stores `author`, `diagram_size`, and `page_size` in addition to `store_dir`. `author` pre-fills the prompt in the `new` flow. `diagram_size` and `page_size` are the defaults for `chess-render` (overridable by CLI flags). | Since this is a single-author tool, the author name is stable across all annotations. Render defaults are personal preferences that do not change between runs; storing them in config eliminates repetitive flag-passing. |
 | D-023 | Annotation gains `diagram_orientation` — `white` or `black`. Defaults to `white` unless `player_side` is `black`. Applies uniformly to all diagrams in the annotation. Overridable at the Annotation level. | Consistent orientation throughout an annotation matches the author's perspective on the game. A single Annotation-level setting is simpler and sufficient. |
 | D-024 | The system provides no chess intelligence. No engine evaluation, move suggestions, or computer analysis. The author's perspective is the sole source of annotation content. | The purpose of the system is to record and present the author's own thinking, not to augment or replace it. |
 | D-025 | Annotations are stored as JSON files on disk, one per annotation, in a configurable store directory. No database is used. | Simpler than SQLite for a single-author tool with no querying needs. Files are human-readable, transparent, and compatible with version control if desired. |

@@ -1,6 +1,7 @@
 # annotate.config
 import os
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
@@ -44,31 +45,62 @@ def _default_store_dir() -> Path:
     return Path.home() / ".local" / "share" / "chess-plan" / "store"
 
 
-def get_store_dir() -> Path:
-    """Resolve the annotation store directory.
+@dataclass
+class Config:
+    """Resolved application configuration.
 
-    The lookup order is:
+    All fields reflect the final resolved value after applying the
+    config file and built-in defaults.  ``store_dir`` additionally
+    honours the ``CHESS_ANNOTATE_STORE`` environment variable, which
+    takes precedence over everything else.
+    """
+
+    store_dir: Path
+    author: str | None = None
+    diagram_size: int = 360
+    page_size: str = "a4"
+
+
+def get_config() -> Config:
+    """Load and return the full application configuration.
+
+    Resolution order for ``store_dir``:
 
     1. ``CHESS_ANNOTATE_STORE`` environment variable
     2. ``store_dir`` key in the platform config file
-       (``~/.config/chess-plan/config.yaml`` on Linux/macOS,
-       ``%APPDATA%\\chess-plan\\config.yaml`` on Windows)
     3. Built-in platform default
 
-    Invalid or unreadable config files are silently ignored so the
-    application continues using the default location.
-    """
-    env = os.environ.get("CHESS_ANNOTATE_STORE")
-    if env:
-        return Path(env)
+    ``author``, ``diagram_size``, and ``page_size`` are taken from the
+    config file when present, otherwise the built-in defaults apply
+    (``None``, ``360``, and ``"a4"`` respectively).
 
+    Invalid or unreadable config files are silently ignored so the
+    application continues using built-in defaults.
+    """
+    file_data: dict = {}
     config_file = _config_dir() / "config.yaml"
     if config_file.exists():
         try:
-            data = yaml.safe_load(config_file.read_text()) or {}
-            if "store_dir" in data:
-                return Path(data["store_dir"])
+            file_data = yaml.safe_load(config_file.read_text()) or {}
         except (yaml.YAMLError, OSError):
             pass
 
-    return _default_store_dir()
+    env_store = os.environ.get("CHESS_ANNOTATE_STORE")
+    if env_store:
+        store_dir = Path(env_store)
+    elif "store_dir" in file_data:
+        store_dir = Path(file_data["store_dir"])
+    else:
+        store_dir = _default_store_dir()
+
+    return Config(
+        store_dir=store_dir,
+        author=file_data.get("author") or None,
+        diagram_size=int(file_data.get("diagram_size", 360)),
+        page_size=str(file_data.get("page_size", "a4")).lower(),
+    )
+
+
+def get_store_dir() -> Path:
+    """Convenience wrapper returning only the resolved store directory."""
+    return get_config().store_dir
