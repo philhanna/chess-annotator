@@ -13,7 +13,8 @@ placing board diagrams, and rendering the result. Google Docs is a
 secondary output target (Phase 2; deferred).
 
 The system is for a single author (the user). It is not a multi-user
-or collaborative platform.
+or collaborative platform. Every game annotated is one the author
+played; the tool does not support annotating third-party games.
 
 The system records the author's own analysis and thinking — the turning
 points they identified, the plans they had in mind, and their commentary
@@ -42,9 +43,8 @@ Attributes:
 - `author` — author name
 - `date` — date of the game
 - `pgn` — full PGN source
-- `player_side` — `white`, `black`, or `none`. Required at creation
-  time, set immediately after PGN import. `none` is used for games
-  the author did not play (e.g. grandmaster games).
+- `player_side` — `white` or `black`. Required at creation time, set
+  immediately after PGN import.
 - `diagram_orientation` — `white` or `black`; who appears at the
   bottom of every diagram in this annotation. Defaults to `white`
   unless `player_side` is `black`, in which case it defaults to
@@ -370,7 +370,7 @@ PGN loaded: 42 moves, White: Fischer, Black: Spassky
 Title: My Game vs Spassky, 1972
 Author: John
 Date [1972-07-11]:
-You played (white/black/none): white
+You played (white/black): white
 Diagram orientation [white]:
 
 Annotation created. 1 segment spanning moves 1–42 (white).
@@ -569,7 +569,8 @@ it straightforward to test in isolation.
 | D-019 | Commentary tokens use move+side+orientation notation | *Superseded by D-020. Retained for history.* |
 | D-020 | DiagramRequest is eliminated as a domain object. A segment optionally ends with a diagram, expressed as `show_diagram` on the Segment. | Simpler model — diagram placement is always at the end of a segment, removing the need for token parsing or a separate diagram object. |
 | D-021 | Segment has `show_diagram` (boolean, default false) as its only diagram attribute. Orientation is an Annotation-level concern. | Per-segment orientation overrides are unnecessary — orientation is consistent throughout an annotation. |
-| D-022 | Annotation gains `player_side` — `white`, `black`, or `none`. Required at creation time, set immediately after PGN import. | Captures the author's relationship to the game. Drives diagram orientation default. `none` is used for games the author did not play. |
+| D-022 | Annotation gains `player_side` — `white` or `black`. Required at creation time, set immediately after PGN import. | Captures the author's colour in the game. Drives diagram orientation default. |
+| D-037 | `player_side` is restricted to `white` or `black`; `none` is not supported. Every annotated game is one the author played. | Simplifies the model. Annotating third-party games is not a use case for this tool. |
 | D-023 | Annotation gains `diagram_orientation` — `white` or `black`. Defaults to `white` unless `player_side` is `black`. Applies uniformly to all diagrams in the annotation. Overridable at the Annotation level. | Consistent orientation throughout an annotation matches the author's perspective on the game. A single Annotation-level setting is simpler and sufficient. |
 | D-024 | The system provides no chess intelligence. No engine evaluation, move suggestions, or computer analysis. The author's perspective is the sole source of annotation content. | The purpose of the system is to record and present the author's own thinking, not to augment or replace it. |
 | D-025 | Annotations are stored as JSON files on disk, one per annotation, in a configurable store directory. No database is used. | Simpler than SQLite for a single-author tool with no querying needs. Files are human-readable, transparent, and compatible with version control if desired. |

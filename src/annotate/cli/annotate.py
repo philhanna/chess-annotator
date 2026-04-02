@@ -193,10 +193,10 @@ def cmd_new(tokens: list[str]) -> None:
     date = prompt("Date", default=pgn_date or "")
 
     while True:
-        side = prompt("You played (white/black/none)").lower()
-        if side in ("white", "black", "none"):
+        side = prompt("You played (white/black)").lower()
+        if side in ("white", "black"):
             break
-        print("Please enter white, black, or none.")
+        print("Please enter white or black.")
 
     default_orientation = "black" if side == "black" else "white"
     orientation = prompt("Diagram orientation", default=default_orientation).lower()

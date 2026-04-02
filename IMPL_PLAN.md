@@ -107,7 +107,7 @@ class Annotation:
     author: str
     date: str                   # ISO 8601
     pgn: str
-    player_side: str            # "white" | "black" | "none"
+    player_side: str            # "white" | "black"
     diagram_orientation: str    # "white" | "black"
     segments: list[Segment]
 ```
