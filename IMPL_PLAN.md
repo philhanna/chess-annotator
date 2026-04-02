@@ -275,7 +275,7 @@ Add to `tests/domain/test_segment.py`:
 
 ---
 
-## M3 — Rendering
+## M3 — Rendering ✓ Complete
 
 **Goal:** diagram generation, PDF pipeline, `chess-render` CLI, `diagram`/`orientation`/`see` commands.
 
