@@ -6,7 +6,7 @@ from pathlib import Path
 import yaml
 
 
-def _config_dir() -> Path:
+def config_dir() -> Path:
     """Return the platform config directory for chess-plan.
 
     On Linux and macOS the XDG Base Directory Specification is followed:
@@ -25,7 +25,7 @@ def _config_dir() -> Path:
     return Path.home() / ".config" / "chess-plan"
 
 
-def _default_store_dir() -> Path:
+def default_store_dir() -> Path:
     """Return the built-in default store directory for the current platform.
 
     On Linux and macOS this follows the XDG Base Directory Specification:
@@ -77,7 +77,7 @@ def get_config() -> Config:
     application continues using built-in defaults.
     """
     file_data: dict = {}
-    config_file = _config_dir() / "config.yaml"
+    config_file = config_dir() / "config.yaml"
     if config_file.exists():
         try:
             file_data = yaml.safe_load(config_file.read_text()) or {}
@@ -90,7 +90,7 @@ def get_config() -> Config:
     elif "store_dir" in file_data:
         store_dir = Path(file_data["store_dir"])
     else:
-        store_dir = _default_store_dir()
+        store_dir = default_store_dir()
 
     return Config(
         store_dir=store_dir,
