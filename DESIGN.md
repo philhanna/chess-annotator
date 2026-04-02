@@ -414,7 +414,37 @@ My Game vs Spassky, 1972  (white, 42 moves)  [unsaved changes]
 
 ---
 
-## 7. Web UI & REST API (Phase 2)
+## 7. Application Configuration
+
+Application configuration is stored in a YAML file at a platform-appropriate
+location:
+
+- **Linux / macOS:** `~/.config/chess-plan/config.yaml`
+  (honours `$XDG_CONFIG_HOME` when set, per the XDG Base Directory
+  Specification)
+- **Windows:** `%APPDATA%\chess-plan\config.yaml`
+
+### 7.1 Configuration Keys
+
+| Key | Description |
+|---|---|
+| `store_dir` | Path to the annotation store directory |
+
+### 7.2 Resolution Order
+
+The store directory is resolved in this order:
+
+1. `CHESS_ANNOTATE_STORE` environment variable
+2. `store_dir` key in the config file
+3. Built-in platform default
+
+The config file is optional. If it is absent, the built-in default is used.
+Both CLI tools (`chess-annotate` and `chess-render`) use the same resolution
+logic via a shared `get_store_dir()` function in `config.py`.
+
+---
+
+## 8. Web UI & REST API (Phase 2)
 
 *Deferred. To cover when Phase 2 begins:*
 
@@ -425,9 +455,9 @@ My Game vs Spassky, 1972  (white, 42 moves)  [unsaved changes]
 
 ---
 
-## 8. Development Plan
+## 9. Development Plan
 
-### 8.1 MVP Definition
+### 9.1 MVP Definition
 
 The MVP is a fully working Phase 1 tool. It is considered complete
 when the author can:
@@ -440,7 +470,7 @@ when the author can:
 Diagram support is considered MVP — the PDF output without diagrams
 is functional but incomplete for the coach-sharing use case.
 
-### 8.2 Phase 1 Milestones
+### 9.2 Phase 1 Milestones
 
 **M1 — Foundation**
 
@@ -482,13 +512,13 @@ Deliverables:
 At the end of M3: the tool is complete for Phase 1. The author can
 produce a PDF suitable for sharing with a coach.
 
-### 8.3 Phase 2 (Future)
+### 9.3 Phase 2 (Future)
 
 Phase 2 is not scheduled. It covers the web UI, REST API, and Lichess
-integration described in §7. It will be designed when Phase 1 is
+integration described in §8. It will be designed when Phase 1 is
 complete and in use.
 
-### 8.4 Testing Strategy
+### 9.4 Testing Strategy
 
 Testing is kept minimal for Phase 1. The focus is on correctness of
 the domain model and the rendering pipeline, not on coverage metrics.
@@ -508,13 +538,13 @@ it straightforward to test in isolation.
 
 ---
 
-## 9. Open Questions
+## 10. Open Questions
 
 *No open questions at this time.*
 
 ---
 
-## 10. Decisions Log
+## 11. Decisions Log
 
 | ID | Decision | Rationale |
 |---|---|---|
@@ -553,3 +583,4 @@ it straightforward to test in isolation.
 | D-033 | Rendering is a separate CLI tool (`chess-render`) distinct from the authoring REPL (`chess-annotate`). Both share the same store. `chess-render` reads the main store file directly and never touches the working copy. | Clean separation of authoring and rendering concerns. Rendering is a batch operation, not part of the interactive authoring session. |
 | D-034 | `save` commits the working copy to the main store and keeps the session open. `close` ends the session, prompting to save if unsaved changes exist. `discard` is not a standalone command — declining to save on `close` is the discard path. | Matches the author's mental model: save is a checkpoint during work, close is when you are done. Eliminating `discard` as a separate command removes a destructive operation from the command surface. |
 | D-035 | `see <move> <white\|black>` derives the FEN from the annotation's PGN at the specified ply (after the move is made) and opens `https://lichess.org/analysis/standard/<FEN>` in the default browser. Available in session state only. The move argument refers to the PGN, not to a segment. | Gives the author a quick path to Lichess analysis for any position in the game without leaving the REPL. Reuses the existing move+side input convention. |
+| D-036 | Application configuration is stored in `config.yaml` under the platform's standard config directory: `~/.config/chess-plan/` on Linux/macOS (respecting `$XDG_CONFIG_HOME`), `%APPDATA%\chess-plan\` on Windows. The store directory can be overridden by an environment variable, the config file, or left to a built-in default, resolved in that order. | Following platform conventions keeps the tool well-behaved on each OS. YAML is human-readable and easy to edit by hand. The environment variable override is retained for scripting and CI use. |

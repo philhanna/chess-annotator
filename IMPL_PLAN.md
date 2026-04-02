@@ -66,10 +66,11 @@ Dependencies:
 | `python-chess` | PGN parsing, move generation, SVG diagrams |
 | `mistune` | Markdown → HTML |
 | `weasyprint` | HTML → PDF |
+| `pyyaml` | Config file parsing |
 
 Dev dependencies: `pytest`.
 
-Store directory is configured via env var `CHESS_ANNOTATE_STORE` or a `~/.chess-annotate/config.json` fallback. Default: `~/.chess-annotate/store`.
+Store directory is configured via env var `CHESS_ANNOTATE_STORE` or a `config.yaml` file in the platform config directory. Default: built-in platform default (see §7 of DESIGN.md).
 
 ---
 
@@ -399,8 +400,9 @@ Domain functions (`split_segment`, `merge_segment`) return new `Annotation` obje
 ### Config resolution order
 
 1. Env var `CHESS_ANNOTATE_STORE`
-2. `~/.chess-annotate/config.json` key `"store_dir"`
-3. Default: `~/.chess-annotate/store`
+2. `store_dir` key in the platform config file (`~/.config/chess-plan/config.yaml`
+   on Linux/macOS, `%APPDATA%\chess-plan\config.yaml` on Windows)
+3. Built-in platform default
 
 A `get_store_dir() -> Path` function in a small `config.py` module implements this. Both CLI tools call it at startup.
 
