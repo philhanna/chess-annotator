@@ -348,29 +348,30 @@ def cmd_quit(_tokens: list[str]) -> None:
 # ---------------------------------------------------------------------------
 
 def _parse_move_side(tokens: list[str], usage: str) -> int | None:
-    """Parse ``<move> <white|black>`` tokens into a ply.
+    """Parse a single ``<number><w|b>`` token into a ply.
 
     Returns the ply on success, or ``None`` after printing an error
-    message when the tokens are malformed.
+    message when the token is malformed.
     """
-    if len(tokens) < 2:
+    if not tokens:
+        err(f"Usage: {usage}")
+        return None
+    token = tokens[0].lower()
+    if not token or token[-1] not in ("w", "b"):
         err(f"Usage: {usage}")
         return None
     try:
-        move_number = int(tokens[0])
+        move_number = int(token[:-1])
     except ValueError:
-        err(f"Move number must be an integer, got {tokens[0]!r}")
+        err(f"Usage: {usage}")
         return None
-    side = tokens[1].lower()
-    if side not in ("white", "black"):
-        err(f"Side must be 'white' or 'black', got {tokens[1]!r}")
-        return None
+    side = "white" if token[-1] == "w" else "black"
     return ply_from_move(move_number, side)
 
 
 def cmd_split(tokens: list[str]) -> None:
     """Split the segment containing the given move into two segments."""
-    ply = _parse_move_side(tokens, "split <move> <white|black>")
+    ply = _parse_move_side(tokens, "split <move>")
     if ply is None:
         return
     try:
@@ -383,7 +384,7 @@ def cmd_split(tokens: list[str]) -> None:
 
 def cmd_merge(tokens: list[str]) -> None:
     """Remove the turning point at the given move, merging with the previous segment."""
-    ply = _parse_move_side(tokens, "merge <move> <white|black>")
+    ply = _parse_move_side(tokens, "merge <move>")
     if ply is None:
         return
     try:
@@ -486,14 +487,14 @@ def cmd_see(tokens: list[str]) -> None:
     """Open Lichess analysis for the position after a given move."""
     import webbrowser
 
-    ply = _parse_move_side(tokens, "see <move> <white|black>")
+    ply = _parse_move_side(tokens, "see <move>")
     if ply is None:
         return
 
     ann = _session.annotation
     url = import_pgn_to_lichess(ann.pgn, move=ply)
     webbrowser.open(url)
-    print(f"Opening Lichess analysis for move {tokens[0]}{tokens[1][0]}.")
+    print(f"Opening Lichess analysis for move {tokens[0]}.")
 
 
 def cmd_comment(tokens: list[str]) -> None:
@@ -533,13 +534,13 @@ Commands (no session open):
 _HELP_SESSION = """\
 Commands (session open):
   show                        Display current annotation state
-  split <move> <white|black>  Add a turning point; split the containing segment
-  merge <move> <white|black>  Remove a turning point; merge with previous segment
+  split <move>  Add a turning point; split the containing segment
+  merge <move>  Remove a turning point; merge with previous segment
   label <#> <text>            Set or update the label for a segment
   comment <#>                 Open $EDITOR to write commentary for a segment
   diagram <#> on|off          Toggle the end-of-segment diagram
   orientation <white|black>   Set the diagram orientation for this annotation
-  see <move> <white|black>    Open Lichess analysis for that position
+  see <move>    Open Lichess analysis for that position
   save                        Save to main store (stay in session)
   close                       Close session (prompts if unsaved changes)
   help                        Show this help
