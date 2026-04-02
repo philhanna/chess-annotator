@@ -1,4 +1,3 @@
-# annotate.adapters.system_editor_launcher
 import os
 import subprocess
 import tempfile

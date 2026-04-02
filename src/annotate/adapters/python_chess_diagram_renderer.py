@@ -1,4 +1,3 @@
-# annotate.adapters.python_chess_diagram_renderer
 import io
 from pathlib import Path
 

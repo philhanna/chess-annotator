@@ -1,4 +1,3 @@
-# annotate.config
 import os
 import sys
 from dataclasses import dataclass

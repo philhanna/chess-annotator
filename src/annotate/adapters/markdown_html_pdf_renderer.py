@@ -1,4 +1,3 @@
-# annotate.adapters.markdown_html_pdf_renderer
 import io
 from importlib.resources import files
 from pathlib import Path

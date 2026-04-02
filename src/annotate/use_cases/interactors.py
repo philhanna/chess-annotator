@@ -1,4 +1,3 @@
-# annotate.use_cases.interactors
 from dataclasses import replace
 
 from annotate.domain.annotation import Annotation

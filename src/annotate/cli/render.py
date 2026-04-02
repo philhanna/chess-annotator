@@ -1,4 +1,3 @@
-# annotate.cli.render
 """chess-render — render an annotation to a book-quality PDF."""
 
 import argparse
