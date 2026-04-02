@@ -7,7 +7,7 @@
 # store_dir: /path/to/your/store
 
 # Your name, pre-filled in the Author prompt when creating a new annotation.
-author: Your Name
+author: Phil Hanna
 
 # Default diagram size in pixels for chess-render (square).
 diagram_size: 360
