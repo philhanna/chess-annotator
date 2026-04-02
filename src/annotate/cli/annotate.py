@@ -426,6 +426,68 @@ def cmd_label(tokens: list[str]) -> None:
     print(f"Label updated for segment {seg_num}.")
 
 
+def cmd_diagram(tokens: list[str]) -> None:
+    """Toggle the end-of-segment diagram for a segment on or off."""
+    if len(tokens) < 2:
+        err("Usage: diagram <segment#> on|off")
+        return
+    try:
+        seg_num = int(tokens[0])
+    except ValueError:
+        err(f"Segment number must be an integer, got {tokens[0]!r}")
+        return
+    toggle = tokens[1].lower()
+    if toggle not in ("on", "off"):
+        err("Value must be 'on' or 'off'")
+        return
+    segments = _session.annotation.segments
+    if not (1 <= seg_num <= len(segments)):
+        err(f"Segment number must be between 1 and {len(segments)}")
+        return
+    segments[seg_num - 1].show_diagram = toggle == "on"
+    _session.dirty = True
+    print(f"Diagram {'enabled' if toggle == 'on' else 'disabled'} for segment {seg_num}.")
+
+
+def cmd_orientation(tokens: list[str]) -> None:
+    """Set the diagram orientation for the annotation."""
+    if not tokens or tokens[0].lower() not in ("white", "black"):
+        err("Usage: orientation <white|black>")
+        return
+    _session.annotation.diagram_orientation = tokens[0].lower()
+    _session.dirty = True
+    print(f"Diagram orientation set to {tokens[0].lower()}.")
+
+
+def cmd_see(tokens: list[str]) -> None:
+    """Open Lichess analysis for the position after a given move."""
+    import io
+    import webbrowser
+    from urllib.parse import quote
+    import chess
+    import chess.pgn
+
+    ply = _parse_move_side(tokens, "see <move> <white|black>")
+    if ply is None:
+        return
+
+    ann = _session.annotation
+    game = chess.pgn.read_game(io.StringIO(ann.pgn))
+    board = game.board()
+    for i, move in enumerate(game.mainline_moves()):
+        board.push(move)
+        if i + 1 == ply:
+            break
+    else:
+        err("Move is beyond the end of the game")
+        return
+
+    fen = board.fen()
+    url = f"https://lichess.org/analysis/standard/{quote(fen, safe='')}"
+    webbrowser.open(url)
+    print(f"Opening Lichess analysis for move {tokens[0]}{tokens[1][0]}.")
+
+
 def cmd_comment(tokens: list[str]) -> None:
     """Open $EDITOR to write or edit commentary for a segment."""
     if not tokens:
@@ -462,15 +524,18 @@ Commands (no session open):
 
 _HELP_SESSION = """\
 Commands (session open):
-  show                      Display current annotation state
+  show                        Display current annotation state
   split <move> <white|black>  Add a turning point; split the containing segment
   merge <move> <white|black>  Remove a turning point; merge with previous segment
-  label <#> <text>          Set or update the label for a segment
-  comment <#>               Open $EDITOR to write commentary for a segment
-  save                      Save to main store (stay in session)
-  close                     Close session (prompts if unsaved changes)
-  help                      Show this help
-  quit                      Close session and exit"""
+  label <#> <text>            Set or update the label for a segment
+  comment <#>                 Open $EDITOR to write commentary for a segment
+  diagram <#> on|off          Toggle the end-of-segment diagram
+  orientation <white|black>   Set the diagram orientation for this annotation
+  see <move> <white|black>    Open Lichess analysis for that position
+  save                        Save to main store (stay in session)
+  close                       Close session (prompts if unsaved changes)
+  help                        Show this help
+  quit                        Close session and exit"""
 
 
 def cmd_help(_tokens: list[str]) -> None:
@@ -500,6 +565,9 @@ _COMMANDS_SESSION: dict[str, tuple] = {
     "merge": (cmd_merge, True),
     "label": (cmd_label, True),
     "comment": (cmd_comment, True),
+    "diagram": (cmd_diagram, True),
+    "orientation": (cmd_orientation, True),
+    "see": (cmd_see, True),
     "save": (cmd_save, True),
     "close": (cmd_close, True),
     "help": (cmd_help, True),

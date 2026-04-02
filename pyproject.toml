@@ -23,3 +23,6 @@ chess-render   = "annotate.cli.render:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+annotate = ["adapters/chess_book.css"]
