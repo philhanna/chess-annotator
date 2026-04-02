@@ -210,7 +210,7 @@ Test `model.py` functions, importing `Annotation` and `Segment` from their stand
 
 ---
 
-## M2 — Authoring
+## M2 — Authoring ✓ Complete
 
 **Goal:** author can split/merge segments, label them, and write commentary.
 
