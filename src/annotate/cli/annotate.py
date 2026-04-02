@@ -465,36 +465,25 @@ def cmd_orientation(tokens: list[str]) -> None:
     print(f"Diagram orientation set to {tokens[0].lower()}.")
 
 
-def import_pgn_to_lichess(pgn: str, move: int | None = None) -> str:
-    """Import a PGN to Lichess and return the game URL.
-
-    When ``move`` is given it is appended as a URL fragment so Lichess
-    jumps directly to that ply.
-    """
+def import_pgn_to_lichess(pgn: str) -> str:
+    """Import a PGN to Lichess and return the game URL."""
     import requests
     response = requests.post(
         "https://lichess.org/api/import",
         data={"pgn": pgn},
     )
     response.raise_for_status()
-    url = response.url
-    if move is not None:
-        url = f"{url}#{move}"
-    return url
+    return response.url
 
 
-def cmd_see(tokens: list[str]) -> None:
-    """Open Lichess analysis for the position after a given move."""
+def cmd_see(_tokens: list[str]) -> None:
+    """Open Lichess analysis for the current game."""
     import webbrowser
 
-    ply = _parse_move_side(tokens, "see <move>")
-    if ply is None:
-        return
-
     ann = _session.annotation
-    url = import_pgn_to_lichess(ann.pgn, move=ply)
+    url = import_pgn_to_lichess(ann.pgn)
     webbrowser.open(url)
-    print(f"Opening Lichess analysis for move {tokens[0]}.")
+    print("Opening Lichess analysis.")
 
 
 def cmd_comment(tokens: list[str]) -> None:
