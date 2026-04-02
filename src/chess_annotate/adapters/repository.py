@@ -1,12 +1,11 @@
 # chess_annotate.adapters.repository
-from __future__ import annotations
 
 import json
 import shutil
 from pathlib import Path
 
 from chess_annotate.domain.model import Annotation, Segment
-from chess_annotate.domain.ports import AnnotationRepository
+from chess_annotate.ports import AnnotationRepository
 
 
 def _to_dict(annotation: Annotation) -> dict:

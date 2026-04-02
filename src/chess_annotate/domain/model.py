@@ -1,5 +1,4 @@
 # chess_annotate.domain.model
-from __future__ import annotations
 
 import io
 import uuid
@@ -36,7 +35,7 @@ class Annotation:
         pgn: str,
         player_side: str,
         diagram_orientation: str | None = None,
-    ) -> Annotation:
+    ) -> "Annotation":
         if diagram_orientation is None:
             diagram_orientation = "black" if player_side == "black" else "white"
         annotation_id = str(uuid.uuid4())

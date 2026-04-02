@@ -1,11 +1,10 @@
 # chess_annotate.adapters.pgn_parser
-from __future__ import annotations
 
 import io
 
 import chess.pgn
 
-from chess_annotate.domain.ports import PGNParser
+from chess_annotate.ports import PGNParser
 
 
 class PythonChessPGNParser(PGNParser):

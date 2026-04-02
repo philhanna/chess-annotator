@@ -1,6 +1,5 @@
 # chess_annotate.cli.annotate
 """chess-annotate — interactive REPL for authoring chess game annotations."""
-from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
