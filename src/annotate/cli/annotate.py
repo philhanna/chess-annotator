@@ -212,6 +212,7 @@ def cmd_new(_tokens: list[str]) -> None:
     repo.save_working_copy(annotation)
 
     _session.annotation = annotation
+    _session.current_segment = 1
     _session.dirty = True
 
     print()
@@ -258,6 +259,7 @@ def cmd_open(tokens: list[str]) -> None:
         if answer == "yes":
             annotation = repo.load_working_copy(annotation_id)
             _session.annotation = annotation
+            _session.current_segment = 1
             _session.dirty = True
             print("Resumed working copy.")
             return
@@ -266,6 +268,7 @@ def cmd_open(tokens: list[str]) -> None:
 
     repo.save_working_copy(annotation)
     _session.annotation = annotation
+    _session.current_segment = 1
     _session.dirty = False
     print(f"Opened: {annotation.title}")
 
@@ -320,6 +323,7 @@ def do_close() -> None:
     ann = _session.annotation
     get_repo().discard_working_copy(ann.annotation_id)
     _session.annotation = None
+    _session.current_segment = None
     _session.dirty = False
     print("Session closed.")
 
@@ -615,6 +619,7 @@ def check_stale_working_copies() -> None:
         answer = input("Resume? (yes/no): ").strip().lower()
         if answer == "yes":
             _session.annotation = ann
+            _session.current_segment = 1
             _session.dirty = True
             print("Resumed.")
             return
