@@ -119,11 +119,11 @@ def cmd_show(_tokens: list[str]) -> None:
     print(header)
     print()
     col_w = max(len(fmt_move_range(ann, i)) for i in range(len(ann.segments)))
-    fmt = f"  {{:>3}}  {{:<{col_w}}}  {{}}"
-    print(fmt.format("#", "Moves", "Label"))
+    fmt = f"{{:2}}{{:>3}}  {{:<{col_w}}}  {{}}"
+    print(fmt.format("", "#", "Moves", "Label"))
     for i, seg in enumerate(ann.segments):
-        marker = " *" if _session.current_segment == i + 1 else ""
-        print(fmt.format(i + 1, fmt_move_range(ann, i), seg.label + marker))
+        prefix = "* " if _session.current_segment == i + 1 else "  "
+        print(fmt.format(prefix, i + 1, fmt_move_range(ann, i), seg.label))
     print()
 
 
