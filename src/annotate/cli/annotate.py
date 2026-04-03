@@ -419,15 +419,15 @@ def cmd_merge(tokens: list[str]) -> None:
 def _require_current_segment() -> int | None:
     """Return the current segment number, or print an error and return None."""
     if _session.current_segment is None:
-        err("No segment selected. Use: segment <#>")
+        err("No segment selected. Use: open <#>")
         return None
     return _session.current_segment
 
 
-def cmd_segment(tokens: list[str]) -> None:
+def cmd_open_segment(tokens: list[str]) -> None:
     """Set the current segment by its 1-based segment number."""
     if not tokens:
-        err("Usage: segment <#>")
+        err("Usage: open <#>")
         return
     try:
         seg_num = int(tokens[0])
@@ -538,7 +538,7 @@ Commands (no session open):
 _HELP_SESSION = """\
 Commands (session open):
   list                        List segments with their labels
-  segment <#>                 Set the current segment
+  open <#>                    Set the current segment
   split <move>                Add a turning point; split the containing segment
   merge <move>                Remove a turning point; merge with previous segment
   label <text>                Set or update the label for the current segment
@@ -576,7 +576,7 @@ _COMMANDS_NO_SESSION: dict[str, tuple] = {
 
 _COMMANDS_SESSION: dict[str, tuple] = {
     "list": (cmd_list_segments, True),
-    "segment": (cmd_segment, True),
+    "open": (cmd_open_segment, True),
     "split": (cmd_split, True),
     "merge": (cmd_merge, True),
     "label": (cmd_label, True),
