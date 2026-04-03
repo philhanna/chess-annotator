@@ -11,6 +11,7 @@ from pathlib import Path
 from annotate.adapters.json_file_annotation_repository import JSONFileAnnotationRepository
 from annotate.adapters.python_chess_pgn_parser import PythonChessPGNParser
 from annotate.adapters.system_editor_launcher import SystemEditorLauncher
+from annotate.cli import strip_comments
 from annotate.config import get_config, get_store_dir
 from annotate.domain.annotation import Annotation
 from annotate.domain.model import move_from_ply, ply_from_move, segment_end_ply
@@ -162,7 +163,7 @@ def cmd_new(_tokens: list[str]) -> None:
             break
         err(f"File not found: {pgn_path}")
 
-    pgn_text = pgn_path.read_text()
+    pgn_text = strip_comments(pgn_path.read_text())
     parser = PythonChessPGNParser()
     try:
         info = parser.parse(pgn_text)
