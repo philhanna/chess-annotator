@@ -88,7 +88,7 @@ def err(msg: str) -> None:
 # ---------------------------------------------------------------------------
 
 def fmt_move_range(annotation: Annotation, index: int) -> str:
-    """Format a segment's move span for display in the ``show`` command.
+    """Format a segment's move span for display in the ``list`` command.
 
     The result uses move number plus side markers such as ``1w`` or
     ``12b`` so users see author-facing boundaries instead of raw ply
@@ -104,7 +104,7 @@ def fmt_move_range(annotation: Annotation, index: int) -> str:
     return f"{start_move}{start_side_char} \u2013 {end_move}{end_side_char}"
 
 
-def cmd_show(_tokens: list[str]) -> None:
+def cmd_list_segments(_tokens: list[str]) -> None:
     """Display a list of segments with their move ranges and labels.
 
     Unsaved state is shown in the heading when appropriate.
@@ -537,7 +537,7 @@ Commands (no session open):
 
 _HELP_SESSION = """\
 Commands (session open):
-  show                        List segments with their labels
+  list                        List segments with their labels
   segment <#>                 Set the current segment
   split <move>                Add a turning point; split the containing segment
   merge <move>                Remove a turning point; merge with previous segment
@@ -575,7 +575,7 @@ _COMMANDS_NO_SESSION: dict[str, tuple] = {
 }
 
 _COMMANDS_SESSION: dict[str, tuple] = {
-    "show": (cmd_show, True),
+    "list": (cmd_list_segments, True),
     "segment": (cmd_segment, True),
     "split": (cmd_split, True),
     "merge": (cmd_merge, True),
