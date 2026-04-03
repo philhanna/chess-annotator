@@ -32,3 +32,4 @@ Commands (session open):
   quit                        Close session and exit
 > 
 ```
+## Future behavior
