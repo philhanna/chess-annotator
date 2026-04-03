@@ -372,6 +372,7 @@ def cmd_split(tokens: list[str]) -> None:
     label = prompt("Label for new segment")
     try:
         _session.annotation = split_segment(_session.annotation, ply, label)
+        get_repo().save_working_copy(_session.annotation)
         _session.dirty = True
         print("Segment split.")
     except ValueError as exc:
@@ -390,6 +391,7 @@ def cmd_merge(tokens: list[str]) -> None:
         return
     if merged:
         _session.annotation = annotation
+        get_repo().save_working_copy(_session.annotation)
         _session.dirty = True
         print("Segments merged.")
         return
@@ -403,6 +405,7 @@ def cmd_merge(tokens: list[str]) -> None:
     if answer == "yes":
         annotation, _ = merge_segment(_session.annotation, ply, force=True)
         _session.annotation = annotation
+        get_repo().save_working_copy(_session.annotation)
         _session.dirty = True
         print("Segments merged.")
     else:
