@@ -85,33 +85,40 @@ and annotations over time.
 
 ### 4.2 Encoding in PGN
 
-The `[%...]` command syntax inside PGN comments is a widely-used extension
-(Lichess, ChessBase, Arena all use it for engine evals, clock times, etc.).
-The annotated PGN must always be valid. Using standard `{ }` comments with
-`[%...]` extensions satisfies that requirement — tools that do not understand
-a `[%...]` command simply render it as comment text.
-
-**Turning points and labels** are stored as structured comments on the
-**first move** of each segment:
+The annotated PGN carries only one piece of annotation data: **segment
+boundary markers**. At the first move of each segment, a `[%tp]` comment
+marks the turning point:
 
 ```
-14. Nf6+ { [%tp "Attack on the king"] } Kh8 15. Qh5 Rg8 16. Rg1
+14. Nf6+ { [%tp] } Kh8 15. Qh5 Rg8 16. Rg1
 ```
 
-**Annotations** are stored as plain PGN comments on the **last move** of
-each segment. PGN imposes no length limit on comments; long annotations
-are fine.
+Nothing else — no labels, no annotation text, no flags — is stored in the
+PGN. This keeps the PGN clean and avoids any concerns about format
+constraints or comment length.
 
+### 4.3 Annotation JSON
+
+All segment content (label, annotation text, `show_diagram`) is stored in
+a companion `annotation.json` file, keyed by the ply number of each
+segment's turning point:
+
+```json
+{
+  "segments": {
+    "1":  { "label": "The opening",        "annotation": "My plan was to develop...", "show_diagram": true },
+    "14": { "label": "Attack on the king", "annotation": "I decided to sacrifice...", "show_diagram": true },
+    "25": { "label": "Endgame technique",  "annotation": "With the extra pawn...",    "show_diagram": false }
+  }
+}
 ```
-14. Nf6+ { [%tp "Attack on the king"] } Kh8 15. Qh5 Rg8 16. Rg1
-{ My plan was to open the king with the knight sacrifice and build
-mating threats with Qh5 and Rg1. } 17. ...
-```
 
-This keeps all segment metadata inline and positional, with no header tags
-needed.
+The server always reads and writes `annotated.pgn` and `annotation.json`
+together as a unit. The ply keys in the JSON must always correspond exactly
+to the `[%tp]` markers in the PGN; the `GameRepository` adapter is
+responsible for keeping them in sync.
 
-### 4.3 File Layout
+### 4.4 File Layout
 
 Each annotation lives in its own directory under a configurable store root:
 
@@ -119,7 +126,8 @@ Each annotation lives in its own directory under a configurable store root:
 <store_root>/
     <game-id>/
         original.pgn      ← read-only, never modified after import
-        annotated.pgn     ← owned and written by the server
+        annotated.pgn     ← [%tp] boundary markers only
+        annotation.json   ← labels, annotation text, show_diagram per segment
         output.pdf        ← regenerated on demand
 ```
 
@@ -300,7 +308,7 @@ The store root is resolved in this order:
 |---|---|
 | D-001 | The annotated PGN is the persistence layer. No separate JSON or SQL store. |
 | D-002 | Original PGN is never modified. The server owns the annotated PGN. |
-| D-003 | Turning points and segment labels stored as `{ [%tp "label"] }` comments on the first move of each segment. Annotations stored as plain comments on the last move of each segment. No header tags used. |
+| D-003 | Only segment boundary markers (`{ [%tp] }`) are stored in the PGN, on the first move of each segment. Labels, annotation text, and `show_diagram` live in a companion `annotation.json` file keyed by ply number. Eliminates all PGN format concerns. |
 | D-004 | Segments are derived from turning points; end boundaries are never stored. |
 | D-005 | Annotations are placed on the last move of each segment (retrospective framing). |
 | D-006 | Turning points can fall on any ply, regardless of which side is moving. |
