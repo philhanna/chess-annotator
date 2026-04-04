@@ -125,10 +125,12 @@ Each annotation lives in its own directory under a configurable store root:
 ```
 <store_root>/
     <game-id>/
-        original.pgn      ← read-only, never modified after import
-        annotated.pgn     ← [%tp] boundary markers only
-        annotation.json   ← labels, annotation text, show_diagram per segment
-        output.pdf        ← regenerated on demand
+        original.pgn           ← read-only, never modified after import
+        annotated.pgn          ← [%tp] boundary markers only
+        annotation.json        ← labels, annotation text, show_diagram per segment
+        annotated.pgn.work     ← present only when this game has an open session
+        annotation.json.work   ← present only when this game has an open session
+        output.pdf             ← regenerated on demand
 ```
 
 The store root lives **outside the application's git repository**. It is
@@ -136,6 +138,30 @@ personal data, not project code. Its location is configured via an environment
 variable or a config file.
 
 The game identifier (directory name) is author-supplied at creation time.
+
+### 4.5 Session Model
+
+Multiple games may be open simultaneously. Each game tracks its own session
+state independently via the presence of `.work` files.
+
+**Open** — if no `.work` files exist, copy the main files to `.work` and begin
+editing there. If `.work` files already exist (resumed after switching away or
+a crash), load them as-is.
+
+**Save** — overwrite the main files from the `.work` files; session remains open.
+
+**Close** — if `.work` files differ from the main files, prompt the author to
+save. Whether saved or discarded, delete the `.work` files.
+
+**Exit at any time** — `.work` files persist on disk. The next `open` of that
+game resumes exactly where work left off.
+
+**List games** — scan the store and flag any game with `.work` files as
+*in progress*.
+
+**Save As** — create a new game-id directory, copy `original.pgn` there, and
+copy the current `.work` files (or main files if no session is open) as the
+new game's main files. The original game is untouched.
 
 ---
 
@@ -320,3 +346,4 @@ The store root is resolved in this order:
 | D-012 | Ply is the internal representation. API and UI speak move+side; conversion happens at the boundary. |
 | D-013 | Each segment has a `show_diagram` boolean (default true). When enabled, a board diagram is rendered at the segment's last ply using `python-chess`. The author can toggle it off for segments where a diagram adds no value. |
 | D-014 | Both label and annotation are required on every segment. A segment without either is invalid and cannot be rendered. |
+| D-015 | Session state is tracked per game via `.work` files in the game directory. Their presence means a session is open. No store-level session file. Multiple games may be open simultaneously. |
