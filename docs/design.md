@@ -165,7 +165,37 @@ new game's main files. The original game is untouched.
 
 ---
 
-## 5. Architecture — Hexagonal (Ports & Adapters)
+## 5. Use Cases
+
+### Game Management
+1. Import a new game from a PGN file
+2. List all games in the store (with in-progress indicator)
+3. Open an existing game to resume annotation
+4. Save As — fork an annotation under a new name
+5. Delete a game from the store
+
+### Segment Authoring
+6. Add a turning point (split the game at a ply)
+7. Remove a turning point (merge two segments)
+8. Set or edit a segment's label
+9. Set or edit a segment's annotation text
+10. Toggle the diagram on/off for a segment
+
+### Session Control
+11. Save (commit working copy to main files)
+12. Close a game (with save prompt if unsaved changes)
+
+### Output
+13. Render the annotation to PDF
+14. Upload the original PGN to Lichess and get back an analysis URL
+
+### Navigation / Review
+15. List all segments for the current game (move ranges, labels, annotation status)
+16. View a single segment (move list, label, annotation, diagram preview)
+
+---
+
+## 6. Architecture — Hexagonal (Ports & Adapters)
 
 ### 5.1 Core Domain
 
@@ -197,7 +227,7 @@ and prominently throughout the core for PGN parsing, board state, move list gene
 
 ---
 
-## 6. REST API
+## 7. REST API
 
 The REST API is the primary interface to the system. The CLI (for development)
 and the web SPA are both clients of this API.
@@ -251,7 +281,7 @@ Ply values are never exposed in the API response.
 
 ---
 
-## 7. Web Frontend (SPA)
+## 8. Web Frontend (SPA)
 
 A single-page JavaScript application served by the REST API server.
 
@@ -290,7 +320,7 @@ displays the returned analysis URL as a clickable link.
 
 ---
 
-## 8. Rendering Pipeline
+## 9. Rendering Pipeline
 
 ```
 annotated PGN → HTML → PDF
@@ -309,7 +339,7 @@ no additional rendering work.
 
 ---
 
-## 9. File & Configuration
+## 10. File & Configuration
 
 ### 9.1 Store Location
 
@@ -328,7 +358,7 @@ The store root is resolved in this order:
 
 ---
 
-## 10. Key Design Decisions
+## 11. Key Design Decisions
 
 | ID | Decision |
 |---|---|
