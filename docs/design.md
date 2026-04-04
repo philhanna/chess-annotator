@@ -1,0 +1,322 @@
+# Chess Annotator — Design 2.0
+
+*Status: Design in progress. This supersedes DESIGN.md (v1).*
+
+---
+
+## 1. Purpose & Scope
+
+A tool for a chess player to annotate their own games for sharing with a coach.
+The author partitions a game into segments and writes a text comment on each
+segment describing their plan or thinking during that phase of the game.
+
+The system records the author's own thinking — no engine evaluation, no AI,
+no move suggestions. The author's perspective is the sole source of annotation
+content.
+
+The system is for a single author. Every game annotated is one the author
+played.
+
+---
+
+## 2. Core Concept
+
+A game is divided into contiguous, non-overlapping **segments** that together
+span every move in the game. Segments are defined by **turning points** — ply
+numbers at which one phase ends and the next begins. The first turning point
+is always ply 1 (the game's first move, regardless of which side the author
+played).
+
+Each segment has one required text annotation describing the author's plan or
+thinking over that span of moves. The annotation is placed on the **last move**
+of the segment — a retrospective summary of what happened.
+
+---
+
+## 3. Data Model
+
+### 3.1 Turning Points
+
+A turning point is a ply number. Ply 1 is white's first move; ply 2 is
+black's first move; ply 3 is white's second move; and so on.
+
+Turning points are independent of whose move falls at that ply. If the author
+plays black, the first turning point (ply 1) falls on white's move.
+
+### 3.2 Segments
+
+Segments are **derived** from turning points. Given turning points at plies
+`[p1, p2, p3, ...]`, the segments are:
+
+- Segment 1: plies `p1` through `p2 - 1`
+- Segment 2: plies `p2` through `p3 - 1`
+- ...
+- Segment N: plies `pN` through the game's last ply
+
+End boundaries are never stored; they are always derived.
+
+### 3.3 Annotation
+
+Each segment has one required text annotation (plain text or Markdown).
+The annotation describes the author's plan or thinking for that span of
+moves. A segment with no annotation is invalid.  The segment is also
+labeled with a short name of the plan.
+
+The segment will have a diagram of the board after the last move.
+This should be created by the Python Chess library from the
+[FEN](https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation)
+at that point.
+
+---
+
+## 4. Persistence — Annotated PGN
+
+The **annotated PGN** is the system's persistence layer and source of truth.
+`python-chess` is used throughout for reading, writing, and manipulating PGN.
+
+**Open issue** - [PGN](https://en.wikipedia.org/wiki/Portable_Game_Notation)
+may be finicky about the length of the comments.  We may have to get creative
+about where to store the annotation.  Turning points should definitely get
+identified inline in a structured comment on the first ply.  The segment label
+will probably fit there as well. If length is a problem, it might be possible
+to use custom tags at the top of the PGN, e.g.
+```
+[CommentOnPly13 = "comment here"]
+```
+PGN is forgiving about making up tag names, so that shouldn't be a problem,
+but it would look ugly.
+
+### 4.1 Two Files
+
+The **original PGN** is never modified. It is imported once and kept as a
+read-only reference. The server creates and owns the **annotated PGN**, which
+starts as a copy of the original and accumulates the author's turning points
+and annotations over time.
+
+### 4.2 Encoding in PGN
+
+**Turning points** are stored in a custom PGN header tag:
+
+```
+[TurningPoints "1 14 25 36"]
+```
+
+This is a space-separated list of ply numbers. Keeping them in the header
+leaves the move text clean.
+
+**Open issue** - Is this the best idea?  Maybe structured comments like
+`15. ... Rxd6 {%xxx[name, label]}` work better
+
+**Annotations** are stored as PGN comments on the last move of each segment:
+
+```
+14. Nf6+ Kh8 15. Qh5 Rg8 16. Rg1 { My plan was to open the king with
+the knight sacrifice and build mating threats with Qh5 and Rg1. }
+17. ...
+```
+
+Since only the application reads the annotated PGN, no compatibility with
+third-party tools is required.
+
+**Open issue** - Not true.  We are adapting our persistence so that we
+always have a valid PGN.
+
+### 4.3 File Layout
+
+Each annotation lives in its own directory under a configurable store root:
+
+```
+<store_root>/
+    <game-id>/
+        original.pgn      ← read-only, never modified after import
+        annotated.pgn     ← owned and written by the server
+        output.pdf        ← regenerated on demand
+```
+
+The store root lives **outside the application's git repository**. It is
+personal data, not project code. Its location is configured via an environment
+variable or a config file.
+
+The game identifier (directory name) is author-supplied at creation time.
+
+---
+
+## 5. Architecture — Hexagonal (Ports & Adapters)
+
+### 5.1 Core Domain
+
+- Domain model: turning points, segment derivation, annotation text
+- Business rules: ply validation, segment boundary derivation, ordering invariants
+- Use cases: create game, add/remove turning point, write/edit annotation, render document, upload to Lichess
+
+`python-chess` is a domain library, not infrastructure. It is used freely
+and prominently throughout the core for PGN parsing, board state, move list generation,SVG diagram rendering, and FEN extraction.
+
+### 5.2 Ports
+
+| Port | Responsibility |
+|---|---|
+| `GameRepository` | Load, save, list annotated PGNs from the store |
+| `DiagramRenderer` | Render board position at a ply → SVG |
+| `DocumentRenderer` | Annotated game → PDF |
+| `LichessUploader` | Upload PGN to Lichess; return analysis URL |
+
+### 5.3 Adapters
+
+| Adapter | Port | Notes |
+|---|---|---|
+| `PGNFileGameRepository` | `GameRepository` | Reads/writes annotated PGN files on disk |
+| `PythonChessDiagramRenderer` | `DiagramRenderer` | Uses `chess.svg` |
+| `HTMLPDFDocumentRenderer` | `DocumentRenderer` | Pipeline: PGN → HTML → PDF |
+| `LichessHTTPAdapter` | `LichessUploader` | HTTP POST to Lichess study/analysis API |
+| `RESTAPIAdapter` | (inbound) | FastAPI; drives the domain use cases |
+
+---
+
+## 6. REST API
+
+The REST API is the primary interface to the system. The CLI (for development)
+and the web SPA are both clients of this API.
+
+### 6.1 Resources
+
+**Games**
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/games` | List all games in the store |
+| `POST` | `/games` | Create a new game from an uploaded PGN |
+| `GET` | `/games/{id}` | Get game metadata and current segment list |
+| `DELETE` | `/games/{id}` | Remove a game from the store |
+
+**Turning Points**
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/games/{id}/turning-points` | List all turning points (ply numbers) |
+| `POST` | `/games/{id}/turning-points` | Add a turning point at a given ply |
+| `DELETE` | `/games/{id}/turning-points/{ply}` | Remove a turning point |
+
+**Segments**
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/games/{id}/segments` | List all segments with their move ranges and annotations |
+| `GET` | `/games/{id}/segments/{n}` | Get a single segment |
+| `PUT` | `/games/{id}/segments/{n}/annotation` | Set or update the annotation for segment N |
+
+**Rendering & Export**
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/games/{id}/render` | Render the annotated game to PDF |
+| `GET` | `/games/{id}/segment/{n}/preview` | Return HTML preview of segment N |
+| `POST` | `/games/{id}/lichess` | Upload the original PGN to Lichess; return URL |
+
+### 6.2 Ply vs. Move Notation
+
+Internally, all positions are represented as ply numbers. The API accepts and
+returns move notation in a human-readable form (e.g. `{ "move": 14, "side": "white" }`)
+and converts to/from ply at the boundary using:
+
+```
+ply = (move_number - 1) * 2 + side_offset   # white=1, black=2
+```
+
+Ply values are never exposed in the API response.
+
+---
+
+## 7. Web Frontend (SPA)
+
+A single-page JavaScript application served by the REST API server.
+
+### 7.1 Layout
+
+Two panels side by side:
+
+- **Left — Command REPL**: The author types structured commands. Output is
+  displayed inline. This mirrors the CLI experience but runs in the browser.
+- **Right — Segment Preview**: A read-only HTML rendering of the segment
+  currently being edited, showing the move list, annotation text, and (if
+  applicable) a board diagram. This is the same HTML that feeds into the
+  PDF pipeline.
+
+### 7.2 Commands (REPL)
+
+Commands mirror the REST API operations. Examples:
+
+```
+open my-game-vs-smith
+segments
+annotate 3
+  (opens an inline text editor for segment 3's annotation)
+turn 14w
+  (adds a turning point at white's 14th move)
+unturn 14w
+  (removes it)
+render
+lichess
+```
+
+### 7.3 Lichess Page
+
+A separate page handles Lichess upload: one button to POST the PGN, then
+displays the returned analysis URL as a clickable link.
+
+---
+
+## 8. Rendering Pipeline
+
+```
+annotated PGN → HTML → PDF
+```
+
+| Stage | Tool | Notes |
+|---|---|---|
+| Move list extraction | `python-chess` | Algebraic notation for a ply range |
+| Board diagrams | `python-chess` (`chess.svg`) | SVG at segment end position |
+| HTML assembly | Jinja2 or similar | Template per segment: move list + annotation + diagram |
+| PDF | WeasyPrint | CSS paged media for book-quality layout |
+
+The HTML preview served by `GET /games/{id}/segments/{n}/preview` is the
+intermediate HTML stage — convenient for the SPA right panel and requires
+no additional rendering work.
+
+---
+
+## 9. File & Configuration
+
+### 9.1 Store Location
+
+The store root is resolved in this order:
+
+1. `CHESS_ANNOTATOR_STORE` environment variable
+2. `store_dir` in `~/.config/chess-annotator/config.yaml`
+3. Built-in default: `~/chess-annotations/`
+
+### 9.2 Config Keys
+
+| Key | Description |
+|---|---|
+| `store_dir` | Path to the annotation store root |
+| `author` | Author name (pre-filled at game creation) |
+
+---
+
+## 10. Key Design Decisions
+
+| ID | Decision |
+|---|---|
+| D-001 | The annotated PGN is the persistence layer. No separate JSON or SQL store. |
+| D-002 | Original PGN is never modified. The server owns the annotated PGN. |
+| D-003 | Turning points stored in a `[TurningPoints "..."]` PGN header tag; annotations stored as comments on the last move of each segment. |
+| D-004 | Segments are derived from turning points; end boundaries are never stored. |
+| D-005 | Annotations are placed on the last move of each segment (retrospective framing). |
+| D-006 | Turning points can fall on any ply, regardless of which side is moving. |
+| D-007 | The REST API is the primary interface. CLI and web SPA are both clients. |
+| D-008 | No chess engine, no AI. Author's thinking is the sole annotation source. |
+| D-009 | `python-chess` is a domain library, used throughout the core. |
+| D-010 | Store directory lives outside the application git repo (personal data). |
+| D-011 | PDF pipeline: annotated PGN → HTML → PDF via WeasyPrint. HTML is also used for the SPA segment preview. |
+| D-012 | Ply is the internal representation. API and UI speak move+side; conversion happens at the boundary. |
