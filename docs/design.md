@@ -57,15 +57,17 @@ End boundaries are never stored; they are always derived.
 
 ### 3.3 Annotation
 
-Each segment has one required text annotation (plain text or Markdown).
-The annotation describes the author's plan or thinking for that span of
-moves. A segment with no annotation is invalid.  The segment is also
-labeled with a short name of the plan.
+Each segment has:
 
-The segment will have a diagram of the board after the last move.
-This should be created by the Python Chess library from the
-[FEN](https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation)
-at that point.
+- **Label** — a short name for the plan or phase (e.g. "Queenside counterattack")
+- **Annotation** — free-form text (plain text or Markdown) describing the
+  author's thinking over that span of moves
+
+Both are required. A segment with no label or no annotation is invalid.
+
+Each segment has a `show_diagram` flag (default true). When enabled, a
+board diagram is rendered at the segment's last ply using `python-chess`.
+The author can toggle it off for segments where a diagram adds no value.
 
 ---
 
@@ -73,18 +75,6 @@ at that point.
 
 The **annotated PGN** is the system's persistence layer and source of truth.
 `python-chess` is used throughout for reading, writing, and manipulating PGN.
-
-**Open issue** - [PGN](https://en.wikipedia.org/wiki/Portable_Game_Notation)
-may be finicky about the length of the comments.  We may have to get creative
-about where to store the annotation.  Turning points should definitely get
-identified inline in a structured comment on the first ply.  The segment label
-will probably fit there as well. If length is a problem, it might be possible
-to use custom tags at the top of the PGN, e.g.
-```
-[CommentOnPly13 = "comment here"]
-```
-PGN is forgiving about making up tag names, so that shouldn't be a problem,
-but it would look ugly.
 
 ### 4.1 Two Files
 
@@ -95,31 +85,31 @@ and annotations over time.
 
 ### 4.2 Encoding in PGN
 
-**Turning points** are stored in a custom PGN header tag:
+The `[%...]` command syntax inside PGN comments is a widely-used extension
+(Lichess, ChessBase, Arena all use it for engine evals, clock times, etc.).
+The annotated PGN must always be valid. Using standard `{ }` comments with
+`[%...]` extensions satisfies that requirement — tools that do not understand
+a `[%...]` command simply render it as comment text.
+
+**Turning points and labels** are stored as structured comments on the
+**first move** of each segment:
 
 ```
-[TurningPoints "1 14 25 36"]
+14. Nf6+ { [%tp "Attack on the king"] } Kh8 15. Qh5 Rg8 16. Rg1
 ```
 
-This is a space-separated list of ply numbers. Keeping them in the header
-leaves the move text clean.
-
-**Open issue** - Is this the best idea?  Maybe structured comments like
-`15. ... Rxd6 {%xxx[name, label]}` work better
-
-**Annotations** are stored as PGN comments on the last move of each segment:
+**Annotations** are stored as plain PGN comments on the **last move** of
+each segment. PGN imposes no length limit on comments; long annotations
+are fine.
 
 ```
-14. Nf6+ Kh8 15. Qh5 Rg8 16. Rg1 { My plan was to open the king with
-the knight sacrifice and build mating threats with Qh5 and Rg1. }
-17. ...
+14. Nf6+ { [%tp "Attack on the king"] } Kh8 15. Qh5 Rg8 16. Rg1
+{ My plan was to open the king with the knight sacrifice and build
+mating threats with Qh5 and Rg1. } 17. ...
 ```
 
-Since only the application reads the annotated PGN, no compatibility with
-third-party tools is required.
-
-**Open issue** - Not true.  We are adapting our persistence so that we
-always have a valid PGN.
+This keeps all segment metadata inline and positional, with no header tags
+needed.
 
 ### 4.3 File Layout
 
@@ -310,7 +300,7 @@ The store root is resolved in this order:
 |---|---|
 | D-001 | The annotated PGN is the persistence layer. No separate JSON or SQL store. |
 | D-002 | Original PGN is never modified. The server owns the annotated PGN. |
-| D-003 | Turning points stored in a `[TurningPoints "..."]` PGN header tag; annotations stored as comments on the last move of each segment. |
+| D-003 | Turning points and segment labels stored as `{ [%tp "label"] }` comments on the first move of each segment. Annotations stored as plain comments on the last move of each segment. No header tags used. |
 | D-004 | Segments are derived from turning points; end boundaries are never stored. |
 | D-005 | Annotations are placed on the last move of each segment (retrospective framing). |
 | D-006 | Turning points can fall on any ply, regardless of which side is moving. |
@@ -320,3 +310,5 @@ The store root is resolved in this order:
 | D-010 | Store directory lives outside the application git repo (personal data). |
 | D-011 | PDF pipeline: annotated PGN → HTML → PDF via WeasyPrint. HTML is also used for the SPA segment preview. |
 | D-012 | Ply is the internal representation. API and UI speak move+side; conversion happens at the boundary. |
+| D-013 | Each segment has a `show_diagram` boolean (default true). When enabled, a board diagram is rendered at the segment's last ply using `python-chess`. The author can toggle it off for segments where a diagram adds no value. |
+| D-014 | Both label and annotation are required on every segment. A segment without either is invalid and cannot be rendered. |
