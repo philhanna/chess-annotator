@@ -167,31 +167,58 @@ new game's main files. The original game is untouched.
 
 ## 5. Use Cases
 
-### Game Management
+### Use Case Index
+
+**Game Management**
 1. Import a new game from a PGN file
 2. List all games in the store (with in-progress indicator)
 3. Open an existing game to resume annotation
 4. Save As — fork an annotation under a new name
 5. Delete a game from the store
 
-### Segment Authoring
+**Segment Authoring**
 6. Add a turning point (split the game at a ply)
 7. Remove a turning point (merge two segments)
 8. Set or edit a segment's label
 9. Set or edit a segment's annotation text
 10. Toggle the diagram on/off for a segment
 
-### Session Control
+**Session Control**
 11. Save (commit working copy to main files)
 12. Close a game (with save prompt if unsaved changes)
 
-### Output
+**Output**
 13. Render the annotation to PDF
 14. Upload the original PGN to Lichess and get back an analysis URL
 
-### Navigation / Review
+**Navigation / Review**
 15. List all segments for the current game (move ranges, labels, annotation status)
 16. View a single segment (move list, label, annotation, diagram preview)
+
+---
+
+### UC-1: Import Game
+
+**Actor:** Author
+
+**Preconditions:**
+- A valid PGN file exists on the local filesystem
+- The store root is configured and accessible
+
+**Main Flow:**
+1. Author supplies a PGN file path and a game-id
+2. System validates and parses the PGN, displaying metadata for confirmation
+3. Author confirms
+4. System registers the game in the store with an empty annotation and opens a session
+
+**Alternate Flows:**
+- **PGN not found or malformed** — system reports the error; nothing is created
+- **game-id already exists** — system warns and asks to confirm overwrite or pick a different name
+- **PGN contains multiple games** — system asks which game to import
+
+**Postconditions:**
+- The game exists in the store with one segment spanning the whole game
+- A session is open
 
 ---
 
