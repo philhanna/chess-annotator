@@ -176,7 +176,7 @@ game's main files. The original game is untouched.
 1. [Import a new game from a PGN file](use-cases/UC-001.md)
 2. [List all games in the store (with in-progress indicator)](use-cases/UC-002.md)
 3. [Open an existing game to resume annotation](use-cases/UC-003.md)
-4. Save As — fork an annotation under a new name
+4. [Save As — fork an annotation under a new name](use-cases/UC-004.md)
 5. Delete a game from the store
 
 #### Segment Authoring
