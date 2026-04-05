@@ -8,9 +8,6 @@ info:
     use case documents in `docs/use-cases/`.
 
     Assumptions captured in this draft:
-    - The API includes explicit session-control endpoints for `open`, `save`, and `close`,
-      because those operations are first-class use cases even though they are not yet listed
-      in the REST resource table.
     - Segment editing is modeled as separate operations for `label`, `annotation`, and
       `show_diagram`, because the use cases describe them independently.
     - The preview endpoint uses `/games/{id}/segments/{n}/preview` (plural `segments`),
