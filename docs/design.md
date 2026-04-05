@@ -76,12 +76,11 @@ The author can toggle it off for segments where a diagram adds no value.
 The **annotated PGN** is the system's persistence layer and source of truth.
 `python-chess` is used throughout for reading, writing, and manipulating PGN.
 
-### 4.1 Two Files
+### 4.1 Imported PGN
 
-The **original PGN** is never modified. It is imported once and kept as a
-read-only reference. The server creates and owns the **annotated PGN**, which
-starts as a copy of the original and accumulates the author's turning points
-and annotations over time.
+When a PGN is imported, the server parses it with `python-chess` and strips
+all comments and NAGs. The result becomes the **annotated PGN**, which the
+server owns and updates over time with turning point markers.
 
 ### 4.2 Encoding in PGN
 
@@ -125,7 +124,6 @@ Each annotation lives in its own directory under a configurable store root:
 ```
 <store_root>/
     <game-id>/
-        original.pgn           ← read-only, never modified after import
         annotated.pgn          ← [%tp] boundary markers only
         annotation.json        ← labels, annotation text, show_diagram per segment
         annotated.pgn.work     ← present only when this game has an open session
@@ -161,9 +159,9 @@ game resumes exactly where work left off.
 
 **Save As** — make sure the new game-id is not already being used.  If
 it is, prompt for whether to overwrite it or cancel.  If overwrite, then
-create a new game-id directory, copy `original.pgn` there, and copy the
-current `.work` files (or main files if no session is open) as the new
-game's main files. The original game is untouched.
+create a new game-id directory and copy the current `.work` files (or main
+files if no session is open) as the new game's main files. The source game
+is untouched.
 
 ---
 
@@ -195,7 +193,7 @@ game's main files. The original game is untouched.
 #### Output
 
 13. [Render the annotation to PDF](use-cases/UC-013.md)
-14. [Upload the original PGN to Lichess and get back an analysis URL](use-cases/UC-014.md)
+14. [Upload the annotated PGN to Lichess and get back an analysis URL](use-cases/UC-014.md)
 
 #### Navigation / Review
 
@@ -274,7 +272,7 @@ and the web SPA are both clients of this API.
 |---|---|---|
 | `POST` | `/games/{id}/render` | Render the annotated game to PDF |
 | `GET` | `/games/{id}/segment/{n}/preview` | Return HTML preview of segment N |
-| `POST` | `/games/{id}/lichess` | Upload the original PGN to Lichess; return URL |
+| `POST` | `/games/{id}/lichess` | Upload the annotated PGN to Lichess; return URL |
 
 ## 8. Web Frontend (SPA)
 
@@ -358,7 +356,7 @@ The store root is resolved in this order:
 | ID | Decision |
 |---|---|
 | D-001 | The annotated PGN is the persistence layer. No separate JSON or SQL store. |
-| D-002 | Original PGN is never modified. The server owns the annotated PGN. |
+| D-002 | On import, the server strips comments and NAGs from the PGN and stores the result as the annotated PGN. |
 | D-003 | Only segment boundary markers (`{ [%tp] }`) are stored in the PGN, on the first move of each segment. Labels, annotation text, and `show_diagram` live in a companion `annotation.json` file keyed by ply number. Eliminates all PGN format concerns. |
 | D-004 | Segments are derived from turning points; end boundaries are never stored. |
 | D-005 | Annotations are placed on the last move of each segment (retrospective framing). |
