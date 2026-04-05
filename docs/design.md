@@ -276,20 +276,6 @@ and the web SPA are both clients of this API.
 | `GET` | `/games/{id}/segment/{n}/preview` | Return HTML preview of segment N |
 | `POST` | `/games/{id}/lichess` | Upload the original PGN to Lichess; return URL |
 
-### 7.2 Ply vs. Move Notation
-
-Internally, all positions are represented as ply numbers. The API accepts and
-returns move notation in a human-readable form (e.g. `{ "move": 14, "side": "white" }`)
-and converts to/from ply at the boundary using:
-
-```
-ply = (move_number - 1) * 2 + side_offset   # white=1, black=2
-```
-
-Ply values are never exposed in the API response.
-
----
-
 ## 8. Web Frontend (SPA)
 
 A single-page JavaScript application served by the REST API server.
@@ -382,7 +368,7 @@ The store root is resolved in this order:
 | D-009 | `python-chess` is a domain library, used throughout the core. |
 | D-010 | Store directory lives outside the application git repo (personal data). |
 | D-011 | PDF pipeline: annotated PGN → HTML → PDF via WeasyPrint. HTML is also used for the SPA segment preview. |
-| D-012 | Ply is the internal representation. API and UI speak move+side; conversion happens at the boundary. |
+| D-012 | Ply is the representation used throughout the domain and API. Client frontends may convert to move+side notation for display or input convenience. |
 | D-013 | Each segment has a `show_diagram` boolean (default true). When enabled, a board diagram is rendered at the segment's last ply using `python-chess`. The author can toggle it off for segments where a diagram adds no value. |
 | D-014 | Both label and annotation are required on every segment. A segment without either is invalid and cannot be rendered. |
 | D-015 | Session state is tracked per game via `.work` files in the game directory. Their presence means a session is open. No store-level session file. Multiple games may be open simultaneously. |
