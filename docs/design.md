@@ -159,9 +159,11 @@ game resumes exactly where work left off.
 **List games** — scan the store and flag any game with `.work` files as
 *in progress*.
 
-**Save As** — create a new game-id directory, copy `original.pgn` there, and
-copy the current `.work` files (or main files if no session is open) as the
-new game's main files. The original game is untouched.
+**Save As** — make sure the new game-id is not already being used.  If
+it is, prompt for whether to overwrite it or cancel.  If overwrite, then
+create a new game-id directory, copy `original.pgn` there, and copy the
+current `.work` files (or main files if no session is open) as the new
+game's main files. The original game is untouched.
 
 ---
 
@@ -169,62 +171,42 @@ new game's main files. The original game is untouched.
 
 ### Use Case Index
 
-**Game Management**
-1. Import a new game from a PGN file
-2. List all games in the store (with in-progress indicator)
-3. Open an existing game to resume annotation
+#### Game Management
+
+1. [Import a new game from a PGN file](use-cases/UC-001.md)
+2. [List all games in the store (with in-progress indicator)](use-cases/UC-002.md)
+3. [Open an existing game to resume annotation](use-cases/UC-003.md)
 4. Save As — fork an annotation under a new name
 5. Delete a game from the store
 
-**Segment Authoring**
+#### Segment Authoring
+
 6. Add a turning point (split the game at a ply)
 7. Remove a turning point (merge two segments)
 8. Set or edit a segment's label
 9. Set or edit a segment's annotation text
 10. Toggle the diagram on/off for a segment
 
-**Session Control**
+#### Session Control
+
 11. Save (commit working copy to main files)
 12. Close a game (with save prompt if unsaved changes)
 
-**Output**
+#### Output
+
 13. Render the annotation to PDF
 14. Upload the original PGN to Lichess and get back an analysis URL
 
-**Navigation / Review**
+#### Navigation / Review
+
 15. List all segments for the current game (move ranges, labels, annotation status)
 16. View a single segment (move list, label, annotation, diagram preview)
 
 ---
 
-### UC-1: Import Game
-
-**Actor:** Author
-
-**Preconditions:**
-- A valid PGN file exists on the local filesystem
-- The store root is configured and accessible
-
-**Main Flow:**
-1. Author supplies a PGN file path and a game-id
-2. System validates and parses the PGN, displaying metadata for confirmation
-3. Author confirms
-4. System registers the game in the store with an empty annotation and opens a session
-
-**Alternate Flows:**
-- **PGN not found or malformed** — system reports the error; nothing is created
-- **game-id already exists** — system warns and asks to confirm overwrite or pick a different name
-- **PGN contains multiple games** — system asks which game to import
-
-**Postconditions:**
-- The game exists in the store with one segment spanning the whole game
-- A session is open
-
----
-
 ## 6. Architecture — Hexagonal (Ports & Adapters)
 
-### 5.1 Core Domain
+### 6.1 Core Domain
 
 - Domain model: turning points, segment derivation, annotation text
 - Business rules: ply validation, segment boundary derivation, ordering invariants
@@ -233,7 +215,7 @@ new game's main files. The original game is untouched.
 `python-chess` is a domain library, not infrastructure. It is used freely
 and prominently throughout the core for PGN parsing, board state, move list generation,SVG diagram rendering, and FEN extraction.
 
-### 5.2 Ports
+### 6.2 Ports
 
 | Port | Responsibility |
 |---|---|
@@ -242,7 +224,7 @@ and prominently throughout the core for PGN parsing, board state, move list gene
 | `DocumentRenderer` | Annotated game → PDF |
 | `LichessUploader` | Upload PGN to Lichess; return analysis URL |
 
-### 5.3 Adapters
+### 6.3 Adapters
 
 | Adapter | Port | Notes |
 |---|---|---|
@@ -259,7 +241,7 @@ and prominently throughout the core for PGN parsing, board state, move list gene
 The REST API is the primary interface to the system. The CLI (for development)
 and the web SPA are both clients of this API.
 
-### 6.1 Resources
+### 7.1 Resources
 
 **Games**
 
@@ -294,7 +276,7 @@ and the web SPA are both clients of this API.
 | `GET` | `/games/{id}/segment/{n}/preview` | Return HTML preview of segment N |
 | `POST` | `/games/{id}/lichess` | Upload the original PGN to Lichess; return URL |
 
-### 6.2 Ply vs. Move Notation
+### 7.2 Ply vs. Move Notation
 
 Internally, all positions are represented as ply numbers. The API accepts and
 returns move notation in a human-readable form (e.g. `{ "move": 14, "side": "white" }`)
@@ -312,7 +294,7 @@ Ply values are never exposed in the API response.
 
 A single-page JavaScript application served by the REST API server.
 
-### 7.1 Layout
+### 8.1 Layout
 
 Two panels side by side:
 
@@ -323,7 +305,7 @@ Two panels side by side:
   applicable) a board diagram. This is the same HTML that feeds into the
   PDF pipeline.
 
-### 7.2 Commands (REPL)
+### 8.2 Commands (REPL)
 
 Commands mirror the REST API operations. Examples:
 
@@ -340,7 +322,7 @@ render
 lichess
 ```
 
-### 7.3 Lichess Page
+### 8.3 Lichess Page
 
 A separate page handles Lichess upload: one button to POST the PGN, then
 displays the returned analysis URL as a clickable link.
@@ -368,7 +350,7 @@ no additional rendering work.
 
 ## 10. File & Configuration
 
-### 9.1 Store Location
+### 10.1 Store Location
 
 The store root is resolved in this order:
 
@@ -376,7 +358,7 @@ The store root is resolved in this order:
 2. `store_dir` in `~/.config/chess-annotator/config.yaml`
 3. Built-in default: `~/chess-annotations/`
 
-### 9.2 Config Keys
+### 10.2 Config Keys
 
 | Key | Description |
 |---|---|
