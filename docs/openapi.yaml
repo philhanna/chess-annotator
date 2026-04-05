@@ -1,0 +1,729 @@
+openapi: 3.1.0
+info:
+  title: Chess Annotator API
+  version: 0.1.0
+  summary: REST API for importing, annotating, rendering, and exporting chess games.
+  description: |
+    Draft OpenAPI specification derived from `docs/design.md` and the expanded
+    use case documents in `docs/use-cases/`.
+
+    Assumptions captured in this draft:
+    - The API includes explicit session-control endpoints for `open`, `save`, and `close`,
+      because those operations are first-class use cases even though they are not yet listed
+      in the REST resource table.
+    - Segment editing is modeled as separate operations for `label`, `annotation`, and
+      `show_diagram`, because the use cases describe them independently.
+    - The preview endpoint uses `/games/{id}/segments/{n}/preview` (plural `segments`),
+      which matches the prose in the rendering section. The REST table currently shows
+      `/games/{id}/segment/{n}/preview`, which appears to be a typo.
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+tags:
+  - name: Games
+  - name: Sessions
+  - name: Turning Points
+  - name: Segments
+  - name: Rendering
+  - name: Export
+paths:
+  /games:
+    get:
+      tags: [Games]
+      summary: List games
+      operationId: listGames
+      responses:
+        '200':
+          description: Games in the store
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [games]
+                properties:
+                  games:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GameSummary'
+    post:
+      tags: [Games]
+      summary: Import a new game
+      description: |
+        Imports a PGN, strips all comments and NAGs, stores the cleaned result as
+        `annotated.pgn`, creates an empty annotation, and opens a session.
+      operationId: importGame
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [game_id, pgn_file]
+              properties:
+                game_id:
+                  $ref: '#/components/schemas/GameId'
+                pgn_file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Game imported and session opened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /games/{id}:
+    parameters:
+      - $ref: '#/components/parameters/GameIdPath'
+    get:
+      tags: [Games]
+      summary: Get game
+      operationId: getGame
+      responses:
+        '200':
+          description: Game metadata and current segment list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Games]
+      summary: Delete game
+      operationId: deleteGame
+      parameters:
+        - name: confirm
+          in: query
+          required: false
+          description: |
+            Optional confirmation flag for clients that want a two-step delete flow.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '204':
+          description: Game deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /games/{id}/open:
+    post:
+      tags: [Sessions]
+      summary: Open or resume a session
+      operationId: openGame
+      parameters:
+        - $ref: '#/components/parameters/GameIdPath'
+      responses:
+        '200':
+          description: Session opened or resumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /games/{id}/save:
+    post:
+      tags: [Sessions]
+      summary: Save working files to main files
+      operationId: saveGame
+      parameters:
+        - $ref: '#/components/parameters/GameIdPath'
+      responses:
+        '200':
+          description: Session saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: No session is open
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /games/{id}/close:
+    post:
+      tags: [Sessions]
+      summary: Close a session
+      description: |
+        If unsaved changes exist, the client must indicate whether to save,
+        discard, or cancel.
+      operationId: closeGame
+      parameters:
+        - $ref: '#/components/parameters/GameIdPath'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloseRequest'
+      responses:
+        '200':
+          description: Session closed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloseResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Unsaved changes require an explicit action
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /games/{id}/save-as:
+    post:
+      tags: [Games]
+      summary: Save game under a new id
+      operationId: saveGameAs
+      parameters:
+        - $ref: '#/components/parameters/GameIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveAsRequest'
+      responses:
+        '201':
+          description: New game created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /games/{id}/turning-points:
+    parameters:
+      - $ref: '#/components/parameters/GameIdPath'
+    get:
+      tags: [Turning Points]
+      summary: List turning points
+      operationId: listTurningPoints
+      responses:
+        '200':
+          description: Turning point ply numbers
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [turning_points]
+                properties:
+                  turning_points:
+                    type: array
+                    items:
+                      type: integer
+                      minimum: 1
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Turning Points]
+      summary: Add turning point
+      operationId: addTurningPoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ply]
+              properties:
+                ply:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Updated segment list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SegmentListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /games/{id}/turning-points/{ply}:
+    parameters:
+      - $ref: '#/components/parameters/GameIdPath'
+      - $ref: '#/components/parameters/PlyPath'
+    delete:
+      tags: [Turning Points]
+      summary: Remove turning point
+      operationId: removeTurningPoint
+      responses:
+        '200':
+          description: Updated segment list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SegmentListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /games/{id}/segments:
+    get:
+      tags: [Segments]
+      summary: List segments
+      operationId: listSegments
+      parameters:
+        - $ref: '#/components/parameters/GameIdPath'
+      responses:
+        '200':
+          description: Segments for the current game state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SegmentListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: No session is open
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /games/{id}/segments/{n}:
+    get:
+      tags: [Segments]
+      summary: Get segment
+      operationId: getSegment
+      parameters:
+        - $ref: '#/components/parameters/GameIdPath'
+        - $ref: '#/components/parameters/SegmentNumberPath'
+      responses:
+        '200':
+          description: Segment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SegmentDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: No session is open
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /games/{id}/segments/{n}/label:
+    put:
+      tags: [Segments]
+      summary: Set segment label
+      operationId: setSegmentLabel
+      parameters:
+        - $ref: '#/components/parameters/GameIdPath'
+        - $ref: '#/components/parameters/SegmentNumberPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [label]
+              properties:
+                label:
+                  type: string
+                  minLength: 1
+      responses:
+        '200':
+          description: Updated segment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SegmentDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /games/{id}/segments/{n}/annotation:
+    put:
+      tags: [Segments]
+      summary: Set segment annotation
+      operationId: setSegmentAnnotation
+      parameters:
+        - $ref: '#/components/parameters/GameIdPath'
+        - $ref: '#/components/parameters/SegmentNumberPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [annotation]
+              properties:
+                annotation:
+                  type: string
+                  minLength: 1
+      responses:
+        '200':
+          description: Updated segment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SegmentDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /games/{id}/segments/{n}/diagram:
+    put:
+      tags: [Segments]
+      summary: Set diagram visibility
+      operationId: setSegmentDiagramVisibility
+      parameters:
+        - $ref: '#/components/parameters/GameIdPath'
+        - $ref: '#/components/parameters/SegmentNumberPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [show_diagram]
+              properties:
+                show_diagram:
+                  type: boolean
+      responses:
+        '200':
+          description: Updated segment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SegmentDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /games/{id}/segments/{n}/preview:
+    get:
+      tags: [Rendering]
+      summary: Get HTML preview for a segment
+      operationId: previewSegment
+      parameters:
+        - $ref: '#/components/parameters/GameIdPath'
+        - $ref: '#/components/parameters/SegmentNumberPath'
+      responses:
+        '200':
+          description: HTML preview for the segment
+          content:
+            text/html:
+              schema:
+                type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /games/{id}/render:
+    post:
+      tags: [Rendering]
+      summary: Render PDF
+      operationId: renderGame
+      parameters:
+        - $ref: '#/components/parameters/GameIdPath'
+      responses:
+        '200':
+          description: PDF rendered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RenderResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /games/{id}/lichess:
+    post:
+      tags: [Export]
+      summary: Upload annotated PGN to Lichess
+      operationId: uploadToLichess
+      parameters:
+        - $ref: '#/components/parameters/GameIdPath'
+      responses:
+        '200':
+          description: Upload successful
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url]
+                properties:
+                  url:
+                    type: string
+                    format: uri
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          description: Lichess upload failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  parameters:
+    GameIdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/GameId'
+      description: Game identifier
+    PlyPath:
+      name: ply
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: Ply number
+    SegmentNumberPath:
+      name: n
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: 1-based segment number
+
+  responses:
+    BadRequest:
+      description: Invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Request conflicts with current state
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    GameId:
+      type: string
+      minLength: 1
+      description: Author-supplied game identifier
+
+    GameSummary:
+      type: object
+      required:
+        - id
+        - white
+        - black
+        - event
+        - date
+        - result
+        - in_progress
+      properties:
+        id:
+          $ref: '#/components/schemas/GameId'
+        white:
+          type: string
+        black:
+          type: string
+        event:
+          type: string
+        date:
+          type: string
+        result:
+          type: string
+        in_progress:
+          type: boolean
+
+    GameDetail:
+      type: object
+      required:
+        - id
+        - metadata
+        - session
+        - segments
+      properties:
+        id:
+          $ref: '#/components/schemas/GameId'
+        metadata:
+          $ref: '#/components/schemas/GameMetadata'
+        session:
+          $ref: '#/components/schemas/SessionStatus'
+        segments:
+          type: array
+          items:
+            $ref: '#/components/schemas/SegmentSummary'
+
+    GameMetadata:
+      type: object
+      required: [white, black, event, date, result]
+      properties:
+        white:
+          type: string
+        black:
+          type: string
+        event:
+          type: string
+        site:
+          type: string
+        round:
+          type: string
+        date:
+          type: string
+        result:
+          type: string
+
+    SessionStatus:
+      type: object
+      required: [is_open, has_unsaved_changes]
+      properties:
+        is_open:
+          type: boolean
+        has_unsaved_changes:
+          type: boolean
+        resumed:
+          type: boolean
+
+    SegmentSummary:
+      type: object
+      required:
+        - number
+        - start_ply
+        - end_ply
+        - label
+        - has_annotation
+        - show_diagram
+      properties:
+        number:
+          type: integer
+          minimum: 1
+        start_ply:
+          type: integer
+          minimum: 1
+        end_ply:
+          type: integer
+          minimum: 1
+        label:
+          type: string
+        has_annotation:
+          type: boolean
+        show_diagram:
+          type: boolean
+
+    SegmentDetail:
+      allOf:
+        - $ref: '#/components/schemas/SegmentSummary'
+        - type: object
+          required: [annotation, move_text]
+          properties:
+            annotation:
+              type: string
+            move_text:
+              type: string
+            diagram_svg:
+              type: string
+              description: SVG markup when diagram display is enabled
+
+    SegmentListResponse:
+      type: object
+      required: [segments]
+      properties:
+        segments:
+          type: array
+          items:
+            $ref: '#/components/schemas/SegmentSummary'
+
+    SaveAsRequest:
+      type: object
+      required: [new_game_id]
+      properties:
+        new_game_id:
+          $ref: '#/components/schemas/GameId'
+        overwrite:
+          type: boolean
+          default: false
+
+    SaveResult:
+      type: object
+      required: [saved]
+      properties:
+        saved:
+          type: boolean
+        session_open:
+          type: boolean
+
+    CloseRequest:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [save, discard, cancel]
+          description: Required when unsaved changes exist
+
+    CloseResult:
+      type: object
+      required: [closed, session_open]
+      properties:
+        closed:
+          type: boolean
+        session_open:
+          type: boolean
+        saved:
+          type: boolean
+
+    RenderResult:
+      type: object
+      required: [pdf_path]
+      properties:
+        pdf_path:
+          type: string
+          description: Server-side path to the rendered PDF
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
