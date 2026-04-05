@@ -177,30 +177,30 @@ game's main files. The original game is untouched.
 2. [List all games in the store (with in-progress indicator)](use-cases/UC-002.md)
 3. [Open an existing game to resume annotation](use-cases/UC-003.md)
 4. [Save As — fork an annotation under a new name](use-cases/UC-004.md)
-5. Delete a game from the store
+5. [Delete a game from the store](use-cases/UC-005.md)
 
 #### Segment Authoring
 
-6. Add a turning point (split the game at a ply)
-7. Remove a turning point (merge two segments)
-8. Set or edit a segment's label
-9. Set or edit a segment's annotation text
-10. Toggle the diagram on/off for a segment
+6. [Add a turning point (split the game at a ply)](use-cases/UC-006.md)
+7. [Remove a turning point (merge two segments)](use-cases/UC-007.md)
+8. [Set or edit a segment's label](use-cases/UC-008.md)
+9. [Set or edit a segment's annotation text](use-cases/UC-009.md)
+10. [Toggle the diagram on/off for a segment](use-cases/UC-010.md)
 
 #### Session Control
 
-11. Save (commit working copy to main files)
-12. Close a game (with save prompt if unsaved changes)
+11. [Save (commit working copy to main files)](use-cases/UC-011.md)
+12. [Close a game (with save prompt if unsaved changes)](use-cases/UC-012.md)
 
 #### Output
 
-13. Render the annotation to PDF
-14. Upload the original PGN to Lichess and get back an analysis URL
+13. [Render the annotation to PDF](use-cases/UC-013.md)
+14. [Upload the original PGN to Lichess and get back an analysis URL](use-cases/UC-014.md)
 
 #### Navigation / Review
 
-15. List all segments for the current game (move ranges, labels, annotation status)
-16. View a single segment (move list, label, annotation, diagram preview)
+15. [List all segments for the current game (move ranges, labels, annotation status)](use-cases/UC-015.md)
+16. [View a single segment (move list, label, annotation, diagram preview)](use-cases/UC-016.md)
 
 ---
 
