@@ -80,6 +80,17 @@ The project follows a **Hexagonal Architecture** (Ports and Adapters) to ensure 
 *   `src/annotate/use_cases/`: Interactors that coordinate domain logic.
 *   `src/annotate/cli/`: Command-line interface definitions for authoring and rendering.
 
+## API Docs
+
+The OpenAPI draft lives at `docs/openapi.yaml`. To view it in Swagger UI, serve the
+`docs/` directory locally and open `swagger.html`:
+
+```bash
+python -m http.server 8000 -d docs
+```
+
+Then visit `http://localhost:8000/swagger.html`.
+
 ## Persistence Strategy
 
 Annotations are stored as human-readable JSON files in a flat-file structure:
