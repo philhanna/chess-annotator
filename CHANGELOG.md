@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-04-08
+
+### Changed
+- Split CLI commands into individual modules under `src/annotate/cli/commands/`.
+- Rewrote `docs/design.md` to reflect the current implementation.
+- Removed package name comments from non-`__init__.py` files.
+- Renamed several command modules for clarity (`import_game`, `open_game`, `list_all`, `show_help`, `show_json`).
+
 ## [0.3.0] - 2026-04-08
 
 ### Added
