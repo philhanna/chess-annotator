@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from annotate.cli import annotate
+from annotate.cli import session as session_module
 from annotate.use_cases import OverwriteRequiredError
 
 
@@ -79,21 +80,21 @@ class FakeService:
 
 @pytest.fixture(autouse=True)
 def reset_cli_state():
-    annotate._session.game_id = None
-    annotate._session.current_turning_point_ply = None
-    annotate._repo = None
-    annotate._service = None
+    session_module.state.game_id = None
+    session_module.state.current_turning_point_ply = None
+    session_module._repo = None
+    session_module._service = None
     yield
-    annotate._session.game_id = None
-    annotate._session.current_turning_point_ply = None
-    annotate._repo = None
-    annotate._service = None
+    session_module.state.game_id = None
+    session_module.state.current_turning_point_ply = None
+    session_module._repo = None
+    session_module._service = None
 
 
 def test_repl_open_list_view_save_and_quit(monkeypatch, capsys):
     fake_service = FakeService()
-    monkeypatch.setattr(annotate, "get_service", lambda: fake_service)
-    monkeypatch.setattr(annotate, "get_repo", lambda: FakeRepo())
+    monkeypatch.setattr(session_module, "get_service", lambda: fake_service)
+    monkeypatch.setattr(session_module, "get_repo", lambda: FakeRepo())
     inputs = iter(["open game-1", "list", "1", "view", "save", "quit"])
     monkeypatch.setattr("builtins.input", lambda _prompt="": next(inputs))
 
@@ -115,10 +116,10 @@ def test_repl_import_handles_overwrite_prompt(monkeypatch, tmp_path, capsys):
     pgn_path.write_text(
         "[Event \"Test\"]\n[White \"White\"]\n[Black \"Black\"]\n[Date \"2024.01.01\"]\n\n1. e4 e5 *\n"
     )
-    monkeypatch.setattr(annotate, "get_service", lambda: fake_service)
-    monkeypatch.setattr(annotate, "get_repo", lambda: FakeRepo())
+    monkeypatch.setattr(session_module, "get_service", lambda: fake_service)
+    monkeypatch.setattr(session_module, "get_repo", lambda: FakeRepo())
     monkeypatch.setattr(
-        annotate,
+        session_module,
         "get_config",
         lambda: SimpleNamespace(author="Tester", diagram_size=360, page_size="a4"),
     )
