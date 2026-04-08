@@ -503,9 +503,14 @@ def cmd_close(_tokens: list[str]) -> None:
 
 
 def cmd_render(tokens: list[str]) -> None:
-    game_id = tokens[0] if tokens else _require_open_session()
-    if game_id is None:
+    if _session.open:
+        game_id = _require_open_session()
+    elif tokens:
+        game_id = tokens[0]
+    else:
         err("Usage: render <game-id>")
+        return
+    if game_id is None:
         return
     config = get_config()
     try:
@@ -537,9 +542,14 @@ def cmd_upload(tokens: list[str]) -> None:
 
 
 def cmd_see(tokens: list[str]) -> None:
-    game_id = tokens[0] if tokens else _require_open_session()
-    if game_id is None:
+    if _session.open:
+        game_id = _require_open_session()
+    elif tokens:
+        game_id = tokens[0]
+    else:
         err("Usage: see <game-id>")
+        return
+    if game_id is None:
         return
     try:
         url = get_service().upload_to_lichess(game_id=game_id)
@@ -660,8 +670,8 @@ Commands (session open):
   save                      Save the open game
   close                     Close the current game
   copy <new-game-id>        Save the current game as a new game id
-  render [game-id]          Render the current or named game to output.pdf
-  see [game-id]             Upload to Lichess and open the URL
+  render                    Render the current game to output.pdf
+  see                       Upload the current game to Lichess and open the URL
   json                      Print the working annotation JSON summary
   help                      Show this help
   quit                      Close the current game and exit"""
