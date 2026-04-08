@@ -228,11 +228,6 @@ def cmd_import(_tokens: list[str]) -> None:
     _session.current_turning_point_ply = state.segments[0].turning_point_ply
     print(f"Imported and opened: {state.title}")
 
-
-def cmd_new(tokens: list[str]) -> None:
-    cmd_import(tokens)
-
-
 def cmd_open(tokens: list[str]) -> None:
     if not tokens:
         err("Usage: open <game-id>")
@@ -253,7 +248,7 @@ def cmd_list(_tokens: list[str]) -> None:
         )
 
 
-def cmd_segments(_tokens: list[str]) -> None:
+def cmd_list_segments(_tokens: list[str]) -> None:
     try:
         _print_segment_list()
     except SessionNotOpenError as exc:
@@ -613,7 +608,6 @@ def cmd_quit(_tokens: list[str]) -> None:
 _HELP_NO_SESSION = """\
 Commands (no session open):
   import                    Import a game from a PGN file and open it
-  new                       Alias for import
   open <game-id>            Open or resume a game
   list                      List games in the store
   copy <source> <new>       Save game as a new game id
@@ -626,7 +620,7 @@ Commands (no session open):
 
 _HELP_SESSION = """\
 Commands (session open):
-  segments                  List segments for the open game
+  list                      List segments for the open game
   view <segment-number>     View one segment and select it
   split <move> [label]      Add a turning point
   merge <move>              Remove a turning point
@@ -651,7 +645,6 @@ def cmd_help(_tokens: list[str]) -> None:
 
 _COMMANDS_NO_SESSION = {
     "import": cmd_import,
-    "new": cmd_new,
     "open": cmd_open,
     "list": cmd_list,
     "copy": cmd_copy,
@@ -664,7 +657,7 @@ _COMMANDS_NO_SESSION = {
 }
 
 _COMMANDS_SESSION = {
-    "segments": cmd_segments,
+    "list": cmd_list_segments,
     "view": cmd_view,
     "split": cmd_split,
     "merge": cmd_merge,

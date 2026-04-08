@@ -306,7 +306,7 @@ Commands mirror the REST API operations. Examples:
 
 ```
 open my-game-vs-smith
-segments
+list
 annotate 3
   (opens an inline text editor for segment 3's annotation)
 turn 14w

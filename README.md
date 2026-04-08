@@ -39,7 +39,6 @@ This launches an interactive REPL.
 When no game is open:
 
 - `import`
-- `new`
 - `open <game-id>`
 - `list`
 - `copy <source-game-id> <new-game-id>`
@@ -52,7 +51,7 @@ When no game is open:
 
 When a game is open:
 
-- `segments`
+- `list`
 - `view <segment-number>`
 - `split <move><w|b> [label]`
 - `merge <move><w|b>`
