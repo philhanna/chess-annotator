@@ -40,10 +40,22 @@ of the segment — a retrospective summary of what happened.
 A turning point is a ply number. Ply 1 is white's first move; ply 2 is
 black's first move; ply 3 is white's second move; and so on.
 
+User-facing interfaces can refer to plies by their move names, computed as
+```
+move  = (p + 1) // 2
+color = white if p is odd, else black
+```
+and its inverse (to get the ply from move and color)
+```
+ply = 2*move - (1 if color == white else 0)
+```
+
 Turning points are independent of whose move falls at that ply. If the author
 plays black, the first turning point (ply 1) falls on white's move.
 
 ### 3.2 Segments
+
+The first segment always begins at the start of the game, ply 1.
 
 Segments are **derived** from turning points. Given turning points at plies
 `[p1, p2, p3, ...]`, the segments are:
@@ -54,21 +66,16 @@ Segments are **derived** from turning points. Given turning points at plies
 - ...
 - Segment N+1: plies `pN` through the game's last ply
 
-The first segment always begins at the start of the game, ply 1.
-
 End boundaries are never stored; they are always derived.
 
 ### 3.3 Annotation
 
-Each segment has:
+Each segment has three attributes
 
-- **Label** — a short name for the plan or phase (e.g. "Queenside counterattack")
-- **Annotation** — free-form text (plain text or Markdown) describing the
+- **label** — a short name for the plan or phase (e.g. "Queenside counterattack")
+- **annotation** — free-form text (plain text or Markdown) describing the
   author's thinking over that span of moves
-
-Both are required. A segment with no label or no annotation is invalid.
-
-Each segment has a `show_diagram` flag (default true). When enabled, a
+- **show_diagram** — a boolean flag, default true. When enabled, a
 board diagram is rendered at the segment's last ply using `python-chess`.
 The author can toggle it off for segments where a diagram adds no value.
 
@@ -97,7 +104,8 @@ marks the turning point:
 
 Nothing else — no labels, no annotation text, no flags — is stored in the
 PGN. This keeps the PGN clean and avoids any concerns about format
-constraints or comment length.
+constraints or comment length.  It also means that the original PGN
+(minus comments) and be reconstructed as needed.
 
 ### 4.3 Annotation JSON
 
@@ -108,9 +116,9 @@ segment's turning point:
 ```json
 {
   "segments": {
-    "1":  { "label": "The opening",        "annotation": "My plan was to develop...", "show_diagram": true },
+    "1":  { "label": "The opening", "annotation": "My plan was to develop...", "show_diagram": true },
     "14": { "label": "Attack on the king", "annotation": "I decided to sacrifice...", "show_diagram": true },
-    "25": { "label": "Endgame technique",  "annotation": "With the extra pawn...",    "show_diagram": false }
+    "25": { "label": "Endgame technique", "annotation": "With the extra pawn...",    "show_diagram": false }
   }
 }
 ```
