@@ -40,6 +40,7 @@ def test_render_produces_non_empty_pdf(tmp_path):
     # Add commentary and a diagram to the first segment
     annotation.segment_contents[1].annotation = "White opens with the Ruy Lopez."
     annotation.segment_contents[1].show_diagram = True
+    annotation.segment_contents[11].annotation = "White transitions into a middlegame plan."
 
     output_path = tmp_path / "test_output.pdf"
     store_dir = tmp_path / "store"
