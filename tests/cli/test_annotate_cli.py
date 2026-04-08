@@ -94,7 +94,7 @@ def test_repl_open_list_view_save_and_quit(monkeypatch, capsys):
     fake_service = FakeService()
     monkeypatch.setattr(annotate, "get_service", lambda: fake_service)
     monkeypatch.setattr(annotate, "get_repo", lambda: FakeRepo())
-    inputs = iter(["open game-1", "list", "view 1", "save", "quit"])
+    inputs = iter(["open game-1", "list", "1", "view", "save", "quit"])
     monkeypatch.setattr("builtins.input", lambda _prompt="": next(inputs))
 
     with pytest.raises(SystemExit):

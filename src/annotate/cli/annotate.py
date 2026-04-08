@@ -278,27 +278,49 @@ def _parse_segment_selector(token: str):
     return segments[index - 1]
 
 
-def cmd_view(tokens: list[str]) -> None:
+def cmd_select(tokens: list[str]) -> None:
     if not tokens:
-        err("Usage: view <segment-number>")
+        err("Usage: <segment-number>")
         return
-    summary = _parse_segment_selector(tokens[0])
-    if summary is None:
+    segments = _current_segments()
+    if segments is None:
+        return
+    try:
+        index = int(tokens[0])
+    except ValueError:
+        err("Segment must be selected by its number.")
+        return
+    if not (1 <= index <= len(segments)):
+        err(f"Segment number must be between 1 and {len(segments)}")
+        return
+    _session.current_turning_point_ply = segments[index - 1].turning_point_ply
+    print(f"Segment {index} selected.")
+
+
+def cmd_view(_tokens: list[str]) -> None:
+    current = _current_segment_summary()
+    if current is None:
+        err("No current segment.")
         return
     game_id = _require_open_session()
     if game_id is None:
         return
+    segments = _current_segments()
+    index = next(
+        (i for i, s in enumerate(segments, 1) if s.turning_point_ply == current.turning_point_ply),
+        None,
+    )
     try:
         detail = get_service().view_segment(
             game_id=game_id,
-            turning_point_ply=summary.turning_point_ply,
+            turning_point_ply=current.turning_point_ply,
         )
     except (SessionNotOpenError, SegmentNotFoundError, UseCaseError) as exc:
         err(str(exc))
         return
 
     _session.current_turning_point_ply = detail.turning_point_ply
-    print(f"Segment {tokens[0]}  {detail.move_range}")
+    print(f"Segment {index}  {detail.move_range}")
     print(f"Label: {detail.label or '(blank)'}")
     print(f"Moves: {detail.move_list}")
     print(f"Diagram: {'on' if detail.show_diagram else 'off'}")
@@ -371,7 +393,7 @@ def cmd_label(tokens: list[str]) -> None:
         get_service().set_segment_label(
             game_id=game_id,
             turning_point_ply=current.turning_point_ply,
-            label=" ".join(tokens),
+            label=" ".join(tokens).strip("\"'"),
         )
     except UseCaseError as exc:
         err(str(exc))
@@ -621,7 +643,6 @@ Commands (no session open):
   copy <source> <new>       Save game as a new game id
   delete <game-id>          Delete a game
   render <game-id>          Render a game to output.pdf
-  upload <game-id>          Upload a game to Lichess and print the URL
   see <game-id>             Upload a game to Lichess and open the URL
   help                      Show this help
   quit                      Exit"""
@@ -629,7 +650,8 @@ Commands (no session open):
 _HELP_SESSION = """\
 Commands (session open):
   list                      List segments for the open game
-  view <segment-number>     View one segment and select it
+  <number>                  Select a segment by number
+  view                      View the current segment
   split <move> [label]      Add a turning point
   merge <move>              Remove a turning point
   label <text>              Set the current segment label
@@ -638,9 +660,7 @@ Commands (session open):
   save                      Save the open game
   close                     Close the current game
   copy <new-game-id>        Save the current game as a new game id
-  delete [game-id]          Delete the current game or a named one
   render [game-id]          Render the current or named game to output.pdf
-  upload [game-id]          Upload the current or named game to Lichess
   see [game-id]             Upload to Lichess and open the URL
   json                      Print the working annotation JSON summary
   help                      Show this help
@@ -658,7 +678,6 @@ _COMMANDS_NO_SESSION = {
     "copy": cmd_copy,
     "delete": cmd_delete,
     "render": cmd_render,
-    "upload": cmd_upload,
     "see": cmd_see,
     "help": cmd_help,
     "quit": cmd_quit,
@@ -675,9 +694,7 @@ _COMMANDS_SESSION = {
     "save": cmd_save,
     "close": cmd_close,
     "copy": cmd_copy,
-    "delete": cmd_delete,
     "render": cmd_render,
-    "upload": cmd_upload,
     "see": cmd_see,
     "json": cmd_json,
     "help": cmd_help,
@@ -728,6 +745,9 @@ def main() -> None:
         tokens = parts[1].split() if len(parts) > 1 else []
 
         table = _COMMANDS_SESSION if _session.open else _COMMANDS_NO_SESSION
+        if _session.open and cmd_name.isdigit():
+            cmd_select([cmd_name] + tokens)
+            continue
         handler = table.get(cmd_name)
         if handler is None:
             print(f"Unknown command: {cmd_name!r}. Type 'help' for a list.")
