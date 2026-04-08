@@ -4,7 +4,7 @@ from annotate.cli.commands.comment import cmd_comment
 from annotate.cli.commands.copy import cmd_copy
 from annotate.cli.commands.delete import cmd_delete
 from annotate.cli.commands.diagram import cmd_diagram
-from annotate.cli.commands.help_ import cmd_help
+from annotate.cli.commands.show_help import cmd_help
 from annotate.cli.commands.import_game import cmd_import
 from annotate.cli.commands.show_json import cmd_json
 from annotate.cli.commands.label import cmd_label
