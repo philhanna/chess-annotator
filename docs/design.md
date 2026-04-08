@@ -48,10 +48,13 @@ plays black, the first turning point (ply 1) falls on white's move.
 Segments are **derived** from turning points. Given turning points at plies
 `[p1, p2, p3, ...]`, the segments are:
 
-- Segment 1: plies `p1` through `p2 - 1`
-- Segment 2: plies `p2` through `p3 - 1`
+- Segment 1: plies `1` through `p1 - 1`
+- Segment 2: plies `p1` through `p2 - 1`
+- Segment 3: plies `p2` through `p3 - 1`
 - ...
-- Segment N: plies `pN` through the game's last ply
+- Segment N+1: plies `pN` through the game's last ply
+
+The first segment always begins at the start of the game, ply 1.
 
 End boundaries are never stored; they are always derived.
 
