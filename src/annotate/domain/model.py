@@ -14,6 +14,14 @@ def total_plies(pgn: str) -> int:
     return sum(1 for _ in game.mainline_moves())
 
 
+def game_headers(pgn: str) -> dict[str, str]:
+    """Return the PGN headers for the first game as plain strings."""
+    game = chess.pgn.read_game(io.StringIO(pgn))
+    if game is None:
+        raise ValueError("Could not parse PGN")
+    return {str(key): str(value) for key, value in game.headers.items()}
+
+
 def ply_from_move(move_number: int, side: str) -> int:
     """Convert move number plus side into a 1-based ply index."""
     if side not in ("white", "black"):
@@ -93,3 +101,38 @@ def move_range_for_turning_point(
     """Return ``(start_ply, end_ply)`` for one segment."""
     segment = find_segment_by_turning_point(annotation, turning_point_ply)
     return segment.start_ply, segment.end_ply
+
+
+def format_move_list(pgn: str, start_ply: int, end_ply: int) -> str:
+    """Return a SAN move list string for the ply range ``[start_ply, end_ply]``."""
+    game = chess.pgn.read_game(io.StringIO(pgn))
+    if game is None:
+        raise ValueError("Could not parse PGN")
+
+    board = game.board()
+    parts: list[str] = []
+    first_in_segment = True
+
+    for i, move in enumerate(game.mainline_moves()):
+        ply = i + 1
+        if ply < start_ply:
+            board.push(move)
+            continue
+        if ply > end_ply:
+            break
+
+        move_number = (ply - 1) // 2 + 1
+        is_white = ply % 2 == 1
+        san = board.san(move)
+
+        if is_white:
+            parts.append(f"{move_number}. {san}")
+        elif first_in_segment:
+            parts.append(f"{move_number}... {san}")
+        else:
+            parts.append(san)
+
+        first_in_segment = False
+        board.push(move)
+
+    return " ".join(parts)

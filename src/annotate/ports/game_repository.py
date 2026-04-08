@@ -22,6 +22,11 @@ class GameRepository(ABC):
         ...
 
     @abstractmethod
+    def exists(self, game_id: GameKey) -> bool:
+        """Return whether ``game_id`` exists in the canonical store."""
+        ...
+
+    @abstractmethod
     def load(self, game_id: GameKey) -> Annotation:
         """Load and return one saved game from the canonical store."""
         ...
@@ -64,4 +69,9 @@ class GameRepository(ABC):
     @abstractmethod
     def stale_working_copies(self) -> list[str]:
         """Return game ids that currently have working files."""
+        ...
+
+    @abstractmethod
+    def delete(self, game_id: GameKey) -> None:
+        """Delete a game directory and all files within it."""
         ...

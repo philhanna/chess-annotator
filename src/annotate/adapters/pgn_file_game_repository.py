@@ -174,6 +174,10 @@ class PGNFileGameRepository(GameRepository):
             json.dumps(json_data, indent=2, sort_keys=True)
         )
 
+    def exists(self, game_id: str | int) -> bool:
+        game_dir = self.game_dir(game_id)
+        return game_dir.is_dir() and self.main_pgn_path(game_id).exists() and self.main_json_path(game_id).exists()
+
     def load(self, game_id: str | int) -> Annotation:
         pgn_path = self.main_pgn_path(game_id)
         json_path = self.main_json_path(game_id)
@@ -267,6 +271,12 @@ class PGNFileGameRepository(GameRepository):
             if (path / self.WORK_PGN).exists() or (path / self.WORK_JSON).exists():
                 result.append(path.name)
         return result
+
+    def delete(self, game_id: str | int) -> None:
+        game_dir = self.game_dir(game_id)
+        if not game_dir.exists():
+            raise FileNotFoundError(f"No game found: {game_id}")
+        shutil.rmtree(game_dir)
 
     def next_id(self) -> int:
         """Return the next integer-like game id for backward compatibility."""
