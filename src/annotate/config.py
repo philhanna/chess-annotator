@@ -86,9 +86,9 @@ def get_config() -> Config:
 
     env_store = os.environ.get("CHESS_ANNOTATE_STORE")
     if env_store:
-        store_dir = Path(env_store)
+        store_dir = Path(env_store).expanduser()
     elif "store_dir" in file_data:
-        store_dir = Path(file_data["store_dir"])
+        store_dir = Path(file_data["store_dir"]).expanduser()
     else:
         store_dir = default_store_dir()
 

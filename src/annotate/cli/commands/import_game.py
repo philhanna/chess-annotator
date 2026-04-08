@@ -8,13 +8,13 @@ from annotate.use_cases import OverwriteRequiredError, UseCaseError
 
 def cmd_import(tokens: list[str]) -> None:
     if tokens:
-        pgn_path = Path(tokens[0])
+        pgn_path = Path(tokens[0]).expanduser()
         if not pgn_path.exists():
             session.err(f"File not found: {pgn_path}")
             return
     else:
         while True:
-            pgn_path = Path(session.prompt(".pgn file"))
+            pgn_path = Path(session.prompt(".pgn file")).expanduser()
             if pgn_path.exists():
                 break
             session.err(f"File not found: {pgn_path}")
