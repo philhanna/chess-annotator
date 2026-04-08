@@ -1,4 +1,3 @@
-# annotate.cli.commands.copy
 from annotate.cli import session
 from annotate.use_cases import OverwriteRequiredError, UseCaseError
 

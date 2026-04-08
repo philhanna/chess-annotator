@@ -1,4 +1,3 @@
-# annotate.cli.commands.open_
 from annotate.cli import session
 
 

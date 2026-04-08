@@ -1,4 +1,3 @@
-# annotate.cli.commands.import_
 from pathlib import Path
 
 from annotate.adapters.python_chess_pgn_parser import PythonChessPGNParser

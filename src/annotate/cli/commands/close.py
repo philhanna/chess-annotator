@@ -1,4 +1,3 @@
-# annotate.cli.commands.close
 from annotate.cli import session
 
 

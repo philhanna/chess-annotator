@@ -1,4 +1,3 @@
-# annotate.cli.commands.quit_
 import sys
 
 from annotate.cli import session

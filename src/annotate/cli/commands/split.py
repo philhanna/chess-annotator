@@ -1,4 +1,3 @@
-# annotate.cli.commands.split
 from annotate.cli import session
 from annotate.use_cases import UseCaseError
 

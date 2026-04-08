@@ -1,4 +1,3 @@
-# annotate.cli.commands.comment
 from annotate.adapters.system_editor_launcher import SystemEditorLauncher
 from annotate.cli import session
 from annotate.use_cases import UseCaseError

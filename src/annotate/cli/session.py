@@ -1,4 +1,3 @@
-# annotate.cli.session
 import builtins
 import sys
 from dataclasses import dataclass

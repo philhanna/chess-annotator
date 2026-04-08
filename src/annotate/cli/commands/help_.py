@@ -1,4 +1,3 @@
-# annotate.cli.commands.help_
 from annotate.cli import session
 
 _HELP_NO_SESSION = """\

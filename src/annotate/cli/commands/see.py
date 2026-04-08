@@ -1,4 +1,3 @@
-# annotate.cli.commands.see
 import webbrowser
 
 from annotate.cli import session

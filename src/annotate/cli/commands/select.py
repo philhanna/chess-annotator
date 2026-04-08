@@ -1,4 +1,3 @@
-# annotate.cli.commands.select
 from annotate.cli import session
 
 

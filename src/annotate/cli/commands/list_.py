@@ -1,4 +1,3 @@
-# annotate.cli.commands.list_
 from annotate.cli import session
 from annotate.use_cases import SessionNotOpenError
 

@@ -1,4 +1,3 @@
-# annotate.cli.commands.view
 from annotate.cli import session
 from annotate.use_cases import SegmentNotFoundError, SessionNotOpenError, UseCaseError
 

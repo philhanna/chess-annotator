@@ -1,4 +1,3 @@
-# annotate.cli.commands.json_
 import json
 
 from annotate.cli import session
