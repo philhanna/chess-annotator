@@ -13,7 +13,11 @@ TP_MARKER = "[%tp]"
 
 
 def strip_comments_and_nags(pgn_text: str) -> str:
-    """Return PGN text with comments and NAGs removed."""
+    """Return PGN text with all comments and NAGs removed from the main line.
+
+    Called at import time so the system owns a clean PGN with no third-party
+    annotations. Raises ValueError if the PGN cannot be parsed.
+    """
     game = chess.pgn.read_game(io.StringIO(pgn_text))
     if game is None:
         raise ValueError("Could not parse PGN")
@@ -106,7 +110,11 @@ def turning_points_from_pgn(pgn_text: str) -> list[int]:
 
 
 def pgn_with_turning_points(annotation: Annotation) -> str:
-    """Serialize an annotation's turning points into PGN comments."""
+    """Return a PGN string with ``{ [%tp] }`` comments at each turning-point ply.
+
+    All other comments and NAGs are cleared. The resulting string is suitable
+    for writing to ``annotated.pgn`` or its working-copy equivalent.
+    """
     game = _load_game(annotation.pgn)
     for ply, node in enumerate(game.mainline(), start=0):
         if ply == 0:
@@ -162,7 +170,28 @@ def _load_annotation_state(*, game_id: str, pgn_path: Path, json_path: Path) -> 
 
 
 class PGNFileGameRepository(GameRepository):
-    """Persist each game in its own directory under the store root."""
+    """Persist each game in its own subdirectory under the store root.
+
+    Each game directory contains two canonical files:
+
+    - ``annotated.pgn`` — the cleaned PGN with ``{ [%tp] }`` comments at
+      each turning-point ply and no other comments or NAGs.
+    - ``annotation.json`` — segment labels, annotation text, and
+      ``show_diagram`` flags keyed by ply, plus top-level game metadata.
+
+    While a session is open, two additional working-copy files are present:
+
+    - ``annotated.pgn.work``
+    - ``annotation.json.work``
+
+    These mirror the canonical files but accumulate unsaved edits. A session
+    is considered in-progress simply by the presence of these files. If the
+    process exits unexpectedly the working files persist and are offered for
+    resumption on the next startup.
+
+    The repository validates that the ``[%tp]`` ply markers in the PGN and
+    the segment keys in the JSON are identical on every read and write.
+    """
 
     MAIN_PGN = "annotated.pgn"
     MAIN_JSON = "annotation.json"

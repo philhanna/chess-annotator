@@ -6,7 +6,16 @@ from annotate.domain.segment import SegmentContent
 
 
 def split_segment(annotation: Annotation, ply: int, label: str) -> Annotation:
-    """Split the containing segment by inserting a new turning point."""
+    """Return a new Annotation with a turning point inserted at ``ply``.
+
+    The segment that previously contained ``ply`` is split: its existing
+    content remains associated with the earlier half and the new segment
+    receives ``label`` as its initial label with empty annotation text.
+
+    Raises:
+        ValueError: if ``ply`` is out of the range ``[2, total_plies]``, or
+            if a turning point already exists at ``ply``.
+    """
     n = total_plies(annotation.pgn)
     if not (2 <= ply <= n):
         raise ValueError(
@@ -28,7 +37,18 @@ def split_segment(annotation: Annotation, ply: int, label: str) -> Annotation:
 def merge_segment(
     annotation: Annotation, ply: int, force: bool = False
 ) -> tuple[Annotation, bool]:
-    """Merge the segment starting at ``ply`` into the preceding segment."""
+    """Return ``(updated_annotation, merged)`` after removing the turning point at ``ply``.
+
+    The segment at ``ply`` is absorbed into the preceding segment and its
+    content is discarded. If the segment has any authored content (label or
+    annotation) and ``force`` is False, the original annotation is returned
+    unchanged and ``merged`` is False. Pass ``force=True`` to discard content
+    without confirmation.
+
+    Raises:
+        ValueError: if ``ply`` is not a turning point, or if ``ply == 1``
+            (the first turning point cannot be removed).
+    """
     if ply not in annotation.turning_points:
         raise ValueError(f"No segment starts at ply {ply}")
     if ply == 1:

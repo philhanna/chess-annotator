@@ -43,13 +43,16 @@ class SessionState:
 class Annotation:
     """Aggregate the domain state for one annotated chess game.
 
-    The design's primary source of truth is:
+    The canonical on-disk representation is a pair of files per game:
+    ``annotated.pgn`` (the cleaned PGN with ``[%tp]`` markers at each
+    turning-point ply) and ``annotation.json`` (per-segment labels,
+    annotation text, and ``show_diagram`` flags keyed by ply).
 
-    - ordered turning points stored in the annotated PGN
-    - segment content keyed by turning-point ply stored in JSON
-
-    This class models that pairing directly so later persistence work can
-    map to it without reshaping the domain again.
+    ``turning_points`` is a sorted list of ply numbers at which one
+    segment ends and the next begins. The first element is always 1.
+    ``segment_contents`` maps each turning-point ply to its ``SegmentContent``;
+    the two collections must always have identical key sets, which
+    ``__post_init__`` enforces.
     """
 
     title: str
@@ -136,7 +139,7 @@ class Annotation:
 
     @property
     def segments(self):
-        """Expose derived segment views for compatibility with older code."""
+        """Return derived segment views for all turning points."""
         from annotate.domain.model import derive_segments
 
         return derive_segments(self)

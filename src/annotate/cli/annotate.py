@@ -60,6 +60,12 @@ _COMMANDS_SESSION = {
 
 
 def check_stale_working_copies() -> None:
+    """On startup, offer to resume any games that have leftover working copies.
+
+    Iterates through all games with working files and prompts the user to
+    resume each one. If the user declines, the working files are discarded.
+    Opens at most one game (the first one the user accepts) and returns.
+    """
     repo = session.get_repo()
     stale = repo.stale_working_copies()
     if not stale:
@@ -80,6 +86,11 @@ def check_stale_working_copies() -> None:
 
 
 def main() -> None:
+    """Entry point for the ``chess-annotate`` interactive REPL.
+
+    Checks for stale working copies on startup, then runs the command loop
+    until the user quits.
+    """
     session.print("Chess Annotation System")
     session.print("Type 'help' for a list of commands.")
     session.print()

@@ -45,6 +45,12 @@ class MissingDependencyError(UseCaseError):
 
 @dataclass(frozen=True)
 class SegmentSummary:
+    """Lightweight summary of one segment, used for listing and navigation.
+
+    ``has_annotation`` is True when the segment's annotation text is non-blank.
+    ``move_range`` is a human-readable span such as ``"1. e4 to 5...Nf6"``.
+    """
+
     turning_point_ply: int
     start_ply: int
     end_ply: int
@@ -56,6 +62,13 @@ class SegmentSummary:
 
 @dataclass(frozen=True)
 class SegmentDetail:
+    """Full detail view of one segment, used by the ``view`` command and segment editing.
+
+    ``move_list`` is the complete SAN move sequence for the segment's ply range.
+    ``diagram_path`` is set when ``show_diagram`` is True and a diagram renderer
+    is configured; it points to a cached SVG file in the game's preview directory.
+    """
+
     turning_point_ply: int
     start_ply: int
     end_ply: int
@@ -69,6 +82,12 @@ class SegmentDetail:
 
 @dataclass(frozen=True)
 class GameSummary:
+    """Summary of one stored game, as shown by the ``list`` command.
+
+    ``in_progress`` is True when the game currently has a working copy, indicating
+    a session was opened and not yet closed.
+    """
+
     game_id: str
     title: str
     white: str
@@ -81,6 +100,13 @@ class GameSummary:
 
 @dataclass(frozen=True)
 class GameState:
+    """Snapshot of a game's open session, returned by open/save/import operations.
+
+    ``resumed`` is True when ``open_game`` found an existing working copy rather
+    than creating a fresh one. ``has_unsaved_changes`` reflects whether the working
+    copy currently differs from the canonical files.
+    """
+
     game_id: str
     title: str
     session_open: bool
@@ -91,6 +117,14 @@ class GameState:
 
 @dataclass(frozen=True)
 class CloseGameResult:
+    """Result of a ``close_game`` call, which may require a second round-trip.
+
+    When ``requires_confirmation`` is True the session was not closed; the caller
+    must ask the user whether to save or discard and then call ``close_game`` again
+    with an explicit ``save_changes`` value. ``saved`` and ``discarded`` are set on
+    the final call to indicate which action was taken.
+    """
+
     game_id: str
     closed: bool
     requires_confirmation: bool
@@ -144,7 +178,15 @@ def _select_game_text(pgn_text: str, game_index: int) -> str:
 
 
 class AnnotationService:
-    """Application services implementing the documented use cases."""
+    """Coordinate all annotation use cases against the injected ports.
+
+    This is the single application-layer class. Every public method maps
+    directly to one of the use cases described in the design document. The
+    service accepts all ports at construction time; optional ports
+    (``document_renderer``, ``lichess_uploader``, ``diagram_renderer``) raise
+    ``MissingDependencyError`` when the corresponding use case is invoked
+    without them.
+    """
 
     def __init__(
         self,
@@ -175,6 +217,18 @@ class AnnotationService:
         overwrite: bool = False,
         game_index: int = 0,
     ) -> GameState:
+        """Import a PGN string as a new annotated game and open a session.
+
+        Strips all existing comments and NAGs from the PGN on import; the
+        stripped copy becomes the canonical PGN. Creates a single initial
+        segment starting at ply 1 with no label or annotation text. When
+        ``pgn_text`` contains multiple games, ``game_index`` selects which
+        one to use (0-based).
+
+        Raises:
+            OverwriteRequiredError: if ``game_id`` already exists and
+                ``overwrite`` is False.
+        """
         if self.repository.exists(game_id) and not overwrite:
             raise OverwriteRequiredError(f"Game id already exists: {game_id}")
         if self.repository.exists(game_id):
@@ -202,6 +256,7 @@ class AnnotationService:
         return _game_state(self.repository, annotation, session_open=True)
 
     def list_games(self) -> list[GameSummary]:
+        """Return a summary for every stored game, sorted alphabetically by game id."""
         result: list[GameSummary] = []
         for game_id, title in self.repository.list_all():
             annotation = self.repository.load(game_id)
@@ -221,6 +276,15 @@ class AnnotationService:
         return result
 
     def open_game(self, game_id: str) -> GameState:
+        """Open a game for editing, resuming an in-progress session if one exists.
+
+        If working files are already present for ``game_id``, they are loaded
+        and ``GameState.resumed`` is set to True. Otherwise a fresh working copy
+        is created from the canonical files.
+
+        Raises:
+            GameNotFoundError: if ``game_id`` is not in the store.
+        """
         if not self.repository.exists(game_id):
             raise GameNotFoundError(f"Game not found: {game_id}")
         if self.repository.exists_working_copy(game_id):
@@ -242,6 +306,17 @@ class AnnotationService:
         new_game_id: str,
         overwrite: bool = False,
     ) -> None:
+        """Copy a game under a new id without opening a session on the copy.
+
+        If the source game has an open working copy, that copy is used so that
+        in-progress edits are preserved in the duplicate. The new game is
+        written to the canonical store only; no working files are created.
+
+        Raises:
+            GameNotFoundError: if ``source_game_id`` is not in the store.
+            OverwriteRequiredError: if ``new_game_id`` already exists and
+                ``overwrite`` is False.
+        """
         if not self.repository.exists(source_game_id):
             raise GameNotFoundError(f"Game not found: {source_game_id}")
         if self.repository.exists(new_game_id):
@@ -258,6 +333,11 @@ class AnnotationService:
         self.repository.save(annotation)
 
     def delete_game(self, game_id: str) -> None:
+        """Permanently remove a game directory and all its files from the store.
+
+        Raises:
+            GameNotFoundError: if ``game_id`` is not in the store.
+        """
         if not self.repository.exists(game_id):
             raise GameNotFoundError(f"Game not found: {game_id}")
         self.repository.delete(game_id)
@@ -265,6 +345,16 @@ class AnnotationService:
     def add_turning_point(
         self, *, game_id: str, ply: int, label: str = ""
     ) -> list[SegmentSummary]:
+        """Split the segment that contains ``ply`` by inserting a new turning point.
+
+        The new segment starts at ``ply`` and receives ``label`` as its initial
+        label with empty annotation text. The working copy is saved after the
+        split. Returns the updated list of segment summaries.
+
+        Raises:
+            SessionNotOpenError: if no working copy exists for ``game_id``.
+            ValueError: if ``ply`` is out of range or already a turning point.
+        """
         annotation = self._load_session(game_id)
         updated = split_segment(annotation, ply, label)
         self.repository.save_working_copy(updated)
@@ -273,6 +363,20 @@ class AnnotationService:
     def remove_turning_point(
         self, *, game_id: str, ply: int, force: bool = False
     ) -> list[SegmentSummary]:
+        """Remove the turning point at ``ply``, merging that segment into the one before it.
+
+        The segment's label and annotation are discarded on merge. If the
+        segment has any authored content and ``force`` is False, raises
+        ``UseCaseError`` rather than silently discarding the content.
+        The working copy is saved after the merge. Returns the updated
+        list of segment summaries.
+
+        Raises:
+            SessionNotOpenError: if no working copy exists for ``game_id``.
+            UseCaseError: if the segment has content and ``force`` is False.
+            ValueError: if ``ply`` is not a turning point or is the first
+                turning point (ply 1, which cannot be removed).
+        """
         annotation = self._load_session(game_id)
         updated, merged = merge_segment(annotation, ply, force=force)
         if not merged:
@@ -283,6 +387,13 @@ class AnnotationService:
     def set_segment_label(
         self, *, game_id: str, turning_point_ply: int, label: str
     ) -> SegmentDetail:
+        """Set the label for the segment at ``turning_point_ply`` and save the working copy.
+
+        Raises:
+            SessionNotOpenError: if no working copy exists for ``game_id``.
+            UseCaseError: if ``label`` is blank.
+            SegmentNotFoundError: if ``turning_point_ply`` is not a turning point.
+        """
         if not label.strip():
             raise UseCaseError("label must not be blank")
         annotation = self._load_session(game_id)
@@ -294,6 +405,13 @@ class AnnotationService:
     def set_segment_annotation(
         self, *, game_id: str, turning_point_ply: int, annotation_text: str
     ) -> SegmentDetail:
+        """Set the annotation text for the segment at ``turning_point_ply`` and save the working copy.
+
+        Raises:
+            SessionNotOpenError: if no working copy exists for ``game_id``.
+            UseCaseError: if ``annotation_text`` is blank.
+            SegmentNotFoundError: if ``turning_point_ply`` is not a turning point.
+        """
         if not annotation_text.strip():
             raise UseCaseError("annotation must not be blank")
         annotation = self._load_session(game_id)
@@ -305,6 +423,12 @@ class AnnotationService:
     def toggle_segment_diagram(
         self, *, game_id: str, turning_point_ply: int
     ) -> SegmentDetail:
+        """Toggle the ``show_diagram`` flag for the segment at ``turning_point_ply`` and save the working copy.
+
+        Raises:
+            SessionNotOpenError: if no working copy exists for ``game_id``.
+            SegmentNotFoundError: if ``turning_point_ply`` is not a turning point.
+        """
         annotation = self._load_session(game_id)
         content = self._segment_content(annotation, turning_point_ply)
         content.show_diagram = not content.show_diagram
@@ -312,6 +436,11 @@ class AnnotationService:
         return self._segment_detail(annotation, turning_point_ply)
 
     def save_session(self, game_id: str) -> GameState:
+        """Commit the working copy to the canonical files, keeping the session open.
+
+        Raises:
+            SessionNotOpenError: if no working copy exists for ``game_id``.
+        """
         annotation = self._load_session(game_id)
         self.repository.save_working_copy(annotation)
         self.repository.commit_working_copy(game_id)
@@ -320,6 +449,20 @@ class AnnotationService:
     def close_game(
         self, game_id: str, save_changes: bool | None = None
     ) -> CloseGameResult:
+        """Close the open session, optionally saving or discarding unsaved changes.
+
+        When ``save_changes`` is None and the working copy differs from the
+        canonical files, returns a ``CloseGameResult`` with
+        ``requires_confirmation=True`` without closing. The caller should
+        prompt the user and then call ``close_game`` again with
+        ``save_changes=True`` to commit or ``save_changes=False`` to discard.
+
+        If there are no unsaved changes the session is always closed regardless
+        of ``save_changes``.
+
+        Raises:
+            SessionNotOpenError: if no working copy exists for ``game_id``.
+        """
         self._load_session(game_id)
         has_unsaved = self.repository.has_unsaved_working_copy(game_id)
         if not has_unsaved:
@@ -351,6 +494,19 @@ class AnnotationService:
         diagram_size: int = 360,
         page_size: str = "a4",
     ) -> Path:
+        """Render the game annotation to a PDF and return the output path.
+
+        Uses the working copy if a session is open, otherwise the canonical
+        files. Validates that every segment has a non-blank label and
+        annotation before rendering; raises ``ValueError`` if any segment
+        fails validation. The PDF is written to
+        ``<store_dir>/<game_id>/output.pdf``.
+
+        Raises:
+            MissingDependencyError: if no ``document_renderer`` was supplied.
+            GameNotFoundError: if ``game_id`` is not in the store.
+            ValueError: if any segment is missing a label or annotation.
+        """
         if self.document_renderer is None:
             raise MissingDependencyError("document_renderer is required")
         annotation = self._load_current_state(game_id)
@@ -365,20 +521,47 @@ class AnnotationService:
         return output_path
 
     def upload_to_lichess(self, *, game_id: str) -> str:
+        """Upload the game PGN to Lichess and return the resulting analysis URL.
+
+        Uses the working copy if a session is open, otherwise the canonical
+        files.
+
+        Raises:
+            MissingDependencyError: if no ``lichess_uploader`` was supplied.
+            GameNotFoundError: if ``game_id`` is not in the store.
+        """
         if self.lichess_uploader is None:
             raise MissingDependencyError("lichess_uploader is required")
         annotation = self._load_current_state(game_id)
         return self.lichess_uploader.upload(annotation.pgn)
 
     def list_segments(self, *, game_id: str) -> list[SegmentSummary]:
+        """Return summaries for all segments in the open session, in order.
+
+        Raises:
+            SessionNotOpenError: if no working copy exists for ``game_id``.
+        """
         annotation = self._load_session(game_id)
         return [_segment_summary(segment, annotation.pgn) for segment in derive_segments(annotation)]
 
     def view_segment(self, *, game_id: str, turning_point_ply: int) -> SegmentDetail:
+        """Return full detail for the segment at ``turning_point_ply`` in the open session.
+
+        Renders a diagram preview into the game's ``preview/`` directory when
+        ``show_diagram`` is True and a diagram renderer is configured.
+
+        Raises:
+            SessionNotOpenError: if no working copy exists for ``game_id``.
+            SegmentNotFoundError: if ``turning_point_ply`` is not a turning point.
+        """
         annotation = self._load_session(game_id)
         return self._segment_detail(annotation, turning_point_ply)
 
     def _load_session(self, game_id: str) -> Annotation:
+        """Load the working copy for an open session.
+
+        Raises GameNotFoundError or SessionNotOpenError as appropriate.
+        """
         if not self.repository.exists(game_id):
             raise GameNotFoundError(f"Game not found: {game_id}")
         if not self.repository.exists_working_copy(game_id):
@@ -386,6 +569,7 @@ class AnnotationService:
         return self.repository.load_working_copy(game_id)
 
     def _load_current_state(self, game_id: str) -> Annotation:
+        """Load the working copy if a session is open, otherwise load the canonical copy."""
         if not self.repository.exists(game_id):
             raise GameNotFoundError(f"Game not found: {game_id}")
         if self.repository.exists_working_copy(game_id):
@@ -393,6 +577,10 @@ class AnnotationService:
         return self.repository.load(game_id)
 
     def _segment_content(self, annotation: Annotation, turning_point_ply: int):
+        """Return the mutable SegmentContent for ``turning_point_ply``.
+
+        Raises SegmentNotFoundError if the ply is not a turning point.
+        """
         try:
             return annotation.segment_contents[turning_point_ply]
         except KeyError as exc:
@@ -403,6 +591,7 @@ class AnnotationService:
     def _segment_detail(
         self, annotation: Annotation, turning_point_ply: int
     ) -> SegmentDetail:
+        """Assemble a SegmentDetail for ``turning_point_ply``, rendering a diagram preview if configured."""
         try:
             segment = find_segment_by_turning_point(annotation, turning_point_ply)
         except ValueError as exc:

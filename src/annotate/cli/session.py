@@ -18,11 +18,19 @@ from annotate.use_cases import (
 
 @dataclass
 class Session:
+    """REPL session state: which game is open and which segment is currently selected.
+
+    ``game_id`` is None when no game is open. ``current_turning_point_ply``
+    tracks the turning-point ply of the segment that commands like ``view``,
+    ``label``, and ``comment`` operate on by default.
+    """
+
     game_id: str | None = None
     current_turning_point_ply: int | None = None
 
     @property
     def open(self) -> bool:
+        """Return True when a game is currently open for editing."""
         return self.game_id is not None
 
 
@@ -32,6 +40,7 @@ _service: AnnotationService | None = None
 
 
 def get_repo() -> JSONFileAnnotationRepository:
+    """Return the shared repository, initialising it on the first call."""
     global _repo
     if _repo is None:
         _repo = JSONFileAnnotationRepository(get_store_dir())
@@ -39,6 +48,7 @@ def get_repo() -> JSONFileAnnotationRepository:
 
 
 def get_service() -> AnnotationService:
+    """Return the shared AnnotationService, initialising it on the first call."""
     global _service
     if _service is None:
         config = get_config()
@@ -54,14 +64,22 @@ def get_service() -> AnnotationService:
 
 
 def print(msg: str = "") -> None:
+    """Write ``msg`` to stdout."""
     builtins.print(msg)
 
 
 def err(msg: str) -> None:
+    """Write an error message to stderr, prefixed with ``Error:``."""
     builtins.print(f"Error: {msg}", file=sys.stderr)
 
 
 def prompt(prompt_text: str, default: str | None = None) -> str:
+    """Prompt the user for input, re-prompting until a non-empty value is entered.
+
+    When ``default`` is provided, an empty response returns the default and
+    the default is shown in brackets in the prompt. When ``default`` is None
+    the prompt loops until the user enters at least one non-whitespace character.
+    """
     if default is not None:
         text = input(f"{prompt_text} [{default}]: ").strip()
         return text if text else default
@@ -73,6 +91,12 @@ def prompt(prompt_text: str, default: str | None = None) -> str:
 
 
 def parse_move_side(tokens: list[str], usage: str) -> int | None:
+    """Parse a compact move token such as ``14w`` or ``5b`` into a ply number.
+
+    The token format is ``<move_number><w|b>`` where ``w`` is white and ``b``
+    is black. Prints a usage error via ``err`` and returns None if the token
+    list is empty or the token is malformed.
+    """
     if not tokens:
         err(f"Usage: {usage}")
         return None
@@ -90,6 +114,7 @@ def parse_move_side(tokens: list[str], usage: str) -> int | None:
 
 
 def require_open_session() -> str | None:
+    """Return the current ``game_id``, or print an error and return None if no game is open."""
     if not state.open:
         err("No game is open.")
         return None
@@ -97,6 +122,7 @@ def require_open_session() -> str | None:
 
 
 def current_segments():
+    """Return segment summaries for the open game, or None if no game is open."""
     game_id = require_open_session()
     if game_id is None:
         return None
@@ -104,6 +130,12 @@ def current_segments():
 
 
 def current_segment_summary():
+    """Return the SegmentSummary for the currently selected segment.
+
+    Falls back to the first segment when the tracked turning-point ply is
+    no longer valid (e.g. after a split or merge). Returns None if no game
+    is open.
+    """
     segments = current_segments()
     if not segments:
         return None
@@ -117,6 +149,10 @@ def current_segment_summary():
 
 
 def open_game(game_id: str) -> None:
+    """Open ``game_id``, update the session state, and print a confirmation.
+
+    Prints an error and leaves the session unchanged if the game is not found.
+    """
     try:
         game_state = get_service().open_game(game_id)
     except GameNotFoundError as exc:
@@ -133,6 +169,11 @@ def open_game(game_id: str) -> None:
 
 
 def do_close() -> bool:
+    """Close the current session, prompting the user to save if there are unsaved changes.
+
+    Returns True when the game was successfully closed, False when the user
+    chose to cancel or no game is open.
+    """
     game_id = require_open_session()
     if game_id is None:
         return False

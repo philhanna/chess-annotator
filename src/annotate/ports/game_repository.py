@@ -33,7 +33,7 @@ class GameRepository(ABC):
 
     @abstractmethod
     def list_all(self) -> list[tuple[str, str]]:
-        """Return ``(game_id, title)`` pairs for all saved games."""
+        """Return ``(game_id, title)`` pairs for all saved games, sorted by game id."""
         ...
 
     @abstractmethod
@@ -58,7 +58,7 @@ class GameRepository(ABC):
 
     @abstractmethod
     def commit_working_copy(self, game_id: GameKey) -> None:
-        """Overwrite the main files from the working files and keep them open."""
+        """Overwrite the canonical files from the working files; leave the working files in place."""
         ...
 
     @abstractmethod
@@ -68,7 +68,11 @@ class GameRepository(ABC):
 
     @abstractmethod
     def stale_working_copies(self) -> list[str]:
-        """Return game ids that currently have working files."""
+        """Return the game ids of all games that currently have working files.
+
+        Used at startup to detect sessions that were interrupted before the
+        user had a chance to close them.
+        """
         ...
 
     @abstractmethod

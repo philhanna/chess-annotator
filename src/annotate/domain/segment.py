@@ -3,12 +3,12 @@ from dataclasses import dataclass
 
 @dataclass
 class SegmentContent:
-    """Store the author-managed content for one segment.
+    """Author-managed content for one segment.
 
-    Segment content is keyed by the segment's turning-point ply in the
-    domain model. The rendering and review layers consume this data via
-    derived segment views that combine the content with computed move
-    ranges.
+    Instances are keyed by the segment's turning-point ply in
+    ``Annotation.segment_contents``. The rendering pipeline and use-case
+    layer consume this data through ``SegmentView``, which combines the
+    content with the computed ply range.
     """
 
     label: str = ""
@@ -17,7 +17,7 @@ class SegmentContent:
 
     @property
     def commentary(self) -> str:
-        """Backward-compatible alias for older rendering code."""
+        """Alias for ``annotation``, retained for the rendering pipeline."""
         return self.annotation
 
     @commentary.setter
@@ -57,12 +57,11 @@ class SegmentView:
 
 @dataclass
 class Segment:
-    """Legacy mutable segment shape kept for older adapters.
+    """Legacy flat segment shape retained for adapter compatibility.
 
-    Phase 1 introduces ``SegmentContent`` and ``SegmentView`` as the new
-    domain primitives, but the repository and CLI still refer to the old
-    flat segment structure. Keeping this type during the transition makes
-    later phases easier to stage.
+    ``SegmentContent`` and ``SegmentView`` are the current domain primitives.
+    This class exists only where older code has not yet been migrated and
+    should not be used in new code.
     """
 
     start_ply: int
