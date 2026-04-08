@@ -1,103 +1,163 @@
-# Chess Annotation System
+# Chess Annotator
 
-A Python-based tool designed to transform PGN chess games into richly annotated, book-style PDF documents. Unlike many chess tools, this system focuses entirely on the author's own analysis and perspective, providing no engine evaluations or computer suggestions.
+Chess Annotator is a single-author tool for annotating your own games for a coach. It stores turning points in PGN, stores authored segment content in JSON, and can render the current game state to PDF or upload it to Lichess.
 
-## Overview
+## What It Does
 
-The Chess Annotation System allows you to take a game you've played and divide it into thematic segments (e.g., "The Opening", "Central Liquidation", "The Endgame Grind"). For each segment, you can write Markdown-formatted commentary and choose to display a board diagram of the resulting position.
+- Split a game into contiguous segments using turning points
+- Add a label and annotation text to each segment
+- Toggle whether a segment shows a board diagram
+- Keep saved files and `.work` session files separate so in-progress edits survive crashes
+- Render the current state of a game to `output.pdf`
+- Upload the current state of a game to Lichess and return an analysis URL
 
-The final output is a professional PDF rendered with high-quality typography and diagrams, suitable for sharing with coaches or publishing.
-
-## Features
-
-*   **Iterative Authoring:** Use an interactive CLI (`chess-annotate`) to manage your annotations.
-*   **Thematic Segmentation:** Split games at specific turning points to organize your thoughts.
-*   **Markdown Commentary:** Write analysis using Markdown, which is then rendered into the final document.
-*   **Board Diagrams:** Automatically generate SVG board diagrams at the end of any segment.
-*   **External Editor Integration:** Launches your system `$EDITOR` (e.g., Vim, Nano) for writing commentary.
-*   **Lichess Integration:** Quickly open the current game state on Lichess for deep analysis.
-*   **Book-Quality PDF:** Uses `WeasyPrint` and custom CSS to produce print-ready PDF files.
-*   **Hexagonal Architecture:** Cleanly separated domain logic from infrastructure (PGN parsing, file storage, PDF rendering).
+The project intentionally does not do engine analysis, AI commentary, or move suggestions. The author’s perspective is the only source of annotation content.
 
 ## Installation
 
-The project uses `setuptools`. You can install it locally in editable mode:
+Install in editable mode:
 
 ```bash
 pip install -e .
 ```
 
-### Dependencies
-*   **python-chess**: For PGN handling and diagram generation.
-*   **mistune**: For Markdown to HTML conversion.
-*   **weasyprint**: For HTML to PDF rendering.
-*   **pyyaml**: For configuration management.
+Core dependencies:
 
-## Usage
+- `python-chess`
+- `mistune`
+- `weasyprint`
+- `pyyaml`
 
-The system provides two main CLI entry points:
+## CLI
 
-### 1. Authoring: `chess-annotate`
-This launches an interactive REPL where you can create or edit annotations.
+The project currently exposes two command-line entry points.
 
-*   `new`: Create a new annotation by pointing to a `.pgn` file.
-*   `open <id>`: Open an existing annotation session.
-*   `list`: View all annotations in your store.
-*   `split <move><w/b>`: Divide a segment at a specific move (e.g., `split 12w`).
-*   `label <text>`: Name the current segment.
-*   `comment`: Open your editor to write commentary for the selected segment.
-*   `diagram on|off`: Toggle whether a diagram appears at the end of the segment.
-*   `save`: Commit your working copy to the main store.
+### `chess-annotate`
 
-### 2. Rendering: `chess-render`
-Render a saved annotation to a PDF file.
+This launches an interactive REPL.
+
+When no game is open:
+
+- `import`
+- `new`
+- `open <game-id>`
+- `list`
+- `copy <source-game-id> <new-game-id>`
+- `delete <game-id>`
+- `render <game-id>`
+- `upload <game-id>`
+- `see <game-id>`
+- `help`
+- `quit`
+
+When a game is open:
+
+- `segments`
+- `view <segment-number>`
+- `split <move><w|b> [label]`
+- `merge <move><w|b>`
+- `label <text>`
+- `comment`
+- `diagram [on|off]`
+- `save`
+- `close`
+- `copy <new-game-id>`
+- `delete [game-id]`
+- `render [game-id]`
+- `upload [game-id]`
+- `see [game-id]`
+- `json`
+- `help`
+- `quit`
+
+### `chess-render`
+
+Render the current state of a saved game by `game_id`:
 
 ```bash
-chess-render <annotation_id> --out my_game.pdf --size 400 --page a4
+chess-render my-favorite-win --size 360 --page a4
 ```
+
+The output is written to `<store_dir>/<game_id>/output.pdf`.
 
 ## Configuration
 
-The system looks for a `config.yaml` file in your platform's standard config directory:
-*   **Linux/macOS**: `~/.config/chess-annotator/config.yaml`
-*   **Windows**: `%APPDATA%\chess-annotator\config.yaml`
+The application reads `config.yaml` from the standard platform config directory:
 
-Example configuration:
+- Linux/macOS: `~/.config/chess-annotator/config.yaml`
+- Windows: `%APPDATA%\chess-annotator\config.yaml`
+
+Example:
+
 ```yaml
 author: "Your Name"
-store_dir: "~/chess_work/annotations"
+store_dir: "~/chess-work/chess-annotator-store"
 diagram_size: 360
 page_size: "a4"
 ```
 
-## Project Structure
+`CHESS_ANNOTATE_STORE` can override `store_dir`.
 
-The project follows a **Hexagonal Architecture** (Ports and Adapters) to ensure the core chess logic remains independent of third-party libraries:
+## Persistence Format
 
-*   `src/annotate/domain/`: Core entities (`Annotation`, `Segment`) and business rules.
-*   `src/annotate/ports/`: Abstract interfaces for repositories, parsers, and renderers.
-*   `src/annotate/adapters/`: Concrete implementations (e.g., `JSONFileAnnotationRepository`, `PythonChessPGNParser`).
-*   `src/annotate/use_cases/`: Interactors that coordinate domain logic.
-*   `src/annotate/cli/`: Command-line interface definitions for authoring and rendering.
+Each game lives in its own directory under the configured store root:
 
-## API Docs
-
-The OpenAPI draft lives at `docs/openapi.yaml`. To view it in Swagger UI, serve the
-`docs/` directory locally and open `swagger.html`:
-
-```bash
-python -m http.server 8000 -d docs
+```text
+<store_root>/
+    <game-id>/
+        annotated.pgn
+        annotation.json
+        annotated.pgn.work
+        annotation.json.work
+        output.pdf
+        diagram-cache/
 ```
 
-Then visit `http://localhost:8000/swagger.html`.
+Notes:
 
-## Persistence Strategy
+- `annotated.pgn` stores only turning-point markers as `[%tp]` comments
+- `annotation.json` stores game metadata plus segment content keyed by turning-point ply
+- `.work` files exist only while a session is open
+- `output.pdf` is regenerated on demand
+- `diagram-cache/` stores rendered SVG boards used by PDF output
 
-Annotations are stored as human-readable JSON files in a flat-file structure:
-*   `annotations/`: Canonical saved versions.
-*   `work/`: Temporary working copies for active sessions (prevents data loss during crashes).
-*   `cache/`: Cached SVG diagrams to speed up rendering.
+`annotation.json` has this shape:
 
-## License
+```json
+{
+  "game": {
+    "title": "White - Black 2024.05.01",
+    "author": "Your Name",
+    "date": "2024-05-01",
+    "player_side": "white",
+    "diagram_orientation": "white"
+  },
+  "segments": {
+    "1": {
+      "label": "Opening",
+      "annotation": "Develop pieces and fight for the center.",
+      "show_diagram": true
+    },
+    "15": {
+      "label": "Kingside plan",
+      "annotation": "Shift to pressure on e5 and f7.",
+      "show_diagram": true
+    }
+  }
+}
+```
 
-This project is intended for single-author use. All move numbering internal logic uses 1-based ply representation, exposed to the user as move numbers and sides (e.g., `1w`, `1b`).
+The PGN turning-point markers and JSON segment keys must match exactly.
+
+## Project Structure
+
+- `src/annotate/domain/`: core models and derivation logic
+- `src/annotate/ports/`: repository and side-effect interfaces
+- `src/annotate/adapters/`: file, PDF, diagram, and Lichess implementations
+- `src/annotate/use_cases/`: application services and interactor logic
+- `src/annotate/cli/`: command-line entry points
+- `docs/`: design notes, use cases, and OpenAPI draft
+
+## API Draft
+
+The current API draft lives at [`docs/openapi.yaml`](/home/saspeh/dev/python/chess-annotator/docs/openapi.yaml). It reflects the game-based storage model and the current use-case service layer, but it is still documentation rather than a shipped HTTP server.

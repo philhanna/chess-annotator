@@ -1,29 +1,18 @@
 openapi: 3.1.0
 info:
   title: Chess Annotator API
-  version: 0.2.0
-  summary: REST API for importing, annotating, reviewing, rendering, and exporting chess games.
+  version: 0.3.0
+  summary: Draft API for importing, annotating, reviewing, rendering, and exporting chess games.
   description: |
-    Draft OpenAPI specification derived from `docs/design.md` and the
-    sixteen use case documents in `docs/use-cases/`.
+    Draft API derived from `docs/design.md`, the use-case documents, and the
+    current application-service layer.
 
-    This draft intentionally models the API around the use cases:
-    - `games` covers import, listing, copy, metadata lookup, and deletion.
-    - `session` covers open/resume, save, and close.
-    - `segments` are addressed by their turning-point ply, which matches the
-      persistence model in `annotation.json`.
-    - Output actions remain explicit subresources because PDF rendering and
-      Lichess upload are side-effectful operations rather than durable domain
-      objects.
-
-    Assumptions captured in this draft:
-    - Import accepts either uploaded PGN content or a server-local file path so
-      it can support both browser and CLI clients.
-    - Alternate flows that ask the user to confirm overwrite or choose one game
-      from a multi-game PGN are represented by explicit request fields instead
-      of an interactive challenge protocol.
-    - A game can be rendered or uploaded whether or not a session is currently
-      open; if a session is open, the working state is used.
+    Current implementation-aligned notes:
+    - Games are addressed by author-supplied `game_id`.
+    - Sessions are represented by the presence of `.work` files.
+    - Segment identifiers are turning-point plies.
+    - Rendering and Lichess upload use the working state when a session is open,
+      otherwise the main saved state.
 servers:
   - url: http://localhost:8000
     description: Local development server
@@ -55,10 +44,6 @@ paths:
     post:
       tags: [Games]
       summary: Import a new game
-      description: |
-        Imports a PGN, strips all comments and NAGs, creates the main
-        `annotated.pgn` and `annotation.json`, and opens a session for the new
-        game.
       operationId: importGame
       requestBody:
         required: true
@@ -69,17 +54,26 @@ paths:
           multipart/form-data:
             schema:
               type: object
-              required: [game_id, pgn_file]
+              required: [game_id, pgn_file, player_side]
               properties:
                 game_id:
                   $ref: '#/components/schemas/GameId'
                 pgn_file:
                   type: string
                   format: binary
+                player_side:
+                  type: string
+                  enum: [white, black]
+                author:
+                  type: string
+                date:
+                  type: string
+                diagram_orientation:
+                  type: string
+                  enum: [white, black]
                 game_index:
                   type: integer
                   minimum: 0
-                  description: Zero-based game selection when the PGN contains multiple games.
                 overwrite:
                   type: boolean
                   default: false
@@ -92,8 +86,6 @@ paths:
                 $ref: '#/components/schemas/GameState'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
 
@@ -102,11 +94,11 @@ paths:
       - $ref: '#/components/parameters/GameIdPath'
     get:
       tags: [Games]
-      summary: Get game metadata and session summary
+      summary: Get current game state
       operationId: getGame
       responses:
         '200':
-          description: Game metadata plus current session status
+          description: Saved game state and session summary
           content:
             application/json:
               schema:
@@ -116,10 +108,6 @@ paths:
     delete:
       tags: [Games]
       summary: Delete a game
-      description: |
-        Deletes the game directory and all files within it. Clients that want a
-        two-step confirmation flow can first retrieve the game metadata with
-        `GET /games/{gameId}` and then call delete with `confirm=true`.
       operationId: deleteGame
       parameters:
         - name: confirm
@@ -133,8 +121,6 @@ paths:
           description: Game deleted
         '404':
           $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
 
   /games/{gameId}/copy:
     post:
@@ -152,10 +138,6 @@ paths:
       responses:
         '201':
           description: New game created from the source game's current state
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GameState'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -180,10 +162,6 @@ paths:
     delete:
       tags: [Sessions]
       summary: Close a session
-      description: |
-        If the working files differ from the main files, the client must choose
-        whether to save or discard those changes. If there are no unsaved
-        changes, the request body may be omitted.
       operationId: closeSession
       requestBody:
         required: false
@@ -193,7 +171,7 @@ paths:
               $ref: '#/components/schemas/CloseSessionRequest'
       responses:
         '200':
-          description: Session closed or left open after cancel
+          description: Session closed or confirmation required
           content:
             application/json:
               schema:
@@ -216,7 +194,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SaveSessionResult'
+                $ref: '#/components/schemas/GameState'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -231,7 +209,7 @@ paths:
         - $ref: '#/components/parameters/GameIdPath'
       responses:
         '200':
-          description: Segments derived from the working annotated PGN
+          description: Segments derived from the working game state
           content:
             application/json:
               schema:
@@ -257,7 +235,7 @@ paths:
       operationId: getSegment
       responses:
         '200':
-          description: Detailed segment view for the working game state
+          description: Detailed segment view
           content:
             application/json:
               schema:
@@ -269,10 +247,6 @@ paths:
     patch:
       tags: [Segments]
       summary: Update segment fields
-      description: |
-        Supports the use cases for setting a label, setting annotation text, and
-        toggling the diagram flag. Clients should send only the field or fields
-        they intend to change.
       operationId: updateSegment
       requestBody:
         required: true
@@ -335,6 +309,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/GameIdPath'
         - $ref: '#/components/parameters/PlyPath'
+        - name: force
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: Updated segment list after the merge
@@ -360,6 +340,18 @@ paths:
       operationId: renderPdf
       parameters:
         - $ref: '#/components/parameters/GameIdPath'
+        - name: diagram_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [a4, letter]
       responses:
         '200':
           description: PDF rendered successfully
@@ -453,22 +445,29 @@ components:
 
     ImportGameRequest:
       type: object
-      required: [game_id]
+      required: [game_id, player_side]
       properties:
         game_id:
           $ref: '#/components/schemas/GameId'
         pgn_text:
           type: string
           minLength: 1
-          description: Raw PGN content supplied directly by the client.
         pgn_path:
           type: string
           minLength: 1
-          description: Server-local PGN file path for CLI-style clients.
+        player_side:
+          type: string
+          enum: [white, black]
+        author:
+          type: string
+        date:
+          type: string
+        diagram_orientation:
+          type: string
+          enum: [white, black]
         game_index:
           type: integer
           minimum: 0
-          description: Zero-based game selection when the source contains multiple games.
         overwrite:
           type: boolean
           default: false
@@ -493,6 +492,8 @@ components:
         ply:
           type: integer
           minimum: 1
+        label:
+          type: string
 
     UpdateSegmentRequest:
       type: object
@@ -513,75 +514,64 @@ components:
       properties:
         mode:
           type: string
-          enum: [save, discard, cancel]
+          enum: [save, discard]
           description: |
-            Required when the session has unsaved changes. `cancel` leaves the
-            session open and changes nothing.
+            Omit the body to let the server report that confirmation is required.
       additionalProperties: false
 
     GameSummary:
       type: object
       required:
         - game_id
-        - metadata
-        - session_in_progress
+        - title
+        - white
+        - black
+        - event
+        - date
+        - result
+        - in_progress
       properties:
         game_id:
           $ref: '#/components/schemas/GameId'
-        metadata:
-          $ref: '#/components/schemas/GameMetadata'
-        session_in_progress:
-          type: boolean
-
-    GameState:
-      type: object
-      required:
-        - game_id
-        - metadata
-        - session
-      properties:
-        game_id:
-          $ref: '#/components/schemas/GameId'
-        metadata:
-          $ref: '#/components/schemas/GameMetadata'
-        session:
-          $ref: '#/components/schemas/SessionStatus'
-        segments:
-          type: array
-          items:
-            $ref: '#/components/schemas/SegmentSummary'
-          description: Present when the current session is open and segments are loaded.
-
-    GameMetadata:
-      type: object
-      required: [white, black, event, date, result]
-      properties:
+        title:
+          type: string
         white:
           type: string
         black:
           type: string
         event:
           type: string
-        site:
-          type: string
-        round:
-          type: string
         date:
           type: string
         result:
           type: string
+        in_progress:
+          type: boolean
 
-    SessionStatus:
+    GameState:
       type: object
-      required: [is_open, has_unsaved_changes]
+      required:
+        - game_id
+        - title
+        - session_open
+        - has_unsaved_changes
+        - segments
+        - resumed
       properties:
-        is_open:
+        game_id:
+          $ref: '#/components/schemas/GameId'
+        title:
+          type: string
+        session_open:
           type: boolean
         has_unsaved_changes:
           type: boolean
         resumed:
           type: boolean
-          description: True when an existing `.work` session was resumed.
+        segments:
+          type: array
+          items:
+            $ref: '#/components/schemas/SegmentSummary'
 
     SegmentSummary:
       type: object
@@ -590,7 +580,7 @@ components:
         - start_ply
         - end_ply
         - move_range
-        - has_label
+        - label
         - has_annotation
         - show_diagram
       properties:
@@ -605,79 +595,63 @@ components:
           minimum: 1
         move_range:
           type: string
-          description: Human-readable move span such as `14-24`.
+          description: Human-readable move span such as `1w-10b`.
         label:
           type: string
-          description: Current segment label, which may be empty while authoring.
-        has_label:
-          type: boolean
         has_annotation:
           type: boolean
         show_diagram:
           type: boolean
 
     SegmentDetail:
-      allOf:
-        - $ref: '#/components/schemas/SegmentSummary'
-        - type: object
-          required: [annotation, moves]
-          properties:
-            annotation:
-              type: string
-            moves:
-              type: array
-              items:
-                $ref: '#/components/schemas/MoveEntry'
-            diagram:
-              $ref: '#/components/schemas/DiagramPreview'
-
-    MoveEntry:
       type: object
-      required: [ply, san]
+      required:
+        - turning_point_ply
+        - start_ply
+        - end_ply
+        - move_range
+        - label
+        - annotation
+        - move_list
+        - show_diagram
       properties:
-        ply:
+        turning_point_ply:
           type: integer
           minimum: 1
-        move_number:
+        start_ply:
           type: integer
           minimum: 1
-        color:
+        end_ply:
+          type: integer
+          minimum: 1
+        move_range:
           type: string
-          enum: [white, black]
-        san:
+        label:
           type: string
-
-    DiagramPreview:
-      type: object
-      required: [enabled]
-      properties:
-        enabled:
-          type: boolean
-        format:
+        annotation:
           type: string
-          enum: [svg]
-        svg:
+        move_list:
           type: string
-          description: SVG markup for the final board position of the segment.
-
-    SaveSessionResult:
-      type: object
-      required: [saved, session_open]
-      properties:
-        saved:
+        show_diagram:
           type: boolean
-        session_open:
-          type: boolean
-        has_unsaved_changes:
-          type: boolean
+        diagram_path:
+          type: string
+          description: Server-side preview path when diagram preview generation is enabled.
 
     CloseSessionResult:
       type: object
-      required: [closed, session_open]
+      required:
+        - game_id
+        - closed
+        - requires_confirmation
+        - saved
+        - discarded
       properties:
+        game_id:
+          $ref: '#/components/schemas/GameId'
         closed:
           type: boolean
-        session_open:
+        requires_confirmation:
           type: boolean
         saved:
           type: boolean
@@ -690,7 +664,7 @@ components:
       properties:
         pdf_path:
           type: string
-          description: Server-side path to the generated `output.pdf`.
+          description: Server-side path to `<store_root>/<game_id>/output.pdf`.
 
     LichessUploadResult:
       type: object

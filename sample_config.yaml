@@ -1,16 +1,18 @@
-# Chess Annotator — sample configuration file
-# Copy to ~/.config/chess-annotator/config.yaml (Linux/macOS)
-#         or %APPDATA%\chess-annotator\config.yaml (Windows)
+# Chess Annotator sample configuration
+# Linux/macOS: ~/.config/chess-annotator/config.yaml
+# Windows: %APPDATA%\chess-annotator\config.yaml
 
-# Path to the annotation store directory.
-# Overrides the platform default and the CHESS_ANNOTATE_STORE env var.
-# store_dir: /path/to/your/store
+# Root directory that stores one folder per game-id.
+# Each game folder contains annotated.pgn, annotation.json,
+# optional .work files, output.pdf, and diagram-cache/.
+# store_dir: /path/to/chess-annotator-store
 
-# Your name, pre-filled in the Author prompt when creating a new annotation.
+# Prefilled during import.
 author: Phil Hanna
 
-# Default diagram size in pixels for chess-render (square).
+# Default board size for PDF rendering and segment previews.
 diagram_size: 300
 
-# Default page size for chess-render. Accepted values: a4, letter.
+# Default page size for PDF output.
+# Allowed values: a4, letter
 page_size: letter
