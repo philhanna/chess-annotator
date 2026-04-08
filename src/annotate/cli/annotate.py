@@ -137,10 +137,12 @@ def _print_segment_list() -> None:
     unsaved = "  [unsaved changes]" if state.has_unsaved_changes else ""
     print(f"{state.title}  ({game_id}){unsaved}")
     print()
-    print(" #   Range       Label")
+    range_width = max(len("Move range"), *(len(s.move_range) for s in state.segments))
+    print(f"  #  {'Move range':<{range_width}}  Label")
     for index, segment in enumerate(state.segments, start=1):
-        marker = "* " if segment.turning_point_ply == _session.current_turning_point_ply else "  "
-        print(f"{marker}{index:>2}  {segment.move_range:<10}  {segment.label or '(blank)'}")
+        is_current = segment.turning_point_ply == _session.current_turning_point_ply
+        marker = "*" if is_current else " "
+        print(f"{marker}{index:>2}  {segment.move_range:<{range_width}}  {segment.label or '(blank)'}")
     print()
 
 

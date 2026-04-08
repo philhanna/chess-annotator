@@ -103,6 +103,46 @@ def move_range_for_turning_point(
     return segment.start_ply, segment.end_ply
 
 
+def san_move_range(pgn: str, start_ply: int, end_ply: int) -> str:
+    """Return 'first_move to last_move' in SAN notation for the ply range.
+
+    White moves are formatted as ``N. Move``; black moves as ``N... Move``.
+    When the segment contains a single move the suffix ``to last_move`` is
+    omitted.
+    """
+    game = chess.pgn.read_game(io.StringIO(pgn))
+    if game is None:
+        raise ValueError("Could not parse PGN")
+
+    board = game.board()
+    first_san: str | None = None
+    last_san: str | None = None
+
+    for i, move in enumerate(game.mainline_moves()):
+        ply = i + 1
+        if ply < start_ply:
+            board.push(move)
+            continue
+        if ply > end_ply:
+            break
+
+        move_number = (ply - 1) // 2 + 1
+        is_white = ply % 2 == 1
+        san = board.san(move)
+        formatted = f"{move_number}. {san}" if is_white else f"{move_number}... {san}"
+
+        if first_san is None:
+            first_san = formatted
+        last_san = formatted
+        board.push(move)
+
+    if first_san is None:
+        return ""
+    if first_san == last_san:
+        return first_san
+    return f"{first_san} to {last_san}"
+
+
 def format_move_list(pgn: str, start_ply: int, end_ply: int) -> str:
     """Return a SAN move list string for the ply range ``[start_ply, end_ply]``."""
     game = chess.pgn.read_game(io.StringIO(pgn))

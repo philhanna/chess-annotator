@@ -12,7 +12,7 @@ from annotate.domain.model import (
     find_segment_by_turning_point,
     format_move_list,
     game_headers,
-    move_from_ply,
+    san_move_range,
 )
 from annotate.domain.segment import SegmentView
 from annotate.ports import DocumentRenderer, GameRepository, LichessUploader, PGNParser
@@ -98,20 +98,12 @@ class CloseGameResult:
     discarded: bool = False
 
 
-def _move_range_label(segment: SegmentView) -> str:
-    start_move, start_side = move_from_ply(segment.start_ply)
-    end_move, end_side = move_from_ply(segment.end_ply)
-    start_side_char = "w" if start_side == "white" else "b"
-    end_side_char = "w" if end_side == "white" else "b"
-    return f"{start_move}{start_side_char}-{end_move}{end_side_char}"
-
-
-def _segment_summary(segment: SegmentView) -> SegmentSummary:
+def _segment_summary(segment: SegmentView, pgn: str) -> SegmentSummary:
     return SegmentSummary(
         turning_point_ply=segment.turning_point_ply,
         start_ply=segment.start_ply,
         end_ply=segment.end_ply,
-        move_range=_move_range_label(segment),
+        move_range=san_move_range(pgn, segment.start_ply, segment.end_ply),
         label=segment.label,
         has_annotation=bool(segment.annotation.strip()),
         show_diagram=segment.show_diagram,
@@ -130,7 +122,7 @@ def _game_state(
         title=annotation.title,
         session_open=session_open,
         has_unsaved_changes=repo.has_unsaved_working_copy(annotation.game_id),
-        segments=[_segment_summary(segment) for segment in derive_segments(annotation)],
+        segments=[_segment_summary(segment, annotation.pgn) for segment in derive_segments(annotation)],
         resumed=resumed,
     )
 
@@ -276,7 +268,7 @@ class AnnotationService:
         annotation = self._load_session(game_id)
         updated = split_segment(annotation, ply, label)
         self.repository.save_working_copy(updated)
-        return [_segment_summary(segment) for segment in derive_segments(updated)]
+        return [_segment_summary(segment, updated.pgn) for segment in derive_segments(updated)]
 
     def remove_turning_point(
         self, *, game_id: str, ply: int, force: bool = False
@@ -286,7 +278,7 @@ class AnnotationService:
         if not merged:
             raise UseCaseError("Turning point has content; force is required to remove it")
         self.repository.save_working_copy(updated)
-        return [_segment_summary(segment) for segment in derive_segments(updated)]
+        return [_segment_summary(segment, updated.pgn) for segment in derive_segments(updated)]
 
     def set_segment_label(
         self, *, game_id: str, turning_point_ply: int, label: str
@@ -380,7 +372,7 @@ class AnnotationService:
 
     def list_segments(self, *, game_id: str) -> list[SegmentSummary]:
         annotation = self._load_session(game_id)
-        return [_segment_summary(segment) for segment in derive_segments(annotation)]
+        return [_segment_summary(segment, annotation.pgn) for segment in derive_segments(annotation)]
 
     def view_segment(self, *, game_id: str, turning_point_ply: int) -> SegmentDetail:
         annotation = self._load_session(game_id)
@@ -431,7 +423,7 @@ class AnnotationService:
             turning_point_ply=segment.turning_point_ply,
             start_ply=segment.start_ply,
             end_ply=segment.end_ply,
-            move_range=_move_range_label(segment),
+            move_range=san_move_range(annotation.pgn, segment.start_ply, segment.end_ply),
             label=segment.label,
             annotation=segment.annotation,
             move_list=format_move_list(
