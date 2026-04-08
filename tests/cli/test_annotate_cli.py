@@ -124,8 +124,7 @@ def test_repl_import_handles_overwrite_prompt(monkeypatch, tmp_path, capsys):
     )
     inputs = iter(
         [
-            "import",
-            str(pgn_path),
+            f"import {pgn_path}",
             "game-1",
             "2024.01.01",
             "white",

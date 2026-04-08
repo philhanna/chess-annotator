@@ -163,12 +163,18 @@ def _open_game(game_id: str) -> None:
     print(f"Opened: {state.title}{' (resumed)' if state.resumed else ''}")
 
 
-def cmd_import(_tokens: list[str]) -> None:
-    while True:
-        pgn_path = Path(prompt(".pgn file"))
-        if pgn_path.exists():
-            break
-        err(f"File not found: {pgn_path}")
+def cmd_import(tokens: list[str]) -> None:
+    if tokens:
+        pgn_path = Path(tokens[0])
+        if not pgn_path.exists():
+            err(f"File not found: {pgn_path}")
+            return
+    else:
+        while True:
+            pgn_path = Path(prompt(".pgn file"))
+            if pgn_path.exists():
+                break
+            err(f"File not found: {pgn_path}")
 
     raw_pgn = pgn_path.read_text()
     cleaned_pgn = strip_comments(raw_pgn)
@@ -609,7 +615,7 @@ def cmd_quit(_tokens: list[str]) -> None:
 
 _HELP_NO_SESSION = """\
 Commands (no session open):
-  import                    Import a game from a PGN file and open it
+  import [file.pgn]         Import a game from a PGN file and open it
   open <game-id>            Open or resume a game
   list                      List games in the store
   copy <source> <new>       Save game as a new game id
