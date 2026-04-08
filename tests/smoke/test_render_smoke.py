@@ -8,7 +8,6 @@ import pytest
 from annotate.adapters.markdown_html_pdf_renderer import MarkdownHTMLPDFRenderer
 from annotate.domain.annotation import Annotation
 from annotate.domain.model import ply_from_move
-from annotate.domain.segment import Segment
 from annotate.use_cases.interactors import split_segment
 
 _RUY_LOPEZ_PGN = (
@@ -24,7 +23,7 @@ _RUY_LOPEZ_PGN = (
 
 def test_render_produces_non_empty_pdf(tmp_path):
     annotation = Annotation.create(
-        annotation_id=1,
+        game_id="test-game",
         title="Test Game",
         author="Tester",
         date="2024-01-01",
@@ -36,11 +35,11 @@ def test_render_produces_non_empty_pdf(tmp_path):
     annotation = split_segment(annotation, ply_from_move(6, "white"), "The Middlegame")
 
     # Label the first segment
-    annotation.segments[0].label = "The Opening"
+    annotation.segment_contents[1].label = "The Opening"
 
     # Add commentary and a diagram to the first segment
-    annotation.segments[0].commentary = "White opens with the Ruy Lopez."
-    annotation.segments[0].show_diagram = True
+    annotation.segment_contents[1].annotation = "White opens with the Ruy Lopez."
+    annotation.segment_contents[1].show_diagram = True
 
     output_path = tmp_path / "test_output.pdf"
     store_dir = tmp_path / "store"

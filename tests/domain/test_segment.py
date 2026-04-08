@@ -1,18 +1,19 @@
-"""Unit tests for domain model business-rule functions and use-case interactors."""
 import pytest
 
-from annotate.domain.annotation import Annotation
+from annotate.domain.annotation import Annotation, GameId, TurningPoint
 from annotate.domain.model import (
+    derive_segments,
+    find_segment_by_turning_point,
     find_segment_index,
     move_from_ply,
+    move_range_for_turning_point,
     ply_from_move,
     segment_end_ply,
     total_plies,
 )
-from annotate.domain.segment import Segment
+from annotate.domain.segment import SegmentContent
 from annotate.use_cases.interactors import merge_segment, split_segment
 
-# A minimal but legal PGN for a short game (10 moves / 20 plies).
 _RUY_LOPEZ_PGN = (
     "[Event \"Test\"]\n"
     "[White \"White\"]\n"
@@ -24,30 +25,32 @@ _RUY_LOPEZ_PGN = (
 )
 
 
-# ---------------------------------------------------------------------------
-# ply_from_move / move_from_ply
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("move_number,side,expected_ply", [
-    (1, "white", 1),
-    (1, "black", 2),
-    (2, "white", 3),
-    (2, "black", 4),
-    (10, "white", 19),
-    (10, "black", 20),
-])
+@pytest.mark.parametrize(
+    "move_number,side,expected_ply",
+    [
+        (1, "white", 1),
+        (1, "black", 2),
+        (2, "white", 3),
+        (2, "black", 4),
+        (10, "white", 19),
+        (10, "black", 20),
+    ],
+)
 def test_ply_from_move(move_number, side, expected_ply):
     assert ply_from_move(move_number, side) == expected_ply
 
 
-@pytest.mark.parametrize("ply,expected_move,expected_side", [
-    (1, 1, "white"),
-    (2, 1, "black"),
-    (3, 2, "white"),
-    (4, 2, "black"),
-    (19, 10, "white"),
-    (20, 10, "black"),
-])
+@pytest.mark.parametrize(
+    "ply,expected_move,expected_side",
+    [
+        (1, 1, "white"),
+        (2, 1, "black"),
+        (3, 2, "white"),
+        (4, 2, "black"),
+        (19, 10, "white"),
+        (20, 10, "black"),
+    ],
+)
 def test_move_from_ply(ply, expected_move, expected_side):
     move_number, side = move_from_ply(ply)
     assert move_number == expected_move
@@ -68,80 +71,94 @@ def test_ply_from_move_invalid_side():
         ply_from_move(1, "both")
 
 
-# ---------------------------------------------------------------------------
-# total_plies
-# ---------------------------------------------------------------------------
-
 def test_total_plies():
     assert total_plies(_RUY_LOPEZ_PGN) == 20
 
 
-# ---------------------------------------------------------------------------
-# Helpers for building test Annotations
-# ---------------------------------------------------------------------------
+def test_game_id_must_not_be_empty():
+    with pytest.raises(ValueError):
+        GameId("   ")
 
-def make_annotation(*start_plies: int) -> Annotation:
-    """Build an Annotation with segments starting at the given plies."""
-    segments = [Segment(start_ply=p, label=f"Segment {i + 1}") for i, p in enumerate(start_plies)]
+
+def test_turning_point_must_be_positive():
+    with pytest.raises(ValueError):
+        TurningPoint(0)
+
+
+def make_annotation(*turning_points: int) -> Annotation:
+    contents = {
+        ply: SegmentContent()
+        for ply in turning_points
+    }
     return Annotation(
-        annotation_id=1,
+        game_id="test-game",
         title="Test",
         author="Tester",
         date="2024-01-01",
         pgn=_RUY_LOPEZ_PGN,
         player_side="white",
         diagram_orientation="white",
-        segments=segments,
+        turning_points=list(turning_points),
+        segment_contents=contents,
     )
 
 
-# ---------------------------------------------------------------------------
-# segment_end_ply
-# ---------------------------------------------------------------------------
+def test_annotation_defaults_to_first_turning_point():
+    ann = Annotation.create(
+        game_id="game-1",
+        title="Test Game",
+        author="Tester",
+        date="2024-01-01",
+        pgn=_RUY_LOPEZ_PGN,
+        player_side="white",
+    )
+    assert ann.turning_points == [1]
+    assert set(ann.segment_contents) == {1}
+    assert ann.segment_contents[1].show_diagram is True
 
-def test_segment_end_ply_single_segment():
+
+def test_annotation_rejects_non_matching_content_keys():
+    with pytest.raises(ValueError):
+        Annotation(
+            game_id="test-game",
+            title="Test",
+            author="Tester",
+            date="2024-01-01",
+            pgn=_RUY_LOPEZ_PGN,
+            player_side="white",
+            diagram_orientation="white",
+            turning_points=[1, 11],
+            segment_contents={1: SegmentContent(label="Opening")},
+        )
+
+
+def test_derive_segments_single_segment():
     ann = make_annotation(1)
-    assert segment_end_ply(ann, 0) == 20
+    segments = derive_segments(ann)
+    assert len(segments) == 1
+    assert segments[0].start_ply == 1
+    assert segments[0].end_ply == 20
 
 
-def test_segment_end_ply_first_of_two():
-    ann = make_annotation(1, 11)
-    assert segment_end_ply(ann, 0) == 10
-
-
-def test_segment_end_ply_last_of_two():
-    ann = make_annotation(1, 11)
-    assert segment_end_ply(ann, 1) == 20
-
-
-def test_segment_end_ply_middle():
+def test_derive_segments_multiple_segments():
     ann = make_annotation(1, 7, 15)
-    assert segment_end_ply(ann, 0) == 6
+    segments = derive_segments(ann)
+    assert [(seg.start_ply, seg.end_ply) for seg in segments] == [
+        (1, 6),
+        (7, 14),
+        (15, 20),
+    ]
+
+
+def test_segment_end_ply():
+    ann = make_annotation(1, 11, 15)
+    assert segment_end_ply(ann, 0) == 10
     assert segment_end_ply(ann, 1) == 14
     assert segment_end_ply(ann, 2) == 20
 
 
-# ---------------------------------------------------------------------------
-# find_segment_index
-# ---------------------------------------------------------------------------
-
-def test_find_segment_index_single():
-    ann = make_annotation(1)
-    for ply in range(1, 21):
-        assert find_segment_index(ann, ply) == 0
-
-
-def test_find_segment_index_two_segments():
-    ann = make_annotation(1, 11)
-    for ply in range(1, 11):
-        assert find_segment_index(ann, ply) == 0
-    for ply in range(11, 21):
-        assert find_segment_index(ann, ply) == 1
-
-
-def test_find_segment_index_at_boundary():
+def test_find_segment_index():
     ann = make_annotation(1, 11, 15)
-    # ply 10 belongs to segment 0; ply 11 starts segment 1
     assert find_segment_index(ann, 10) == 0
     assert find_segment_index(ann, 11) == 1
     assert find_segment_index(ann, 14) == 1
@@ -156,46 +173,39 @@ def test_find_segment_index_out_of_range():
         find_segment_index(ann, 21)
 
 
-# ---------------------------------------------------------------------------
-# split_segment
-# ---------------------------------------------------------------------------
-
-def test_split_segment_produces_two_segments():
-    ann = make_annotation(1)
-    result = split_segment(ann, 11, "Middlegame")
-    assert len(result.segments) == 2
-    assert result.segments[0].start_ply == 1
-    assert result.segments[1].start_ply == 11
-
-
-def test_split_segment_earlier_retains_content():
-    segments = [Segment(start_ply=1, label="Opening", commentary="Some notes", show_diagram=True)]
-    ann = Annotation(
-        annotation_id=1, title="T", author="A", date="2024-01-01",
-        pgn=_RUY_LOPEZ_PGN, player_side="white", diagram_orientation="white",
-        segments=segments,
-    )
-    result = split_segment(ann, 11, "Middlegame")
-    earlier = result.segments[0]
-    assert earlier.label == "Opening"
-    assert earlier.commentary == "Some notes"
-    assert earlier.show_diagram is False  # reset
-
-
-def test_split_segment_later_has_supplied_label():
-    ann = make_annotation(1)
-    result = split_segment(ann, 11, "Middlegame")
-    later = result.segments[1]
-    assert later.label == "Middlegame"
-    assert later.commentary == ""
-    assert later.show_diagram is False
-
-
-def test_split_segment_middle_of_three():
+def test_find_segment_by_turning_point():
     ann = make_annotation(1, 11)
-    result = split_segment(ann, 15, "Endgame")
-    assert len(result.segments) == 3
-    assert [s.start_ply for s in result.segments] == [1, 11, 15]
+    segment = find_segment_by_turning_point(ann, 11)
+    assert segment.start_ply == 11
+    assert segment.end_ply == 20
+
+
+def test_move_range_for_turning_point():
+    ann = make_annotation(1, 11)
+    assert move_range_for_turning_point(ann, 1) == (1, 10)
+    assert move_range_for_turning_point(ann, 11) == (11, 20)
+
+
+def test_split_segment_produces_two_turning_points():
+    ann = make_annotation(1)
+    result = split_segment(ann, 11, "Middlegame")
+    assert result.turning_points == [1, 11]
+    assert result.segment_contents[11].label == "Middlegame"
+    assert result.segment_contents[11].annotation == ""
+    assert result.segment_contents[11].show_diagram is True
+
+
+def test_split_segment_preserves_earlier_content():
+    ann = make_annotation(1)
+    ann.segment_contents[1].label = "Opening"
+    ann.segment_contents[1].annotation = "Some notes"
+    ann.segment_contents[1].show_diagram = False
+
+    result = split_segment(ann, 11, "Middlegame")
+    earlier = result.segment_contents[1]
+    assert earlier.label == "Opening"
+    assert earlier.annotation == "Some notes"
+    assert earlier.show_diagram is False
 
 
 def test_split_segment_at_ply_1_fails():
@@ -218,71 +228,25 @@ def test_split_segment_at_existing_boundary_fails():
         split_segment(ann, 11, "Duplicate")
 
 
-# ---------------------------------------------------------------------------
-# merge_segment
-# ---------------------------------------------------------------------------
-
 def test_merge_segment_basic():
     ann = make_annotation(1, 11)
     result, merged = merge_segment(ann, 11)
     assert merged is True
-    assert len(result.segments) == 1
-    assert result.segments[0].start_ply == 1
+    assert result.turning_points == [1]
 
 
-def test_merge_segment_earlier_content_retained():
-    segments = [
-        Segment(start_ply=1, label="Opening", commentary="Notes"),
-        Segment(start_ply=11, label="Middlegame"),
-    ]
-    ann = Annotation(
-        annotation_id=1, title="T", author="A", date="2024-01-01",
-        pgn=_RUY_LOPEZ_PGN, player_side="white", diagram_orientation="white",
-        segments=segments,
-    )
-    result, merged = merge_segment(ann, 11)
-    assert merged is True
-    assert result.segments[0].label == "Opening"
-    assert result.segments[0].commentary == "Notes"
-
-
-def test_merge_segment_returns_false_when_later_has_commentary():
-    segments = [
-        Segment(start_ply=1, label="Opening"),
-        Segment(start_ply=11, label="Middlegame", commentary="Key moment."),
-    ]
-    ann = Annotation(
-        annotation_id=1, title="T", author="A", date="2024-01-01",
-        pgn=_RUY_LOPEZ_PGN, player_side="white", diagram_orientation="white",
-        segments=segments,
-    )
+def test_merge_segment_returns_false_when_later_has_content():
+    ann = make_annotation(1, 11)
+    ann.segment_contents[11].label = "Middlegame"
     result, merged = merge_segment(ann, 11)
     assert merged is False
-    assert result is ann  # unchanged
+    assert result.turning_points == [1, 11]
 
 
-def test_merge_segment_force_discards_content():
-    segments = [
-        Segment(start_ply=1, label="Opening"),
-        Segment(start_ply=11, label="Middlegame", commentary="Key moment."),
-    ]
-    ann = Annotation(
-        annotation_id=1, title="T", author="A", date="2024-01-01",
-        pgn=_RUY_LOPEZ_PGN, player_side="white", diagram_orientation="white",
-        segments=segments,
-    )
+def test_merge_segment_force_discards_later_content():
+    ann = make_annotation(1, 11)
+    ann.segment_contents[11].annotation = "Critical transition"
     result, merged = merge_segment(ann, 11, force=True)
     assert merged is True
-    assert len(result.segments) == 1
-
-
-def test_merge_first_segment_fails():
-    ann = make_annotation(1, 11)
-    with pytest.raises(ValueError):
-        merge_segment(ann, 1)
-
-
-def test_merge_nonexistent_ply_fails():
-    ann = make_annotation(1, 11)
-    with pytest.raises(ValueError):
-        merge_segment(ann, 5)
+    assert result.turning_points == [1]
+    assert 11 not in result.segment_contents
