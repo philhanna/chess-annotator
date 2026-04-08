@@ -9,7 +9,7 @@ Chess Annotator is a single-author tool for annotating your own games for a coac
 - Toggle whether a segment shows a board diagram
 - Keep saved files and `.work` session files separate so in-progress edits survive crashes
 - Render the current state of a game to `output.pdf`
-- Upload the current state of a game to Lichess and return an analysis URL
+- Upload the current state of a game to Lichess and open it in a browser
 
 The project intentionally does not do engine analysis, AI commentary, or move suggestions. The author’s perspective is the only source of annotation content.
 
@@ -38,21 +38,21 @@ This launches an interactive REPL.
 
 When no game is open:
 
-- `import`
+- `import [file.pgn]` — import a game; prompts for the file if not given
 - `open <game-id>`
 - `list`
 - `copy <source-game-id> <new-game-id>`
 - `delete <game-id>`
 - `render <game-id>`
-- `upload <game-id>`
 - `see <game-id>`
 - `help`
 - `quit`
 
 When a game is open:
 
+- `<number>` — select a segment by number
 - `list`
-- `view <segment-number>`
+- `view` — view the current segment
 - `split <move><w|b> [label]`
 - `merge <move><w|b>`
 - `label <text>`
@@ -61,10 +61,8 @@ When a game is open:
 - `save`
 - `close`
 - `copy <new-game-id>`
-- `delete [game-id]`
-- `render [game-id]`
-- `upload [game-id]`
-- `see [game-id]`
+- `render` — render the current game
+- `see` — upload the current game to Lichess and open in browser
 - `json`
 - `help`
 - `quit`

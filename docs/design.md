@@ -307,14 +307,18 @@ Commands mirror the REST API operations. Examples:
 ```
 open my-game-vs-smith
 list
-annotate 3
-  (opens an inline text editor for segment 3's annotation)
-turn 14w
+3
+  (selects segment 3 as current)
+view
+  (views the current segment)
+comment
+  (opens an inline text editor for the current segment's annotation)
+split 14w
   (adds a turning point at white's 14th move)
-unturn 14w
+merge 14w
   (removes it)
 render
-lichess
+see
 ```
 
 ### 8.3 Lichess Page
