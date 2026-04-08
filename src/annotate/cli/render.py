@@ -2,23 +2,33 @@
 
 import argparse
 import sys
-from pathlib import Path
 
 from annotate.adapters.json_file_annotation_repository import JSONFileAnnotationRepository
 from annotate.adapters.markdown_html_pdf_renderer import MarkdownHTMLPDFRenderer
+from annotate.adapters.python_chess_pgn_parser import PythonChessPGNParser
 from annotate.config import get_config
+from annotate.use_cases import AnnotationService, GameNotFoundError, UseCaseError
+
+
+def build_service() -> AnnotationService:
+    config = get_config()
+    return AnnotationService(
+        repository=JSONFileAnnotationRepository(config.store_dir),
+        pgn_parser=PythonChessPGNParser(),
+        store_dir=config.store_dir,
+        document_renderer=MarkdownHTMLPDFRenderer(),
+    )
 
 
 def main() -> None:
-    """Run the ``chess-render`` command-line tool."""
     config = get_config()
 
     parser = argparse.ArgumentParser(
         description="Render a chess annotation to a book-quality PDF."
     )
     parser.add_argument(
-        "filename",
-        help="Annotation ID or filename (e.g. abc123.json) to render",
+        "game_id",
+        help="Game id to render",
     )
     parser.add_argument(
         "--size",
@@ -34,42 +44,19 @@ def main() -> None:
         metavar="SIZE",
         help=f"Page size: a4 or letter (default: {config.page_size})",
     )
-    parser.add_argument(
-        "--out",
-        default=None,
-        metavar="PATH",
-        help="Output PDF path (default: <annotation_id>.pdf in current directory)",
-    )
     args = parser.parse_args()
 
-    store_dir = config.store_dir
-    repo = JSONFileAnnotationRepository(store_dir)
-
-    path = Path(args.filename)
+    service = build_service()
     try:
-        annotation_id = int(path.stem)
-    except ValueError:
-        print(f"Error: invalid annotation id: {path.stem!r}", file=sys.stderr)
-        sys.exit(1)
-
-    try:
-        annotation = repo.load(annotation_id)
-    except FileNotFoundError:
-        print(f"Error: annotation not found: {annotation_id}", file=sys.stderr)
-        sys.exit(1)
-
-    output_path = Path(args.out) if args.out else Path(f"{annotation_id}.pdf")
-
-    renderer = MarkdownHTMLPDFRenderer()
-    try:
-        renderer.render(
-            annotation,
-            output_path=output_path,
+        output_path = service.render_pdf(
+            game_id=args.game_id,
             diagram_size=args.size,
             page_size=args.page,
-            store_dir=store_dir,
         )
-    except ValueError as exc:
+    except GameNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+    except (UseCaseError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 

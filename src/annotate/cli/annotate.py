@@ -1,144 +1,80 @@
 """chess-annotate — interactive REPL for authoring chess game annotations."""
 
 import builtins
+import json
 import readline
 import sys
+import webbrowser
 
 assert readline is not None  # Do not delete this line - needed to prevent "import readline" from being optimized away
 from dataclasses import dataclass
 from pathlib import Path
 
 from annotate.adapters.json_file_annotation_repository import JSONFileAnnotationRepository
+from annotate.adapters.lichess_api_uploader import LichessAPIUploader
+from annotate.adapters.markdown_html_pdf_renderer import MarkdownHTMLPDFRenderer
+from annotate.adapters.python_chess_diagram_renderer import PythonChessDiagramRenderer
 from annotate.adapters.python_chess_pgn_parser import PythonChessPGNParser
 from annotate.adapters.system_editor_launcher import SystemEditorLauncher
 from annotate.cli import strip_comments
 from annotate.config import get_config, get_store_dir
-from annotate.domain.annotation import Annotation
-from annotate.domain.model import move_from_ply, ply_from_move, segment_end_ply
-from annotate.use_cases.interactors import merge_segment, split_segment
+from annotate.domain.model import ply_from_move
+from annotate.use_cases import (
+    AnnotationService,
+    GameNotFoundError,
+    OverwriteRequiredError,
+    SegmentNotFoundError,
+    SessionNotOpenError,
+    UseCaseError,
+)
 
-
-# ---------------------------------------------------------------------------
-# Session state
-# ---------------------------------------------------------------------------
 
 @dataclass
 class _Session:
-    """Track the mutable state of one interactive CLI authoring session.
-
-    The REPL keeps a single global instance of this data class to know
-    whether an annotation is currently open and whether that in-memory
-    state has unsaved changes. The ``open`` property provides the
-    command loop with a simple session-state check without duplicating
-    ``None`` comparisons throughout the module.
-    """
-
-    annotation: Annotation | None = None
-    dirty: bool = False
-    current_segment: int | None = None  # 1-based segment number
+    game_id: str | None = None
+    current_turning_point_ply: int | None = None
 
     @property
     def open(self) -> bool:
-        """Return whether an annotation is currently open in the session."""
-        return self.annotation is not None
+        return self.game_id is not None
 
 
 _session = _Session()
 _repo: JSONFileAnnotationRepository | None = None
+_service: AnnotationService | None = None
 
 
 def get_repo() -> JSONFileAnnotationRepository:
-    """Return the lazily initialized repository used by the CLI session.
-
-    The REPL shares a single repository instance for the lifetime of the
-    process so command handlers do not repeatedly recreate the on-disk
-    adapter or its directory checks.
-    """
-
     global _repo
     if _repo is None:
-        store_dir = get_store_dir()
-        _repo = JSONFileAnnotationRepository(store_dir)
+        _repo = JSONFileAnnotationRepository(get_store_dir())
     return _repo
 
 
-# ---------------------------------------------------------------------------
-# Output helpers
-# ---------------------------------------------------------------------------
+def get_service() -> AnnotationService:
+    global _service
+    if _service is None:
+        config = get_config()
+        _service = AnnotationService(
+            repository=get_repo(),
+            pgn_parser=PythonChessPGNParser(),
+            store_dir=config.store_dir,
+            document_renderer=MarkdownHTMLPDFRenderer(),
+            lichess_uploader=LichessAPIUploader(),
+            diagram_renderer=PythonChessDiagramRenderer(),
+        )
+    return _service
+
 
 def print(msg: str = "") -> None:
-    """Write a normal user-facing message to standard output.
-
-    This helper centralizes CLI output and intentionally shadows the
-    built-in name inside this module. It delegates to
-    :func:`builtins.print` to avoid recursion.
-    """
-
     builtins.print(msg)
 
 
 def err(msg: str) -> None:
-    """Write an error message to standard error with a standard prefix."""
-
     builtins.print(f"Error: {msg}", file=sys.stderr)
 
 
-# ---------------------------------------------------------------------------
-# Show command
-# ---------------------------------------------------------------------------
-
-def fmt_move_range(annotation: Annotation, index: int) -> str:
-    """Format a segment's move span for display in the ``list`` command.
-
-    The result uses move number plus side markers such as ``1w`` or
-    ``12b`` so users see author-facing boundaries instead of raw ply
-    numbers.
-    """
-
-    seg = annotation.segments[index]
-    start_move, start_side = move_from_ply(seg.start_ply)
-    end_ply = segment_end_ply(annotation, index)
-    end_move, end_side = move_from_ply(end_ply)
-    start_side_char = "w" if start_side == "white" else "b"
-    end_side_char = "w" if end_side == "white" else "b"
-    return f"{start_move}{start_side_char} \u2013 {end_move}{end_side_char}"
-
-
-def cmd_list_segments(_tokens: list[str]) -> None:
-    """Display a list of segments with their move ranges and labels.
-
-    Unsaved state is shown in the heading when appropriate.
-    """
-
-    ann = _session.annotation
-    unsaved = "  [unsaved changes]" if _session.dirty else ""
-    from annotate.domain.model import total_plies
-    total = total_plies(ann.pgn)
-    total_moves = (total + 1) // 2
-    header = f"{ann.title}  ({ann.player_side}, {total_moves} moves){unsaved}"
-    print(header)
-    print()
-    col_w = max(len(fmt_move_range(ann, i)) for i in range(len(ann.segments)))
-    fmt = f"{{:2}}{{:>3}}  {{:<{col_w}}}  {{}}"
-    print(fmt.format("", "#", "Moves", "Label"))
-    for i, seg in enumerate(ann.segments):
-        prefix = "* " if _session.current_segment == i + 1 else "  "
-        print(fmt.format(prefix, i + 1, fmt_move_range(ann, i), seg.label))
-    print()
-
-
-# ---------------------------------------------------------------------------
-# New command — interactive creation flow
-# ---------------------------------------------------------------------------
-
 def prompt(prompt_text: str, default: str | None = None) -> str:
-    """Prompt the user for required or defaultable text input.
-
-    When ``default`` is provided, pressing Enter accepts that default.
-    Otherwise the prompt repeats until the user supplies a non-empty
-    value.
-    """
-
     if default is not None:
         text = input(f"{prompt_text} [{default}]: ").strip()
         return text if text else default
@@ -149,209 +85,7 @@ def prompt(prompt_text: str, default: str | None = None) -> str:
         print("This field is required.")
 
 
-def cmd_new(_tokens: list[str]) -> None:
-    """Create a new annotation interactively from a PGN file.
-
-    Prompts for a PGN file path first, then collects the remaining
-    metadata needed to create an annotation, writes an initial working
-    copy, and opens the new annotation in the current session.
-    """
-
-    while True:
-        pgn_path = Path(prompt(".pgn file"))
-        if pgn_path.exists():
-            break
-        err(f"File not found: {pgn_path}")
-
-    pgn_text = strip_comments(pgn_path.read_text())
-    parser = PythonChessPGNParser()
-    try:
-        info = parser.parse(pgn_text)
-    except ValueError as exc:
-        err(str(exc))
-        return
-
-    total_moves = (info["total_plies"] + 1) // 2
-    print(
-        f"PGN loaded: {info['total_plies']} plies ({total_moves} moves), "
-        f"White: {info['white']}, Black: {info['black']}"
-    )
-    print()
-
-    white = info["white"] if info["white"] != "?" else "N/A"
-    black = info["black"] if info["black"] != "?" else "N/A"
-    pgn_date_raw = info["date"].replace("?", "").strip(".") or "N/A"
-    title = f"{white} - {black} {pgn_date_raw}"
-
-    author = get_config().author or ""
-
-    pgn_date = info["date"].replace("?", "").strip(".") or None
-    date = prompt("Date", default=pgn_date or "")
-
-    while True:
-        side = prompt("You played (white/black)").lower()
-        if side in ("white", "black"):
-            break
-        print("Please enter white or black.")
-
-    default_orientation = "black" if side == "black" else "white"
-    orientation = prompt("Diagram orientation", default=default_orientation).lower()
-    if orientation not in ("white", "black"):
-        orientation = default_orientation
-
-    repo = get_repo()
-    annotation = Annotation.create(
-        annotation_id=repo.next_id(),
-        title=title,
-        author=author,
-        date=date,
-        pgn=pgn_text,
-        player_side=side,
-        diagram_orientation=orientation,
-    )
-    repo.save_working_copy(annotation)
-
-    _session.annotation = annotation
-    _session.current_segment = 1
-    _session.dirty = True
-
-    print()
-    print(
-        f"Annotation created. 1 segment spanning moves 1\u2013{total_moves} ({side})."
-    )
-
-
-# ---------------------------------------------------------------------------
-# Open command
-# ---------------------------------------------------------------------------
-
-def cmd_open(tokens: list[str]) -> None:
-    """Open an existing annotation into the current interactive session.
-
-    If a working copy already exists, the user is asked whether to
-    resume it. Otherwise the canonical saved annotation is loaded and a
-    fresh working copy is created for editing.
-    """
-
-    if not tokens:
-        err("Usage: open <annotation_id>")
-        return
-
-    raw = tokens[0]
-    if raw.endswith(".json"):
-        raw = raw[:-5]
-    try:
-        annotation_id = int(raw)
-    except ValueError:
-        err(f"Invalid annotation id: {raw!r}")
-        return
-
-    repo = get_repo()
-    try:
-        annotation = repo.load(annotation_id)
-    except FileNotFoundError:
-        err(f"Annotation not found: {annotation_id}")
-        return
-
-    if repo.exists_working_copy(annotation_id):
-        print(f"Working copy found for '{annotation.title}'.")
-        answer = input("Resume previous session? (yes/no): ").strip().lower()
-        if answer == "yes":
-            annotation = repo.load_working_copy(annotation_id)
-            _session.annotation = annotation
-            _session.current_segment = 1
-            _session.dirty = True
-            print("Resumed working copy.")
-            return
-        else:
-            repo.discard_working_copy(annotation_id)
-
-    repo.save_working_copy(annotation)
-    _session.annotation = annotation
-    _session.current_segment = 1
-    _session.dirty = False
-    print(f"Opened: {annotation.title}")
-
-
-# ---------------------------------------------------------------------------
-# List command
-# ---------------------------------------------------------------------------
-
-def cmd_list(_tokens: list[str]) -> None:
-    """List all saved annotations in the repository."""
-
-    repo = get_repo()
-    entries = repo.list_all()
-    if not entries:
-        print("No annotations found.")
-        return
-    for annotation_id, title in entries:
-        print(f"  {annotation_id}  {title}")
-
-
-# ---------------------------------------------------------------------------
-# Save / close / quit
-# ---------------------------------------------------------------------------
-
-def cmd_save(_tokens: list[str]) -> None:
-    """Persist the current session's annotation to the main store.
-
-    The current in-memory annotation is first written to the working
-    copy, then committed to the canonical store file so the main copy
-    and working copy remain in sync.
-    """
-
-    repo = get_repo()
-    ann = _session.annotation
-    repo.save_working_copy(ann)
-    repo.commit_working_copy(ann.annotation_id)
-    _session.dirty = False
-    print("Saved.")
-
-
-def do_close() -> None:
-    """Close the current session and discard its working copy.
-
-    If the session has unsaved changes, the user is prompted to save
-    first. Once closing completes, the in-memory session state is reset
-    and the temporary working copy is removed.
-    """
-    if _session.dirty:
-        answer = input("You have unsaved changes. Save before closing? (yes/no): ").strip().lower()
-        if answer == "yes":
-            cmd_save([])
-    ann = _session.annotation
-    get_repo().discard_working_copy(ann.annotation_id)
-    _session.annotation = None
-    _session.current_segment = None
-    _session.dirty = False
-    print("Session closed.")
-
-
-def cmd_close(_tokens: list[str]) -> None:
-    """Handle the ``close`` command by ending the current session."""
-
-    do_close()
-
-
-def cmd_quit(_tokens: list[str]) -> None:
-    """Exit the REPL, closing the current session first if needed."""
-
-    if _session.open:
-        do_close()
-    sys.exit(0)
-
-
-# ---------------------------------------------------------------------------
-# Authoring commands (M2)
-# ---------------------------------------------------------------------------
-
 def _parse_move_side(tokens: list[str], usage: str) -> int | None:
-    """Parse a single ``<number><w|b>`` token into a ply.
-
-    Returns the ply on success, or ``None`` after printing an error
-    message when the token is malformed.
-    """
     if not tokens:
         err(f"Usage: {usage}")
         return None
@@ -368,278 +102,609 @@ def _parse_move_side(tokens: list[str], usage: str) -> int | None:
     return ply_from_move(move_number, side)
 
 
-def cmd_split(tokens: list[str]) -> None:
-    """Split the segment containing the given move into two segments."""
-    ply = _parse_move_side(tokens, "split <move>")
-    if ply is None:
+def _require_open_session() -> str | None:
+    if not _session.open:
+        err("No game is open.")
+        return None
+    return _session.game_id
+
+
+def _current_segments():
+    game_id = _require_open_session()
+    if game_id is None:
+        return None
+    return get_service().list_segments(game_id=game_id)
+
+
+def _current_segment_summary():
+    segments = _current_segments()
+    if not segments:
+        return None
+    if _session.current_turning_point_ply is None:
+        _session.current_turning_point_ply = segments[0].turning_point_ply
+    for segment in segments:
+        if segment.turning_point_ply == _session.current_turning_point_ply:
+            return segment
+    _session.current_turning_point_ply = segments[0].turning_point_ply
+    return segments[0]
+
+
+def _print_segment_list() -> None:
+    game_id = _require_open_session()
+    if game_id is None:
         return
-    label = prompt("Label for new segment")
+    state = get_service().open_game(game_id)
+    unsaved = "  [unsaved changes]" if state.has_unsaved_changes else ""
+    print(f"{state.title}  ({game_id}){unsaved}")
+    print()
+    print(" #   Range       Label")
+    for index, segment in enumerate(state.segments, start=1):
+        marker = "* " if segment.turning_point_ply == _session.current_turning_point_ply else "  "
+        print(f"{marker}{index:>2}  {segment.move_range:<10}  {segment.label or '(blank)'}")
+    print()
+
+
+def _open_game(game_id: str) -> None:
     try:
-        _session.annotation = split_segment(_session.annotation, ply, label)
-        get_repo().save_working_copy(_session.annotation)
-        _session.dirty = True
-        print("Segment split.")
+        state = get_service().open_game(game_id)
+    except GameNotFoundError as exc:
+        err(str(exc))
+        return
+    except UseCaseError as exc:
+        err(str(exc))
+        return
+
+    _session.game_id = state.game_id
+    _session.current_turning_point_ply = (
+        state.segments[0].turning_point_ply if state.segments else None
+    )
+    print(f"Opened: {state.title}{' (resumed)' if state.resumed else ''}")
+
+
+def cmd_import(_tokens: list[str]) -> None:
+    while True:
+        pgn_path = Path(prompt(".pgn file"))
+        if pgn_path.exists():
+            break
+        err(f"File not found: {pgn_path}")
+
+    raw_pgn = pgn_path.read_text()
+    cleaned_pgn = strip_comments(raw_pgn)
+    parser = PythonChessPGNParser()
+    try:
+        info = parser.parse(cleaned_pgn)
     except ValueError as exc:
         err(str(exc))
+        return
+
+    total_moves = (info["total_plies"] + 1) // 2
+    print(
+        f"PGN loaded: {info['total_plies']} plies ({total_moves} moves), "
+        f"White: {info['white']}, Black: {info['black']}"
+    )
+    print()
+
+    game_id = prompt("Game id")
+    pgn_date = info["date"].replace("?", "").strip(".") or ""
+    date = prompt("Date", default=pgn_date)
+    while True:
+        side = prompt("You played (white/black)").lower()
+        if side in ("white", "black"):
+            break
+        print("Please enter white or black.")
+    default_orientation = "black" if side == "black" else "white"
+    orientation = prompt("Diagram orientation", default=default_orientation).lower()
+    if orientation not in ("white", "black"):
+        orientation = default_orientation
+
+    try:
+        state = get_service().import_game(
+            game_id=game_id,
+            pgn_text=raw_pgn,
+            player_side=side,
+            author=get_config().author or "",
+            date=date,
+            diagram_orientation=orientation,
+        )
+    except OverwriteRequiredError:
+        answer = input(f"Game id '{game_id}' exists. Overwrite? (yes/no): ").strip().lower()
+        if answer != "yes":
+            print("Import cancelled.")
+            return
+        state = get_service().import_game(
+            game_id=game_id,
+            pgn_text=raw_pgn,
+            player_side=side,
+            author=get_config().author or "",
+            date=date,
+            diagram_orientation=orientation,
+            overwrite=True,
+        )
+    except UseCaseError as exc:
+        err(str(exc))
+        return
+
+    _session.game_id = state.game_id
+    _session.current_turning_point_ply = state.segments[0].turning_point_ply
+    print(f"Imported and opened: {state.title}")
+
+
+def cmd_new(tokens: list[str]) -> None:
+    cmd_import(tokens)
+
+
+def cmd_open(tokens: list[str]) -> None:
+    if not tokens:
+        err("Usage: open <game-id>")
+        return
+    _open_game(tokens[0])
+
+
+def cmd_list(_tokens: list[str]) -> None:
+    summaries = get_service().list_games()
+    if not summaries:
+        print("No games found.")
+        return
+    for game in summaries:
+        status = " [in progress]" if game.in_progress else ""
+        print(
+            f"{game.game_id}  {game.white} vs {game.black}  "
+            f"{game.event}  {game.date}  {game.result}{status}"
+        )
+
+
+def cmd_segments(_tokens: list[str]) -> None:
+    try:
+        _print_segment_list()
+    except SessionNotOpenError as exc:
+        err(str(exc))
+
+
+def _parse_segment_selector(token: str):
+    segments = _current_segments()
+    if not segments:
+        return None
+    try:
+        index = int(token)
+    except ValueError:
+        err("Segment must be selected by its number.")
+        return None
+    if not (1 <= index <= len(segments)):
+        err(f"Segment number must be between 1 and {len(segments)}")
+        return None
+    return segments[index - 1]
+
+
+def cmd_view(tokens: list[str]) -> None:
+    if not tokens:
+        err("Usage: view <segment-number>")
+        return
+    summary = _parse_segment_selector(tokens[0])
+    if summary is None:
+        return
+    game_id = _require_open_session()
+    if game_id is None:
+        return
+    try:
+        detail = get_service().view_segment(
+            game_id=game_id,
+            turning_point_ply=summary.turning_point_ply,
+        )
+    except (SessionNotOpenError, SegmentNotFoundError, UseCaseError) as exc:
+        err(str(exc))
+        return
+
+    _session.current_turning_point_ply = detail.turning_point_ply
+    print(f"Segment {tokens[0]}  {detail.move_range}")
+    print(f"Label: {detail.label or '(blank)'}")
+    print(f"Moves: {detail.move_list}")
+    print(f"Diagram: {'on' if detail.show_diagram else 'off'}")
+    print()
+    print(detail.annotation or "(no annotation)")
+    if detail.diagram_path is not None:
+        print()
+        print(f"Diagram preview: {detail.diagram_path}")
+
+
+def cmd_split(tokens: list[str]) -> None:
+    game_id = _require_open_session()
+    if game_id is None:
+        return
+    ply = _parse_move_side(tokens, "split <move><w|b> [label]")
+    if ply is None:
+        return
+    label = " ".join(tokens[1:]).strip() if len(tokens) > 1 else prompt("Label for new segment", default="")
+    try:
+        segments = get_service().add_turning_point(game_id=game_id, ply=ply, label=label)
+    except UseCaseError as exc:
+        err(str(exc))
+        return
+    for segment in segments:
+        if segment.turning_point_ply == ply:
+            _session.current_turning_point_ply = ply
+            break
+    print("Segment split.")
 
 
 def cmd_merge(tokens: list[str]) -> None:
-    """Remove the turning point at the given move, merging with the previous segment."""
-    ply = _parse_move_side(tokens, "merge <move>")
+    game_id = _require_open_session()
+    if game_id is None:
+        return
+    ply = _parse_move_side(tokens, "merge <move><w|b>")
     if ply is None:
         return
     try:
-        annotation, merged = merge_segment(_session.annotation, ply)
-    except ValueError as exc:
-        err(str(exc))
-        return
-    if merged:
-        _session.annotation = annotation
-        get_repo().save_working_copy(_session.annotation)
-        _session.dirty = True
+        get_service().remove_turning_point(game_id=game_id, ply=ply)
         print("Segments merged.")
         return
-    # Later segment has content — ask the author to confirm.
-    idx = next(
-        i for i, s in enumerate(_session.annotation.segments)
-        if s.start_ply == ply
-    )
-    print(f"Segment {idx + 1} has content that will be discarded.")
-    answer = input("Discard and merge anyway? (yes/no): ").strip().lower()
-    if answer == "yes":
-        annotation, _ = merge_segment(_session.annotation, ply, force=True)
-        _session.annotation = annotation
-        get_repo().save_working_copy(_session.annotation)
-        _session.dirty = True
-        print("Segments merged.")
-    else:
+    except UseCaseError as exc:
+        if "force is required" not in str(exc):
+            err(str(exc))
+            return
+    answer = input("Segment content will be discarded. Merge anyway? (yes/no): ").strip().lower()
+    if answer != "yes":
         print("Merge cancelled.")
-
-
-def _require_current_segment() -> int | None:
-    """Return the current segment number, or print an error and return None."""
-    if _session.current_segment is None:
-        err("No segment selected. Use: open <#>")
-        return None
-    return _session.current_segment
-
-
-def cmd_open_segment(tokens: list[str]) -> None:
-    """Set the current segment by its 1-based segment number."""
-    if not tokens:
-        err("Usage: open <#>")
         return
     try:
-        seg_num = int(tokens[0])
-    except ValueError:
-        err(f"Segment number must be an integer, got {tokens[0]!r}")
+        get_service().remove_turning_point(game_id=game_id, ply=ply, force=True)
+    except UseCaseError as exc:
+        err(str(exc))
         return
-    segments = _session.annotation.segments
-    if not (1 <= seg_num <= len(segments)):
-        err(f"Segment number must be between 1 and {len(segments)}")
-        return
-    _session.current_segment = seg_num
-    print(f"Current segment: {seg_num} — {segments[seg_num - 1].label}")
+    print("Segments merged.")
 
 
 def cmd_label(tokens: list[str]) -> None:
-    """Set or replace the label for the current segment."""
-    seg_num = _require_current_segment()
-    if seg_num is None:
+    game_id = _require_open_session()
+    if game_id is None:
+        return
+    current = _current_segment_summary()
+    if current is None:
+        err("No current segment.")
         return
     if not tokens:
         err("Usage: label <text>")
         return
-    segments = _session.annotation.segments
-    segments[seg_num - 1].label = " ".join(tokens)
-    _session.dirty = True
-    print(f"Label updated for segment {seg_num}.")
-
-
-def cmd_diagram(tokens: list[str]) -> None:
-    """Toggle the end-of-segment diagram for the current segment on or off."""
-    seg_num = _require_current_segment()
-    if seg_num is None:
+    try:
+        get_service().set_segment_label(
+            game_id=game_id,
+            turning_point_ply=current.turning_point_ply,
+            label=" ".join(tokens),
+        )
+    except UseCaseError as exc:
+        err(str(exc))
         return
-    if not tokens or tokens[0].lower() not in ("on", "off"):
-        err("Usage: diagram on|off")
-        return
-    toggle = tokens[0].lower()
-    segments = _session.annotation.segments
-    segments[seg_num - 1].show_diagram = toggle == "on"
-    _session.dirty = True
-    print(f"Diagram {'enabled' if toggle == 'on' else 'disabled'} for segment {seg_num}.")
-
-
-def cmd_orientation(tokens: list[str]) -> None:
-    """Set the diagram orientation for the annotation."""
-    if not tokens or tokens[0].lower() not in ("white", "black"):
-        err("Usage: orientation <white|black>")
-        return
-    _session.annotation.diagram_orientation = tokens[0].lower()
-    _session.dirty = True
-    print(f"Diagram orientation set to {tokens[0].lower()}.")
-
-
-def import_pgn_to_lichess(pgn: str) -> str:
-    """Import a PGN to Lichess and return the game URL."""
-    import requests
-    response = requests.post(
-        "https://lichess.org/api/import",
-        data={"pgn": pgn},
-    )
-    response.raise_for_status()
-    return response.url
-
-
-def cmd_see(_tokens: list[str]) -> None:
-    """Open Lichess analysis for the current game."""
-    import webbrowser
-
-    ann = _session.annotation
-    url = import_pgn_to_lichess(ann.pgn)
-    webbrowser.open(url)
-    print("Opening Lichess analysis.")
-
-
-def cmd_json(_tokens: list[str]) -> None:
-    """Print the current annotation's JSON representation to standard output."""
-    from annotate.adapters.json_file_annotation_repository import to_dict
-    import json
-    print(json.dumps(to_dict(_session.annotation), indent=2))
+    print("Label updated.")
 
 
 def cmd_comment(_tokens: list[str]) -> None:
-    """Open $EDITOR to write or edit commentary for the current segment."""
-    seg_num = _require_current_segment()
-    if seg_num is None:
+    game_id = _require_open_session()
+    if game_id is None:
         return
-    segments = _session.annotation.segments
-    seg = segments[seg_num - 1]
+    current = _current_segment_summary()
+    if current is None:
+        err("No current segment.")
+        return
+    detail = get_service().view_segment(
+        game_id=game_id,
+        turning_point_ply=current.turning_point_ply,
+    )
     launcher = SystemEditorLauncher()
-    updated = launcher.edit(seg.commentary)
-    seg.commentary = updated
-    _session.dirty = True
-    print(f"Commentary updated for segment {seg_num}.")
+    updated = launcher.edit(detail.annotation)
+    try:
+        get_service().set_segment_annotation(
+            game_id=game_id,
+            turning_point_ply=current.turning_point_ply,
+            annotation_text=updated,
+        )
+    except UseCaseError as exc:
+        err(str(exc))
+        return
+    print("Annotation updated.")
 
 
-# ---------------------------------------------------------------------------
-# Help
-# ---------------------------------------------------------------------------
+def cmd_diagram(tokens: list[str]) -> None:
+    game_id = _require_open_session()
+    if game_id is None:
+        return
+    current = _current_segment_summary()
+    if current is None:
+        err("No current segment.")
+        return
+    desired = None
+    if tokens:
+        if tokens[0].lower() not in ("on", "off"):
+            err("Usage: diagram [on|off]")
+            return
+        desired = tokens[0].lower() == "on"
+    try:
+        detail = get_service().view_segment(
+            game_id=game_id,
+            turning_point_ply=current.turning_point_ply,
+        )
+        if desired is None:
+            updated = get_service().toggle_segment_diagram(
+                game_id=game_id,
+                turning_point_ply=current.turning_point_ply,
+            )
+        elif detail.show_diagram != desired:
+            updated = get_service().toggle_segment_diagram(
+                game_id=game_id,
+                turning_point_ply=current.turning_point_ply,
+            )
+        else:
+            updated = detail
+    except UseCaseError as exc:
+        err(str(exc))
+        return
+    print(f"Diagram {'enabled' if updated.show_diagram else 'disabled'}.")
+
+
+def cmd_save(_tokens: list[str]) -> None:
+    game_id = _require_open_session()
+    if game_id is None:
+        return
+    try:
+        get_service().save_session(game_id)
+    except UseCaseError as exc:
+        err(str(exc))
+        return
+    print("Saved.")
+
+
+def _do_close() -> bool:
+    game_id = _require_open_session()
+    if game_id is None:
+        return False
+    try:
+        result = get_service().close_game(game_id, save_changes=None)
+    except UseCaseError as exc:
+        err(str(exc))
+        return False
+    if result.requires_confirmation:
+        answer = input("You have unsaved changes. Save before closing? (yes/no/cancel): ").strip().lower()
+        if answer == "cancel":
+            print("Close cancelled.")
+            return False
+        save_changes = answer == "yes"
+        result = get_service().close_game(game_id, save_changes=save_changes)
+    _session.game_id = None
+    _session.current_turning_point_ply = None
+    print("Session closed.")
+    return True
+
+
+def cmd_close(_tokens: list[str]) -> None:
+    _do_close()
+
+
+def cmd_render(tokens: list[str]) -> None:
+    game_id = tokens[0] if tokens else _require_open_session()
+    if game_id is None:
+        err("Usage: render <game-id>")
+        return
+    config = get_config()
+    try:
+        output_path = get_service().render_pdf(
+            game_id=game_id,
+            diagram_size=config.diagram_size,
+            page_size=config.page_size,
+        )
+    except UseCaseError as exc:
+        err(str(exc))
+        return
+    except ValueError as exc:
+        err(str(exc))
+        return
+    print(f"Rendered: {output_path}")
+
+
+def cmd_upload(tokens: list[str]) -> None:
+    game_id = tokens[0] if tokens else _require_open_session()
+    if game_id is None:
+        err("Usage: upload <game-id>")
+        return
+    try:
+        url = get_service().upload_to_lichess(game_id=game_id)
+    except UseCaseError as exc:
+        err(str(exc))
+        return
+    print(url)
+
+
+def cmd_see(tokens: list[str]) -> None:
+    game_id = tokens[0] if tokens else _require_open_session()
+    if game_id is None:
+        err("Usage: see <game-id>")
+        return
+    try:
+        url = get_service().upload_to_lichess(game_id=game_id)
+    except UseCaseError as exc:
+        err(str(exc))
+        return
+    webbrowser.open(url)
+    print(url)
+
+
+def cmd_copy(tokens: list[str]) -> None:
+    if _session.open:
+        if not tokens:
+            err("Usage: copy <new-game-id>")
+            return
+        source_game_id = _session.game_id
+        new_game_id = tokens[0]
+    else:
+        if len(tokens) != 2:
+            err("Usage: copy <source-game-id> <new-game-id>")
+            return
+        source_game_id, new_game_id = tokens
+    try:
+        get_service().save_game_as(
+            source_game_id=source_game_id,
+            new_game_id=new_game_id,
+        )
+    except OverwriteRequiredError:
+        answer = input(f"Game id '{new_game_id}' exists. Overwrite? (yes/no): ").strip().lower()
+        if answer != "yes":
+            print("Copy cancelled.")
+            return
+        get_service().save_game_as(
+            source_game_id=source_game_id,
+            new_game_id=new_game_id,
+            overwrite=True,
+        )
+    except UseCaseError as exc:
+        err(str(exc))
+        return
+    print(f"Created: {new_game_id}")
+
+
+def cmd_delete(tokens: list[str]) -> None:
+    game_id = tokens[0] if tokens else _require_open_session()
+    if game_id is None:
+        err("Usage: delete <game-id>")
+        return
+    answer = input(f"Delete '{game_id}'? (yes/no): ").strip().lower()
+    if answer != "yes":
+        print("Delete cancelled.")
+        return
+    try:
+        get_service().delete_game(game_id)
+    except UseCaseError as exc:
+        err(str(exc))
+        return
+    if _session.game_id == game_id:
+        _session.game_id = None
+        _session.current_turning_point_ply = None
+    print(f"Deleted: {game_id}")
+
+
+def cmd_json(_tokens: list[str]) -> None:
+    game_id = _require_open_session()
+    if game_id is None:
+        return
+    repo = get_repo()
+    try:
+        annotation = repo.load_working_copy(game_id)
+    except FileNotFoundError:
+        err(f"Session is not open for game: {game_id}")
+        return
+    payload = {
+        "game_id": annotation.game_id,
+        "title": annotation.title,
+        "segments": {
+            str(ply): {
+                "label": content.label,
+                "annotation": content.annotation,
+                "show_diagram": content.show_diagram,
+            }
+            for ply, content in annotation.segment_contents.items()
+        },
+    }
+    print(json.dumps(payload, indent=2))
+
+
+def cmd_quit(_tokens: list[str]) -> None:
+    if _session.open:
+        if not _do_close():
+            return
+    sys.exit(0)
+
 
 _HELP_NO_SESSION = """\
 Commands (no session open):
-  new              Create a new annotation (prompts for PGN file and metadata)
-  open <id>        Open an existing annotation
-  list             List all annotations
-  help             Show this help
-  quit             Exit"""
+  import                    Import a game from a PGN file and open it
+  new                       Alias for import
+  open <game-id>            Open or resume a game
+  list                      List games in the store
+  copy <source> <new>       Save game as a new game id
+  delete <game-id>          Delete a game
+  render <game-id>          Render a game to output.pdf
+  upload <game-id>          Upload a game to Lichess and print the URL
+  see <game-id>             Upload a game to Lichess and open the URL
+  help                      Show this help
+  quit                      Exit"""
 
 _HELP_SESSION = """\
 Commands (session open):
-  list                        List segments with their labels
-  open <#>                    Set the current segment
-  split <move>                Add a turning point; split the containing segment
-  merge <move>                Remove a turning point; merge with previous segment
-  label <text>                Set or update the label for the current segment
-  comment                     Open $EDITOR to write commentary for the current segment
-  diagram on|off              Toggle the end-of-segment diagram for the current segment
-  orientation <white|black>   Set the diagram orientation for this annotation
-  see                         Open Lichess analysis for this game
-  json                        Print the current annotation as JSON
-  save                        Save to main store (stay in session)
-  close                       Close session (prompts if unsaved changes)
-  help                        Show this help
-  quit                        Close session and exit"""
+  segments                  List segments for the open game
+  view <segment-number>     View one segment and select it
+  split <move> [label]      Add a turning point
+  merge <move>              Remove a turning point
+  label <text>              Set the current segment label
+  comment                   Edit the current segment annotation in $EDITOR
+  diagram [on|off]          Toggle or set the current segment diagram flag
+  save                      Save the open game
+  close                     Close the current game
+  copy <new-game-id>        Save the current game as a new game id
+  delete [game-id]          Delete the current game or a named one
+  render [game-id]          Render the current or named game to output.pdf
+  upload [game-id]          Upload the current or named game to Lichess
+  see [game-id]             Upload to Lichess and open the URL
+  json                      Print the working annotation JSON summary
+  help                      Show this help
+  quit                      Close the current game and exit"""
 
 
 def cmd_help(_tokens: list[str]) -> None:
-    """Print the help text appropriate to the current session state."""
-
-    if _session.open:
-        print(_HELP_SESSION)
-    else:
-        print(_HELP_NO_SESSION)
+    print(_HELP_SESSION if _session.open else _HELP_NO_SESSION)
 
 
-# ---------------------------------------------------------------------------
-# Command tables
-# ---------------------------------------------------------------------------
-
-_COMMANDS_NO_SESSION: dict[str, tuple] = {
-    "new": (cmd_new, False),
-    "open": (cmd_open, False),
-    "list": (cmd_list, False),
-    "help": (cmd_help, False),
-    "quit": (cmd_quit, False),
+_COMMANDS_NO_SESSION = {
+    "import": cmd_import,
+    "new": cmd_new,
+    "open": cmd_open,
+    "list": cmd_list,
+    "copy": cmd_copy,
+    "delete": cmd_delete,
+    "render": cmd_render,
+    "upload": cmd_upload,
+    "see": cmd_see,
+    "help": cmd_help,
+    "quit": cmd_quit,
 }
 
-_COMMANDS_SESSION: dict[str, tuple] = {
-    "list": (cmd_list_segments, True),
-    "open": (cmd_open_segment, True),
-    "split": (cmd_split, True),
-    "merge": (cmd_merge, True),
-    "label": (cmd_label, True),
-    "comment": (cmd_comment, True),
-    "diagram": (cmd_diagram, True),
-    "orientation": (cmd_orientation, True),
-    "see": (cmd_see, True),
-    "json": (cmd_json, True),
-    "save": (cmd_save, True),
-    "close": (cmd_close, True),
-    "help": (cmd_help, True),
-    "quit": (cmd_quit, True),
+_COMMANDS_SESSION = {
+    "segments": cmd_segments,
+    "view": cmd_view,
+    "split": cmd_split,
+    "merge": cmd_merge,
+    "label": cmd_label,
+    "comment": cmd_comment,
+    "diagram": cmd_diagram,
+    "save": cmd_save,
+    "close": cmd_close,
+    "copy": cmd_copy,
+    "delete": cmd_delete,
+    "render": cmd_render,
+    "upload": cmd_upload,
+    "see": cmd_see,
+    "json": cmd_json,
+    "help": cmd_help,
+    "quit": cmd_quit,
 }
 
-
-# ---------------------------------------------------------------------------
-# Crash recovery
-# ---------------------------------------------------------------------------
 
 def check_stale_working_copies() -> None:
-    """Offer recovery for any leftover working copies from prior sessions.
-
-    At startup, the CLI scans for working copies that may have been left
-    behind by a crash or interrupted session. Each one is offered to the
-    user for resume-or-discard handling before normal command processing
-    begins.
-    """
-
     repo = get_repo()
     stale = repo.stale_working_copies()
     if not stale:
         return
-    for annotation_id in stale:
+    for game_id in stale:
         try:
-            ann = repo.load_working_copy(annotation_id)
+            annotation = repo.load_working_copy(game_id)
         except Exception:
-            repo.discard_working_copy(annotation_id)
+            repo.discard_working_copy(game_id)
             continue
-        print(f"Working copy found for '{ann.title}' (from a previous session).")
+        print(f"Working copy found for '{annotation.title}' ({game_id}).")
         answer = input("Resume? (yes/no): ").strip().lower()
         if answer == "yes":
-            _session.annotation = ann
-            _session.current_segment = 1
-            _session.dirty = True
-            print("Resumed.")
+            _open_game(game_id)
             return
-        else:
-            repo.discard_working_copy(annotation_id)
-            print("Discarded.")
+        repo.discard_working_copy(game_id)
+        print("Discarded.")
 
-
-# ---------------------------------------------------------------------------
-# Main REPL loop
-# ---------------------------------------------------------------------------
 
 def main() -> None:
-    """Run the interactive ``chess-annotate`` REPL.
-
-    This function prints the initial banner, performs crash-recovery
-    checks for stale working copies, and then loops reading and
-    dispatching commands until the process exits.
-    """
-
     print("Chess Annotation System")
     print("Type 'help' for a list of commands.")
     print()
@@ -652,6 +717,7 @@ def main() -> None:
         except (EOFError, KeyboardInterrupt):
             print()
             cmd_quit([])
+            continue
 
         if not line:
             continue
@@ -660,19 +726,9 @@ def main() -> None:
         cmd_name = parts[0].lower()
         tokens = parts[1].split() if len(parts) > 1 else []
 
-        if _session.open:
-            if cmd_name in _COMMANDS_SESSION:
-                handler, _ = _COMMANDS_SESSION[cmd_name]
-                handler(tokens)
-            elif cmd_name in _COMMANDS_NO_SESSION:
-                print("Not available — an annotation is already open.")
-            else:
-                print(f"Unknown command: {cmd_name!r}. Type 'help' for a list.")
-        else:
-            if cmd_name in _COMMANDS_NO_SESSION:
-                handler, _ = _COMMANDS_NO_SESSION[cmd_name]
-                handler(tokens)
-            elif cmd_name in _COMMANDS_SESSION:
-                print("Not available — no annotation is open.")
-            else:
-                print(f"Unknown command: {cmd_name!r}. Type 'help' for a list.")
+        table = _COMMANDS_SESSION if _session.open else _COMMANDS_NO_SESSION
+        handler = table.get(cmd_name)
+        if handler is None:
+            print(f"Unknown command: {cmd_name!r}. Type 'help' for a list.")
+            continue
+        handler(tokens)
