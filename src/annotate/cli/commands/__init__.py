@@ -9,7 +9,7 @@ from annotate.cli.commands.import_game import cmd_import
 from annotate.cli.commands.show_json import cmd_json
 from annotate.cli.commands.label import cmd_label
 from annotate.cli.commands.list_all import cmd_list, cmd_list_segments
-from annotate.cli.commands.open_ import cmd_open
+from annotate.cli.commands.open_game import cmd_open
 from annotate.cli.commands.quit_ import cmd_quit
 from annotate.cli.commands.render import cmd_render
 from annotate.cli.commands.save import cmd_save
