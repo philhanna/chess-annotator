@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-04-08
+
+### Added
+- Typing a bare integer in session mode selects the current segment by number.
+- PGN file path can now be passed directly to the `import` command on the command line.
+
+### Changed
+- `view` command uses the current segment and takes no argument.
+- Black move notation no longer includes a space after the ellipsis (e.g. `2...dxe4`).
+- `render` and `see` in session mode always use the current game; no argument accepted.
+- `upload` command removed from both modes; use `see` instead.
+- `delete` command removed from session mode.
+- Leading and trailing quote marks are stripped from the `label` command argument.
+
 ## [1.1.0] - 2026-04-02
 
 ### Changed
