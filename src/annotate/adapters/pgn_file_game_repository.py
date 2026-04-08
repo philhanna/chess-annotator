@@ -132,6 +132,35 @@ def validate_pgn_json_sync(pgn_text: str, json_data: dict) -> None:
         )
 
 
+def _read_json_file(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text())
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Could not parse JSON file: {path}") from exc
+
+
+def _load_annotation_state(*, game_id: str, pgn_path: Path, json_path: Path) -> Annotation:
+    try:
+        pgn_text = pgn_path.read_text()
+    except OSError as exc:
+        raise ValueError(f"Could not read PGN file: {pgn_path}") from exc
+
+    json_data = _read_json_file(json_path)
+    try:
+        validate_pgn_json_sync(pgn_text, json_data)
+    except ValueError as exc:
+        raise ValueError(f"Corrupted stored game '{game_id}': {exc}") from exc
+
+    try:
+        return _annotation_from_json_and_pgn(
+            game_id=str(game_id),
+            pgn_text=pgn_text,
+            json_data=json_data,
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(f"Corrupted annotation data for game '{game_id}'") from exc
+
+
 class PGNFileGameRepository(GameRepository):
     """Persist each game in its own directory under the store root."""
 
@@ -183,13 +212,10 @@ class PGNFileGameRepository(GameRepository):
         json_path = self.main_json_path(game_id)
         if not pgn_path.exists() or not json_path.exists():
             raise FileNotFoundError(f"No game found: {game_id}")
-        pgn_text = pgn_path.read_text()
-        json_data = json.loads(json_path.read_text())
-        validate_pgn_json_sync(pgn_text, json_data)
-        return _annotation_from_json_and_pgn(
+        return _load_annotation_state(
             game_id=str(game_id),
-            pgn_text=pgn_text,
-            json_data=json_data,
+            pgn_path=pgn_path,
+            json_path=json_path,
         )
 
     def list_all(self) -> list[tuple[str, str]]:
@@ -201,7 +227,10 @@ class PGNFileGameRepository(GameRepository):
             json_path = path / self.MAIN_JSON
             if not pgn_path.exists() or not json_path.exists():
                 continue
-            json_data = json.loads(json_path.read_text())
+            try:
+                json_data = _read_json_file(json_path)
+            except ValueError:
+                continue
             title = json_data.get("game", {}).get("title", "")
             result.append((path.name, title))
         return result
@@ -227,13 +256,10 @@ class PGNFileGameRepository(GameRepository):
         json_path = self.work_json_path(game_id)
         if not pgn_path.exists() or not json_path.exists():
             raise FileNotFoundError(f"No working copy found: {game_id}")
-        pgn_text = pgn_path.read_text()
-        json_data = json.loads(json_path.read_text())
-        validate_pgn_json_sync(pgn_text, json_data)
-        return _annotation_from_json_and_pgn(
+        return _load_annotation_state(
             game_id=str(game_id),
-            pgn_text=pgn_text,
-            json_data=json_data,
+            pgn_path=pgn_path,
+            json_path=json_path,
         )
 
     def discard_working_copy(self, game_id: str | int) -> None:

@@ -162,3 +162,34 @@ def test_load_rejects_mismatched_pgn_and_json(tmp_path):
 
     with pytest.raises(ValueError):
         repo.load("broken")
+
+
+def test_load_reports_corrupted_json_file(tmp_path):
+    repo = PGNFileGameRepository(tmp_path)
+    game_dir = repo.game_dir("broken-json")
+    game_dir.mkdir(parents=True, exist_ok=True)
+    repo.main_pgn_path("broken-json").write_text(pgn_with_turning_points(make_annotation()))
+    repo.main_json_path("broken-json").write_text("{ not valid json")
+
+    with pytest.raises(ValueError, match="Could not parse JSON file"):
+        repo.load("broken-json")
+
+
+def test_load_working_copy_reports_corrupted_storage_message(tmp_path):
+    repo = PGNFileGameRepository(tmp_path)
+    annotation = make_annotation()
+    repo.save_working_copy(annotation)
+    repo.work_json_path("game-1").write_text(
+        json.dumps(
+            {
+                "game": {"title": annotation.title},
+                "segments": {
+                    "1": {"label": "Opening", "annotation": "", "show_diagram": True},
+                    "9": {"label": "Mismatch", "annotation": "", "show_diagram": True},
+                },
+            }
+        )
+    )
+
+    with pytest.raises(ValueError, match="Corrupted stored game 'game-1'"):
+        repo.load_working_copy("game-1")
