@@ -106,7 +106,7 @@ def move_range_for_turning_point(
 def san_move_range(pgn: str, start_ply: int, end_ply: int) -> str:
     """Return 'first_move to last_move' in SAN notation for the ply range.
 
-    White moves are formatted as ``N. Move``; black moves as ``N... Move``.
+    White moves are formatted as ``N. Move``; black moves as ``N...Move``.
     When the segment contains a single move the suffix ``to last_move`` is
     omitted.
     """
@@ -129,7 +129,7 @@ def san_move_range(pgn: str, start_ply: int, end_ply: int) -> str:
         move_number = (ply - 1) // 2 + 1
         is_white = ply % 2 == 1
         san = board.san(move)
-        formatted = f"{move_number}. {san}" if is_white else f"{move_number}... {san}"
+        formatted = f"{move_number}. {san}" if is_white else f"{move_number}...{san}"
 
         if first_san is None:
             first_san = formatted
@@ -168,7 +168,7 @@ def format_move_list(pgn: str, start_ply: int, end_ply: int) -> str:
         if is_white:
             parts.append(f"{move_number}. {san}")
         elif first_in_segment:
-            parts.append(f"{move_number}... {san}")
+            parts.append(f"{move_number}...{san}")
         else:
             parts.append(san)
 

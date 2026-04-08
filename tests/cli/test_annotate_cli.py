@@ -41,7 +41,7 @@ class FakeService:
             session_open=True,
             has_unsaved_changes=False,
             resumed=False,
-            segments=[SimpleNamespace(turning_point_ply=1, move_range="1. e4 to 10... Nc6", label="Opening")],
+            segments=[SimpleNamespace(turning_point_ply=1, move_range="1. e4 to 10...Nc6", label="Opening")],
         )
 
     def list_segments(self, *, game_id):
@@ -49,7 +49,7 @@ class FakeService:
         return [
             SimpleNamespace(
                 turning_point_ply=1,
-                move_range="1. e4 to 10... Nc6",
+                move_range="1. e4 to 10...Nc6",
                 label="Opening",
                 has_annotation=True,
                 show_diagram=True,
@@ -60,7 +60,7 @@ class FakeService:
         self.view_calls.append((game_id, turning_point_ply))
         return SimpleNamespace(
             turning_point_ply=turning_point_ply,
-            move_range="1. e4 to 10... Nc6",
+            move_range="1. e4 to 10...Nc6",
             label="Opening",
             move_list="1. e4 e5 2. Nf3 Nc6",
             show_diagram=True,
@@ -102,7 +102,7 @@ def test_repl_open_list_view_save_and_quit(monkeypatch, capsys):
 
     out = capsys.readouterr().out
     assert "Opened: Opened Game" in out
-    assert "1. e4 to 10... Nc6" in out
+    assert "1. e4 to 10...Nc6" in out
     assert "Plan the opening." in out
     assert "Saved." in out
     assert fake_service.open_calls == ["game-1", "game-1"]
