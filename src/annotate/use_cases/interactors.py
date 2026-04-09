@@ -1,7 +1,7 @@
 from dataclasses import replace
 
 from annotate.domain.annotation import Annotation
-from annotate.domain.model import total_plies
+from annotate.domain.model import derive_segments, total_plies
 from annotate.domain.segment import SegmentContent
 
 
@@ -69,4 +69,47 @@ def merge_segment(
             segment_contents=new_contents,
         ),
         True,
+    )
+
+
+def merge_segments_by_index(annotation: Annotation, m: int, n: int) -> Annotation:
+    """Return a new Annotation with segments m through n (1-based) collapsed into one.
+
+    The merged segment occupies the ply range from the start of segment m to the
+    end of segment n. Its label is the space-joined sequence of non-empty stripped
+    labels from segments m … n. Its annotation is the blank-line-joined sequence
+    of non-empty stripped annotation texts from segments m … n.
+
+    Raises:
+        ValueError: if m or n are out of range, or if m >= n.
+    """
+    segments = derive_segments(annotation)
+    total = len(segments)
+    if not (1 <= m < n <= total):
+        raise ValueError(
+            f"Segment indices must satisfy 1 <= m < n <= {total}; got m={m}, n={n}"
+        )
+
+    to_merge = segments[m - 1 : n]
+
+    merged_label = " ".join(s.label.strip() for s in to_merge if s.label.strip())
+    merged_annotation = "\n\n".join(
+        s.annotation.strip() for s in to_merge if s.annotation.strip()
+    )
+
+    first_tp = to_merge[0].turning_point_ply
+    remove_tps = {s.turning_point_ply for s in to_merge[1:]}
+
+    new_turning_points = [tp for tp in annotation.turning_points if tp not in remove_tps]
+    new_contents = {tp: c for tp, c in annotation.segment_contents.items() if tp not in remove_tps}
+    new_contents[first_tp] = replace(
+        annotation.segment_contents[first_tp],
+        label=merged_label,
+        annotation=merged_annotation,
+    )
+
+    return replace(
+        annotation,
+        turning_points=new_turning_points,
+        segment_contents=new_contents,
     )

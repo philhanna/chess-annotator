@@ -16,7 +16,7 @@ from annotate.domain.model import (
 )
 from annotate.domain.segment import SegmentView
 from annotate.ports import DocumentRenderer, GameRepository, LichessUploader, PGNParser
-from annotate.use_cases.interactors import merge_segment, split_segment
+from annotate.use_cases.interactors import merge_segment, merge_segments_by_index, split_segment
 
 
 class UseCaseError(Exception):
@@ -381,6 +381,30 @@ class AnnotationService:
         updated, merged = merge_segment(annotation, ply, force=force)
         if not merged:
             raise UseCaseError("Turning point has content; force is required to remove it")
+        self.repository.save_working_copy(updated)
+        return [_segment_summary(segment, updated.pgn) for segment in derive_segments(updated)]
+
+    def merge_segments(
+        self, *, game_id: str, m: int, n: int
+    ) -> list[SegmentSummary]:
+        """Collapse segments m through n (1-based) into one, concatenating their content.
+
+        The merged segment's label is the space-joined sequence of non-empty stripped
+        labels from segments m … n. Its annotation is the blank-line-joined sequence
+        of non-empty stripped annotation texts from segments m … n. The working copy
+        is saved after the merge. Returns the updated list of segment summaries.
+
+        Raises:
+            SessionNotOpenError: if no working copy exists for ``game_id``.
+            UseCaseError: if m or n are out of range or m >= n.
+        """
+        annotation = self._load_session(game_id)
+        total = len(annotation.turning_points)
+        if not (1 <= m < n <= total):
+            raise UseCaseError(
+                f"Segment indices must satisfy 1 <= m < n <= {total}; got m={m}, n={n}"
+            )
+        updated = merge_segments_by_index(annotation, m, n)
         self.repository.save_working_copy(updated)
         return [_segment_summary(segment, updated.pgn) for segment in derive_segments(updated)]
 

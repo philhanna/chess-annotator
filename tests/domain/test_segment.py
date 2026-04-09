@@ -12,7 +12,7 @@ from annotate.domain.model import (
     total_plies,
 )
 from annotate.domain.segment import SegmentContent
-from annotate.use_cases.interactors import merge_segment, split_segment
+from annotate.use_cases.interactors import merge_segment, merge_segments_by_index, split_segment
 
 _RUY_LOPEZ_PGN = (
     "[Event \"Test\"]\n"
@@ -250,3 +250,90 @@ def test_merge_segment_force_discards_later_content():
     assert merged is True
     assert result.turning_points == [1]
     assert 11 not in result.segment_contents
+
+
+# --- merge_segments_by_index ---
+
+def test_merge_segments_by_index_adjacent_concatenates_labels():
+    ann = make_annotation(1, 7, 15)
+    ann.segment_contents[1].label = "Opening"
+    ann.segment_contents[7].label = "Middlegame"
+    result = merge_segments_by_index(ann, 1, 2)
+    assert result.turning_points == [1, 15]
+    assert result.segment_contents[1].label == "Opening Middlegame"
+
+
+def test_merge_segments_by_index_adjacent_concatenates_annotations():
+    ann = make_annotation(1, 7, 15)
+    ann.segment_contents[1].annotation = "First note"
+    ann.segment_contents[7].annotation = "Second note"
+    result = merge_segments_by_index(ann, 1, 2)
+    assert result.segment_contents[1].annotation == "First note\n\nSecond note"
+
+
+def test_merge_segments_by_index_spans_three_segments():
+    ann = make_annotation(1, 7, 11, 15)
+    ann.segment_contents[1].label = "A"
+    ann.segment_contents[7].label = "B"
+    ann.segment_contents[11].label = "C"
+    result = merge_segments_by_index(ann, 1, 3)
+    assert result.turning_points == [1, 15]
+    assert result.segment_contents[1].label == "A B C"
+
+
+def test_merge_segments_by_index_omits_empty_labels():
+    ann = make_annotation(1, 7, 15)
+    ann.segment_contents[1].label = "Opening"
+    ann.segment_contents[7].label = ""
+    result = merge_segments_by_index(ann, 1, 2)
+    assert result.segment_contents[1].label == "Opening"
+
+
+def test_merge_segments_by_index_omits_empty_annotations():
+    ann = make_annotation(1, 7, 15)
+    ann.segment_contents[1].annotation = "First note"
+    ann.segment_contents[7].annotation = ""
+    result = merge_segments_by_index(ann, 1, 2)
+    assert result.segment_contents[1].annotation == "First note"
+
+
+def test_merge_segments_by_index_strips_whitespace():
+    ann = make_annotation(1, 7, 15)
+    ann.segment_contents[1].label = "  Opening  "
+    ann.segment_contents[7].label = "  Middlegame  "
+    ann.segment_contents[1].annotation = "  First note  "
+    ann.segment_contents[7].annotation = "  Second note  "
+    result = merge_segments_by_index(ann, 1, 2)
+    assert result.segment_contents[1].label == "Opening Middlegame"
+    assert result.segment_contents[1].annotation == "First note\n\nSecond note"
+
+
+def test_merge_segments_by_index_preserves_show_diagram_of_first():
+    ann = make_annotation(1, 7, 15)
+    ann.segment_contents[1].show_diagram = False
+    result = merge_segments_by_index(ann, 1, 2)
+    assert result.segment_contents[1].show_diagram is False
+
+
+def test_merge_segments_by_index_invalid_m_equals_n():
+    ann = make_annotation(1, 7, 15)
+    with pytest.raises(ValueError):
+        merge_segments_by_index(ann, 2, 2)
+
+
+def test_merge_segments_by_index_invalid_m_greater_than_n():
+    ann = make_annotation(1, 7, 15)
+    with pytest.raises(ValueError):
+        merge_segments_by_index(ann, 3, 2)
+
+
+def test_merge_segments_by_index_n_out_of_range():
+    ann = make_annotation(1, 7, 15)
+    with pytest.raises(ValueError):
+        merge_segments_by_index(ann, 2, 4)
+
+
+def test_merge_segments_by_index_m_zero():
+    ann = make_annotation(1, 7, 15)
+    with pytest.raises(ValueError):
+        merge_segments_by_index(ann, 0, 2)
