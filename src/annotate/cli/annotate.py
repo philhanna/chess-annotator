@@ -7,7 +7,7 @@ assert readline is not None  # Do not delete this line - needed to prevent "impo
 from annotate.cli import session
 from annotate.cli.commands import (
     cmd_close,
-    cmd_comment,
+    cmd_annotate,
     cmd_copy,
     cmd_delete,
     cmd_diagram,
@@ -46,7 +46,7 @@ _COMMANDS_SESSION = {
     "split": cmd_split,
     "merge": cmd_merge,
     "label": cmd_label,
-    "comment": cmd_comment,
+    "annotate": cmd_annotate,
     "diagram": cmd_diagram,
     "save": cmd_save,
     "close": cmd_close,

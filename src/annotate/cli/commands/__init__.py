@@ -1,6 +1,6 @@
 # annotate.cli.commands
 from annotate.cli.commands.close import cmd_close
-from annotate.cli.commands.comment import cmd_comment
+from annotate.cli.commands.annotate_cmd import cmd_annotate
 from annotate.cli.commands.copy import cmd_copy
 from annotate.cli.commands.delete import cmd_delete
 from annotate.cli.commands.diagram import cmd_diagram
@@ -21,7 +21,7 @@ from annotate.cli.commands.view import cmd_view
 
 __all__ = [
     "cmd_close",
-    "cmd_comment",
+    "cmd_annotate",
     "cmd_copy",
     "cmd_delete",
     "cmd_diagram",

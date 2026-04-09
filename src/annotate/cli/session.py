@@ -22,7 +22,7 @@ class Session:
 
     ``game_id`` is None when no game is open. ``current_turning_point_ply``
     tracks the turning-point ply of the segment that commands like ``view``,
-    ``label``, and ``comment`` operate on by default.
+    ``label``, and ``annotate`` operate on by default.
     """
 
     game_id: str | None = None
