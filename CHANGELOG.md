@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-04-08
+
+### Added
+- Export PDF and PGN from `chess-render`.
+- Captions added to rendered diagrams.
+- Render embedded HTML and SVG in PDFs.
+
 ## [0.5.0] - 2026-04-08
 
 ### Fixed

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chess-annotator"
-version = "0.5.0"
+version = "1.0.0"
 description = "Tool for annotating chess games and rendering them as book-quality PDFs"
 requires-python = ">=3.11"
 dependencies = [
