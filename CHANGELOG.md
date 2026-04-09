@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- `~` in PGN file paths and the `store_dir` config value is now expanded to the home directory.
+
+### Changed
+- Expanded docstrings across all application modules.
+- Moved `test1` script into the `tools/` directory.
+
 ## [0.4.0] - 2026-04-08
 
 ### Changed
