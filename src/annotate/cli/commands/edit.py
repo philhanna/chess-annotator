@@ -3,7 +3,7 @@ from annotate.cli import session
 from annotate.use_cases import UseCaseError
 
 
-def cmd_annotate(_tokens: list[str]) -> None:
+def cmd_edit(_tokens: list[str]) -> None:
     game_id = session.require_open_session()
     if game_id is None:
         return
