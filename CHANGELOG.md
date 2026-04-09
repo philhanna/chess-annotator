@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-04-08
+
 ### Fixed
 - `~` in PGN file paths and the `store_dir` config value is now expanded to the home directory.
 
