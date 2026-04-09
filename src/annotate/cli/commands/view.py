@@ -1,3 +1,5 @@
+import webbrowser
+
 from annotate.cli import session
 from annotate.use_cases import SegmentNotFoundError, SessionNotOpenError, UseCaseError
 
@@ -34,3 +36,4 @@ def cmd_view(_tokens: list[str]) -> None:
     if detail.diagram_path is not None:
         session.print()
         session.print(f"Diagram preview: {detail.diagram_path}")
+        webbrowser.open(detail.diagram_path.resolve().as_uri())

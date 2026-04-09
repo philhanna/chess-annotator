@@ -142,3 +142,36 @@ def test_repl_import_handles_overwrite_prompt(monkeypatch, tmp_path, capsys):
     out = capsys.readouterr().out
     assert "Imported and opened: Imported Game" in out
     assert fake_service.import_calls == 2
+
+
+def test_view_opens_rendered_svg_preview(monkeypatch, tmp_path, capsys):
+    fake_service = FakeService()
+    diagram_path = tmp_path / "preview.svg"
+    diagram_path.write_text("<svg/>")
+
+    def fake_view_segment(*, game_id, turning_point_ply):
+        fake_service.view_calls.append((game_id, turning_point_ply))
+        return SimpleNamespace(
+            turning_point_ply=turning_point_ply,
+            move_range="1. e4 to 10...Nc6",
+            label="Opening",
+            move_list="1. e4 e5 2. Nf3 Nc6",
+            show_diagram=True,
+            annotation="Plan the opening.",
+            diagram_path=diagram_path,
+        )
+
+    opened_urls: list[str] = []
+    fake_service.view_segment = fake_view_segment
+    monkeypatch.setattr(session_module, "get_service", lambda: fake_service)
+    monkeypatch.setattr(session_module, "get_repo", lambda: FakeRepo())
+    monkeypatch.setattr("annotate.cli.commands.view.webbrowser.open", opened_urls.append)
+    inputs = iter(["open game-1", "view", "quit"])
+    monkeypatch.setattr("builtins.input", lambda _prompt="": next(inputs))
+
+    with pytest.raises(SystemExit):
+        annotate.main()
+
+    out = capsys.readouterr().out
+    assert f"Diagram preview: {diagram_path}" in out
+    assert opened_urls == [diagram_path.resolve().as_uri()]
