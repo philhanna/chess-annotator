@@ -63,7 +63,9 @@ def _build_html(body_markdown: str, page_size: str) -> str:
         body_markdown: Markdown string produced by ``_build_markdown``.
         page_size:     ``"a4"`` or any other value (treated as ``"letter"``).
     """
-    md = mistune.create_markdown()
+    # This renderer intentionally embeds raw HTML and inline SVG in the Markdown
+    # document, so HTML escaping must be disabled here.
+    md = mistune.create_markdown(escape=False)
     body_html = md(body_markdown)
 
     # Load the bundled stylesheet from the package data directory.

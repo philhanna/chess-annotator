@@ -2,7 +2,11 @@ from pathlib import Path
 
 import pytest
 
-from annotate.adapters.markdown_html_pdf_renderer import MarkdownHTMLPDFRenderer
+from annotate.adapters.markdown_html_pdf_renderer import (
+    MarkdownHTMLPDFRenderer,
+    _build_html,
+    _build_markdown,
+)
 from annotate.domain.annotation import Annotation
 from annotate.domain.segment import SegmentContent
 
@@ -88,3 +92,18 @@ def test_render_uses_game_directory_cache_and_writes_pdf(tmp_path, monkeypatch):
     assert diagram_renderer.calls
     assert diagram_renderer.calls[0][4] == tmp_path / "game-1" / "diagram-cache"
     assert "Develop pieces" in written["html"]
+
+
+def test_build_html_preserves_embedded_html_and_svg_markup(tmp_path):
+    annotation = make_annotation()
+    diagram_path = tmp_path / "diagram.svg"
+    diagram_path.write_text('<svg xmlns="http://www.w3.org/2000/svg"><text>board</text></svg>')
+
+    markdown = _build_markdown(annotation, {0: diagram_path})
+    html = _build_html(markdown, "a4")
+
+    assert '<p class="byline">Tester' in html
+    assert '<code class="move-list">' in html
+    assert '<svg xmlns="http://www.w3.org/2000/svg">' in html
+    assert "&lt;p" not in html
+    assert "&lt;svg" not in html
