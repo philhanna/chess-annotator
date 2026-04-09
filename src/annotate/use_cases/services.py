@@ -562,6 +562,7 @@ class AnnotationService:
         game_id: str,
         diagram_size: int = 360,
         page_size: str = "a4",
+        output_path: Path | None = None,
     ) -> Path:
         """Render the game annotation to a PDF and return the output file path.
 
@@ -576,7 +577,7 @@ class AnnotationService:
         if self.document_renderer is None:
             raise MissingDependencyError("document_renderer is required")
         annotation = self._load_current_state(game_id)
-        output_path = self.store_dir / game_id / "output.pdf"
+        output_path = output_path or (self.store_dir / game_id / "output.pdf")
         self.document_renderer.render(
             annotation,
             output_path=output_path,
