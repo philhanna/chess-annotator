@@ -5,18 +5,10 @@ from annotate.ports import LichessUploader
 
 
 class LichessAPIUploader(LichessUploader):
-    """Upload PGN text to Lichess using the public import endpoint."""
-
     def __init__(self, api_url: str = "https://lichess.org/api/import") -> None:
         self.api_url = api_url
 
     def upload(self, pgn_text: str) -> str:
-        """POST ``pgn_text`` to the Lichess import endpoint and return the analysis URL.
-
-        The URL is extracted from the JSON response body when available,
-        then from the ``Location`` header, and finally from the final
-        redirected URL as a fallback.
-        """
         payload = parse.urlencode({"pgn": pgn_text}).encode("utf-8")
         req = request.Request(
             self.api_url,

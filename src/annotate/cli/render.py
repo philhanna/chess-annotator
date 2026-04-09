@@ -1,5 +1,3 @@
-"""chess-render — render an annotation to a book-quality PDF."""
-
 import argparse
 import sys
 

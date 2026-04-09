@@ -7,7 +7,6 @@ from annotate.domain.segment import SegmentContent, SegmentView
 
 
 def total_plies(pgn: str) -> int:
-    """Count the plies in the main line of a PGN game."""
     game = chess.pgn.read_game(io.StringIO(pgn))
     if game is None:
         raise ValueError("Could not parse PGN")
@@ -15,7 +14,6 @@ def total_plies(pgn: str) -> int:
 
 
 def game_headers(pgn: str) -> dict[str, str]:
-    """Return the PGN headers for the first game as plain strings."""
     game = chess.pgn.read_game(io.StringIO(pgn))
     if game is None:
         raise ValueError("Could not parse PGN")
@@ -23,7 +21,6 @@ def game_headers(pgn: str) -> dict[str, str]:
 
 
 def ply_from_move(move_number: int, side: str) -> int:
-    """Convert move number plus side into a 1-based ply index."""
     if side not in ("white", "black"):
         raise ValueError(f"side must be 'white' or 'black', got {side!r}")
     side_offset = 1 if side == "white" else 2
@@ -31,7 +28,6 @@ def ply_from_move(move_number: int, side: str) -> int:
 
 
 def move_from_ply(ply: int) -> tuple[int, str]:
-    """Convert a 1-based ply index back to move number and side."""
     if ply < 1:
         raise ValueError("ply must be >= 1")
     move_number = (ply + 1) // 2
@@ -40,7 +36,6 @@ def move_from_ply(ply: int) -> tuple[int, str]:
 
 
 def derive_segments(annotation: Annotation) -> list[SegmentView]:
-    """Derive contiguous segment views from turning points."""
     last_ply = total_plies(annotation.pgn)
     turning_points = annotation.turning_points
     segments: list[SegmentView] = []
@@ -67,12 +62,10 @@ def derive_segments(annotation: Annotation) -> list[SegmentView]:
 
 
 def segment_end_ply(annotation: Annotation, index: int) -> int:
-    """Return the inclusive end ply for a derived segment."""
     return derive_segments(annotation)[index].end_ply
 
 
 def find_segment_index(annotation: Annotation, ply: int) -> int:
-    """Locate the derived segment index that contains a given ply."""
     n = total_plies(annotation.pgn)
     if not (1 <= ply <= n):
         raise ValueError(f"Ply {ply} is out of range [1, {n}]")
@@ -88,7 +81,6 @@ def find_segment_index(annotation: Annotation, ply: int) -> int:
 def find_segment_by_turning_point(
     annotation: Annotation, turning_point_ply: int
 ) -> SegmentView:
-    """Return one derived segment by its turning-point ply."""
     if turning_point_ply not in annotation.segment_contents:
         raise ValueError(f"No segment starts at ply {turning_point_ply}")
     index = annotation.turning_points.index(turning_point_ply)
@@ -98,18 +90,11 @@ def find_segment_by_turning_point(
 def move_range_for_turning_point(
     annotation: Annotation, turning_point_ply: int
 ) -> tuple[int, int]:
-    """Return ``(start_ply, end_ply)`` for one segment."""
     segment = find_segment_by_turning_point(annotation, turning_point_ply)
     return segment.start_ply, segment.end_ply
 
 
 def san_move_range(pgn: str, start_ply: int, end_ply: int) -> str:
-    """Return 'first_move to last_move' in SAN notation for the ply range.
-
-    White moves are formatted as ``N. Move``; black moves as ``N...Move``.
-    When the segment contains a single move the suffix ``to last_move`` is
-    omitted.
-    """
     game = chess.pgn.read_game(io.StringIO(pgn))
     if game is None:
         raise ValueError("Could not parse PGN")
@@ -144,7 +129,6 @@ def san_move_range(pgn: str, start_ply: int, end_ply: int) -> str:
 
 
 def format_move_list(pgn: str, start_ply: int, end_ply: int) -> str:
-    """Return a SAN move list string for the ply range ``[start_ply, end_ply]``."""
     game = chess.pgn.read_game(io.StringIO(pgn))
     if game is None:
         raise ValueError("Could not parse PGN")

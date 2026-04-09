@@ -11,7 +11,6 @@ from annotate.ports.document_renderer import DocumentRenderer
 
 
 def _build_markdown(annotation: Annotation, diagram_paths: dict[int, Path]) -> str:
-    """Assemble the Markdown source document for ``annotation``."""
     lines: list[str] = []
 
     lines += [f"# {annotation.title}", ""]
@@ -38,7 +37,6 @@ def _build_markdown(annotation: Annotation, diagram_paths: dict[int, Path]) -> s
 
 
 def _build_html(body_markdown: str, page_size: str) -> str:
-    """Convert Markdown to a full HTML document with embedded CSS."""
     md = mistune.create_markdown()
     body_html = md(body_markdown)
 
@@ -71,13 +69,6 @@ def _build_html(body_markdown: str, page_size: str) -> str:
 
 
 class MarkdownHTMLPDFRenderer(DocumentRenderer):
-    """Render an annotation to PDF via a Markdown → HTML → PDF pipeline.
-
-    The pipeline has five stages: validation, diagram rendering, Markdown
-    assembly, HTML conversion, and PDF output via WeasyPrint. Diagrams are
-    cached as SVG files under ``<store_dir>/<game-id>/diagram-cache/``.
-    """
-
     def __init__(self, diagram_renderer=None) -> None:
         self.diagram_renderer = diagram_renderer or PythonChessDiagramRenderer()
 
@@ -89,7 +80,6 @@ class MarkdownHTMLPDFRenderer(DocumentRenderer):
         page_size: str,
         store_dir: Path,
     ) -> None:
-        """Render ``annotation`` to a PDF at ``output_path``."""
         # Step 1 — Validate
         missing = [
             i + 1

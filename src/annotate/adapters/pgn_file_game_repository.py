@@ -13,11 +13,6 @@ TP_MARKER = "[%tp]"
 
 
 def strip_comments_and_nags(pgn_text: str) -> str:
-    """Return PGN text with all comments and NAGs removed from the main line.
-
-    Called at import time so the system owns a clean PGN with no third-party
-    annotations. Raises ValueError if the PGN cannot be parsed.
-    """
     game = chess.pgn.read_game(io.StringIO(pgn_text))
     if game is None:
         raise ValueError("Could not parse PGN")
@@ -92,7 +87,6 @@ def _load_game(pgn_text: str):
 
 
 def turning_points_from_pgn(pgn_text: str) -> list[int]:
-    """Extract turning-point plies from ``[%tp]`` markers in PGN comments."""
     game = _load_game(pgn_text)
     turning_points: list[int] = []
     for ply, node in enumerate(game.mainline(), start=0):
@@ -110,11 +104,6 @@ def turning_points_from_pgn(pgn_text: str) -> list[int]:
 
 
 def pgn_with_turning_points(annotation: Annotation) -> str:
-    """Return a PGN string with ``{ [%tp] }`` comments at each turning-point ply.
-
-    All other comments and NAGs are cleared. The resulting string is suitable
-    for writing to ``annotated.pgn`` or its working-copy equivalent.
-    """
     game = _load_game(annotation.pgn)
     for ply, node in enumerate(game.mainline(), start=0):
         if ply == 0:
@@ -131,7 +120,6 @@ def pgn_with_turning_points(annotation: Annotation) -> str:
 
 
 def validate_pgn_json_sync(pgn_text: str, json_data: dict) -> None:
-    """Ensure the PGN markers and JSON segment keys match exactly."""
     pgn_turning_points = turning_points_from_pgn(pgn_text)
     json_turning_points = sorted(int(ply) for ply in json_data["segments"])
     if pgn_turning_points != json_turning_points:
@@ -170,29 +158,6 @@ def _load_annotation_state(*, game_id: str, pgn_path: Path, json_path: Path) -> 
 
 
 class PGNFileGameRepository(GameRepository):
-    """Persist each game in its own subdirectory under the store root.
-
-    Each game directory contains two canonical files:
-
-    - ``annotated.pgn`` — the cleaned PGN with ``{ [%tp] }`` comments at
-      each turning-point ply and no other comments or NAGs.
-    - ``annotation.json`` — segment labels, annotation text, and
-      ``show_diagram`` flags keyed by ply, plus top-level game metadata.
-
-    While a session is open, two additional working-copy files are present:
-
-    - ``annotated.pgn.work``
-    - ``annotation.json.work``
-
-    These mirror the canonical files but accumulate unsaved edits. A session
-    is considered in-progress simply by the presence of these files. If the
-    process exits unexpectedly the working files persist and are offered for
-    resumption on the next startup.
-
-    The repository validates that the ``[%tp]`` ply markers in the PGN and
-    the segment keys in the JSON are identical on every read and write.
-    """
-
     MAIN_PGN = "annotated.pgn"
     MAIN_JSON = "annotation.json"
     WORK_PGN = "annotated.pgn.work"
@@ -334,7 +299,6 @@ class PGNFileGameRepository(GameRepository):
         shutil.rmtree(game_dir)
 
     def next_id(self) -> int:
-        """Return the next integer-like game id for backward compatibility."""
         max_id = 0
         for path in self._store.iterdir():
             if not path.is_dir():

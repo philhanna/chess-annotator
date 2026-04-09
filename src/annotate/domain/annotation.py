@@ -5,8 +5,6 @@ from annotate.domain.segment import SegmentContent
 
 @dataclass(frozen=True)
 class GameId:
-    """Strongly typed identifier for a stored annotated game."""
-
     value: str
 
     def __post_init__(self) -> None:
@@ -21,8 +19,6 @@ class GameId:
 
 @dataclass(frozen=True)
 class TurningPoint:
-    """Represent the starting ply of a segment."""
-
     ply: int
 
     def __post_init__(self) -> None:
@@ -32,8 +28,6 @@ class TurningPoint:
 
 @dataclass(frozen=True)
 class SessionState:
-    """Capture whether a game currently has an open editing session."""
-
     game_id: GameId
     is_open: bool = False
     has_unsaved_changes: bool = False
@@ -41,20 +35,6 @@ class SessionState:
 
 @dataclass
 class Annotation:
-    """Aggregate the domain state for one annotated chess game.
-
-    The canonical on-disk representation is a pair of files per game:
-    ``annotated.pgn`` (the cleaned PGN with ``[%tp]`` markers at each
-    turning-point ply) and ``annotation.json`` (per-segment labels,
-    annotation text, and ``show_diagram`` flags keyed by ply).
-
-    ``turning_points`` is a sorted list of ply numbers at which one
-    segment ends and the next begins. The first element is always 1.
-    ``segment_contents`` maps each turning-point ply to its ``SegmentContent``;
-    the two collections must always have identical key sets, which
-    ``__post_init__`` enforces.
-    """
-
     title: str
     author: str
     date: str
@@ -117,7 +97,6 @@ class Annotation:
         game_id: str | None = None,
         annotation_id: int | str | None = None,
     ) -> "Annotation":
-        """Build a new annotation with a single initial segment at ply 1."""
         if diagram_orientation is None:
             diagram_orientation = "black" if player_side == "black" else "white"
         return cls(
@@ -134,12 +113,10 @@ class Annotation:
         )
 
     def content_at(self, turning_point_ply: int) -> SegmentContent:
-        """Return the segment content for one turning point."""
         return self.segment_contents[turning_point_ply]
 
     @property
     def segments(self):
-        """Return derived segment views for all turning points."""
         from annotate.domain.model import derive_segments
 
         return derive_segments(self)
