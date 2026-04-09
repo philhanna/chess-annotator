@@ -20,7 +20,7 @@ Commands (session open):
   split <move> [label]      Add a turning point
   merge <move>              Remove a turning point
   label <text>              Set the current segment label
-  annotate                  Edit the current segment annotation in $EDITOR
+  edit                      Edit the current segment annotation in $EDITOR
   diagram [on|off]          Toggle or set the current segment diagram flag
   save                      Save the open game
   close                     Close the current game
