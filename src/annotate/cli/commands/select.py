@@ -17,4 +17,4 @@ def cmd_select(tokens: list[str]) -> None:
         session.err(f"Segment number must be between 1 and {len(segments)}")
         return
     session.state.current_turning_point_ply = segments[index - 1].turning_point_ply
-    session.print(f"Segment {index} selected.")
+    session.print(f"Segment {index} (ply {session.state.current_turning_point_ply}) selected.")
