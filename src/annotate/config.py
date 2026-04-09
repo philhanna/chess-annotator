@@ -7,11 +7,20 @@ import yaml
 
 
 def config_dir() -> Path:
+    """Return the platform-appropriate config directory for chess-annotator.
+
+    Follows the XDG Base Directory Specification on Linux and macOS:
+    ``$XDG_CONFIG_HOME/chess-annotator`` when the variable is set, otherwise
+    ``~/.config/chess-annotator``. On Windows the standard location is
+    ``%APPDATA%\\chess-annotator``.
+    """
     if sys.platform == "win32":
         appdata = os.environ.get("APPDATA")
         if appdata:
             return Path(appdata) / "chess-annotator"
+        # Fallback when APPDATA is not set (unusual but possible).
         return Path.home() / "AppData" / "Roaming" / "chess-annotator"
+    # XDG-compliant path; fall back to the default ~/.config location.
     xdg = os.environ.get("XDG_CONFIG_HOME")
     if xdg:
         return Path(xdg) / "chess-annotator"
@@ -19,6 +28,13 @@ def config_dir() -> Path:
 
 
 def default_store_dir() -> Path:
+    """Return the platform-appropriate default store directory for chess-annotator.
+
+    Follows the XDG Base Directory Specification on Linux and macOS:
+    ``$XDG_DATA_HOME/chess-annotator/store`` when the variable is set, otherwise
+    ``~/.local/share/chess-annotator/store``. On Windows the default is
+    ``%LOCALAPPDATA%\\chess-annotator\\store``.
+    """
     if sys.platform == "win32":
         localappdata = os.environ.get("LOCALAPPDATA")
         if localappdata:
@@ -32,6 +48,14 @@ def default_store_dir() -> Path:
 
 @dataclass
 class Config:
+    """Resolved application configuration.
+
+    All fields reflect the final value after merging the config file with
+    built-in defaults. ``store_dir`` additionally honours the
+    ``CHESS_ANNOTATE_STORE`` environment variable, which takes precedence
+    over everything else.
+    """
+
     store_dir: Path
     author: str | None = None
     diagram_size: int = 360
@@ -39,14 +63,29 @@ class Config:
 
 
 def get_config() -> Config:
+    """Load and return the fully-resolved application configuration.
+
+    Resolution order for ``store_dir``:
+
+    1. ``CHESS_ANNOTATE_STORE`` environment variable.
+    2. ``store_dir`` key in the platform config file.
+    3. Built-in platform default (see ``default_store_dir``).
+
+    ``author``, ``diagram_size``, and ``page_size`` are taken from the config file
+    when present; built-in defaults apply otherwise (``None``, ``360``, ``"a4"``).
+    An unreadable or malformed config file is silently ignored so the application
+    can always start with sensible defaults.
+    """
     file_data: dict = {}
     config_file = config_dir() / "config.yaml"
     if config_file.exists():
         try:
             file_data = yaml.safe_load(config_file.read_text()) or {}
         except (yaml.YAMLError, OSError):
+            # Silently ignore a broken config file; defaults will be used.
             pass
 
+    # Determine store_dir using the three-level resolution order.
     env_store = os.environ.get("CHESS_ANNOTATE_STORE")
     if env_store:
         store_dir = Path(env_store).expanduser()
@@ -64,4 +103,5 @@ def get_config() -> Config:
 
 
 def get_store_dir() -> Path:
+    """Convenience wrapper that returns only the resolved store directory path."""
     return get_config().store_dir

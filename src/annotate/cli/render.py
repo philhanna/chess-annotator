@@ -9,6 +9,11 @@ from annotate.use_cases import AnnotationService, GameNotFoundError, UseCaseErro
 
 
 def build_service() -> AnnotationService:
+    """Construct and return an ``AnnotationService`` wired for PDF rendering.
+
+    Only the repository, PGN parser, and document renderer adapters are wired;
+    the Lichess uploader and diagram renderer are not needed for this command.
+    """
     config = get_config()
     return AnnotationService(
         repository=JSONFileAnnotationRepository(config.store_dir),
@@ -19,6 +24,11 @@ def build_service() -> AnnotationService:
 
 
 def main() -> None:
+    """Entry point for the ``chess-render`` command-line tool.
+
+    Parses arguments, renders the requested game to a PDF, and prints the
+    output path on success. Exits with status 1 on any error.
+    """
     config = get_config()
 
     parser = argparse.ArgumentParser(
