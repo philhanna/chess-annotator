@@ -105,5 +105,6 @@ def test_build_html_preserves_embedded_html_and_svg_markup(tmp_path):
     assert '<p class="byline">Tester' in html
     assert '<code class="move-list">' in html
     assert '<svg xmlns="http://www.w3.org/2000/svg">' in html
+    assert "<figcaption>After 2...Nc6</figcaption>" in html
     assert "&lt;p" not in html
     assert "&lt;svg" not in html

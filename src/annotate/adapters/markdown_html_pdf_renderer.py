@@ -6,7 +6,7 @@ import weasyprint
 
 from annotate.adapters.python_chess_diagram_renderer import PythonChessDiagramRenderer
 from annotate.domain.annotation import Annotation
-from annotate.domain.model import format_move_list, total_plies
+from annotate.domain.model import format_move_list, san_move_range, total_plies
 from annotate.ports.document_renderer import DocumentRenderer
 
 
@@ -45,7 +45,11 @@ def _build_markdown(annotation: Annotation, diagram_paths: dict[int, Path]) -> s
 
         # Inline SVG diagram (only if enabled and a path was rendered).
         if seg.show_diagram and i in diagram_paths:
-            lines += [diagram_paths[i].read_text(), ""]
+            caption = san_move_range(annotation.pgn, seg.end_ply, seg.end_ply)
+            lines += ['<figure class="diagram">']
+            lines += [diagram_paths[i].read_text()]
+            lines += [f'<figcaption>After {caption}</figcaption>']
+            lines += ["</figure>", ""]
 
         lines += ["---", ""]
 
