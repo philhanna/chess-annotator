@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "chess-annotator"
 version = "1.0.0"
 description = "Tool for annotating chess games and rendering them as book-quality PDFs"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "python-chess",
     "weasyprint",
@@ -26,3 +26,6 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 annotate = ["adapters/chess_book.css"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

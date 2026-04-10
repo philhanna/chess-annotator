@@ -13,6 +13,24 @@ from annotate.ports import GameRepository
 TP_MARKER = "[%tp]"
 
 
+def _original_header_block(pgn_text: str) -> str:
+    """Return the original PGN header block from ``pgn_text``.
+
+    This preserves only explicitly supplied headers and avoids the default
+    header tags that python-chess adds when exporting a parsed game.
+    """
+    lines: list[str] = []
+    for line in pgn_text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            break
+        if stripped.startswith("[") and stripped.endswith("]"):
+            lines.append(line)
+    if not lines:
+        return ""
+    return "\n".join(lines) + "\n\n"
+
+
 def strip_comments_and_nags(pgn_text: str) -> str:
     """Return a copy of ``pgn_text`` with all comments and NAGs removed from the main line.
 
@@ -30,11 +48,12 @@ def strip_comments_and_nags(pgn_text: str) -> str:
         node.nags.clear()
 
     exporter = chess.pgn.StringExporter(
-        headers=True,
+        headers=False,
         variations=True,
         comments=False,
     )
-    return game.accept(exporter)
+    cleaned_moves = game.accept(exporter)
+    return f"{_original_header_block(pgn_text)}{cleaned_moves}".rstrip()
 
 
 def _annotation_json_data(annotation: Annotation) -> dict:
