@@ -5,16 +5,15 @@ from dataclasses import dataclass
 class SegmentContent:
     """Author-managed content for one annotation segment.
 
-    Stores the three pieces of data a user can edit for a segment: a short label
-    that titles the segment in the rendered document, free-form annotation text,
-    and a flag that controls whether a board diagram is included. Instances are
-    keyed by their turning-point ply in ``Annotation.segment_contents`` and are
-    mutated in-place by use-case methods.
+    Stores the two pieces of data a user can edit for a segment: a short label
+    that titles the segment in the rendered document, and free-form annotation
+    text. Diagram tokens embedded in the annotation text control board diagram
+    placement at render time. Instances are keyed by their turning-point ply in
+    ``Annotation.segment_contents`` and are mutated in-place by use-case methods.
     """
 
     label: str = ""
     annotation: str = ""
-    show_diagram: bool = True
 
     @property
     def commentary(self) -> str:
@@ -69,11 +68,6 @@ class SegmentView:
         """Legacy alias for ``annotation``, delegated to the underlying ``SegmentContent``."""
         return self.content.annotation
 
-    @property
-    def show_diagram(self) -> bool:
-        """Whether a board diagram should be rendered for this segment."""
-        return self.content.show_diagram
-
 
 @dataclass
 class Segment:
@@ -87,4 +81,3 @@ class Segment:
     start_ply: int
     label: str = ""
     commentary: str = ""
-    show_diagram: bool = True

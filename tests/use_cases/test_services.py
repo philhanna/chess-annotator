@@ -64,18 +64,6 @@ class FakeLichessUploader:
         return "https://lichess.org/abc123"
 
 
-class FakeDiagramRenderer:
-    def __init__(self) -> None:
-        self.calls = []
-
-    def render(self, pgn, end_ply, orientation, size, cache_dir):
-        self.calls.append((pgn, end_ply, orientation, size, cache_dir))
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        output = cache_dir / f"{end_ply}.svg"
-        output.write_text("<svg/>")
-        return output
-
-
 def make_service(tmp_path, **overrides):
     repo = overrides.pop("repository", PGNFileGameRepository(tmp_path))
     parser = overrides.pop("pgn_parser", PythonChessPGNParser())
@@ -95,7 +83,6 @@ def save_game(repo, game_id="game-1"):
         date="2024-05-01",
         pgn=_PGN.replace("{comment} ", ""),
         player_side="white",
-        diagram_orientation="white",
         turning_points=[1, 5],
         segment_contents={
             1: SegmentContent(label="Opening", annotation="Develop"),
@@ -220,7 +207,7 @@ def test_add_and_remove_turning_point_update_working_copy(tmp_path):
     assert [segment.turning_point_ply for segment in segments] == [1, 5]
 
 
-def test_setters_and_toggle_return_updated_segment(tmp_path):
+def test_setters_return_updated_segment(tmp_path):
     repo = PGNFileGameRepository(tmp_path)
     annotation = save_game(repo)
     repo.save_working_copy(annotation)
@@ -235,9 +222,6 @@ def test_setters_and_toggle_return_updated_segment(tmp_path):
         annotation_text="Double rooks on the e-file",
     )
     assert "Double rooks" in detail.annotation
-
-    toggled = service.toggle_segment_diagram(game_id="game-1", turning_point_ply=5)
-    assert toggled.show_diagram is False
 
 
 def test_blank_label_and_annotation_are_rejected(tmp_path):
@@ -331,19 +315,16 @@ def test_upload_to_lichess_uses_current_state(tmp_path):
     assert uploader.uploads
 
 
-def test_view_segment_returns_move_list_and_diagram_preview(tmp_path):
+def test_view_segment_returns_move_list(tmp_path):
     repo = PGNFileGameRepository(tmp_path)
     annotation = save_game(repo)
     repo.save_working_copy(annotation)
-    diagram_renderer = FakeDiagramRenderer()
-    service = make_service(tmp_path, repository=repo, diagram_renderer=diagram_renderer)
+    service = make_service(tmp_path, repository=repo)
 
     detail = service.view_segment(game_id="game-1", turning_point_ply=5)
 
     assert detail.label == "Plan"
     assert "3. Bb5" in detail.move_list
-    assert detail.diagram_path is not None
-    assert diagram_renderer.calls
 
 
 def test_view_segment_rejects_missing_segment(tmp_path):

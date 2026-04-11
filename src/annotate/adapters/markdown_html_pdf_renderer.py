@@ -1,3 +1,4 @@
+import re
 from importlib.resources import files
 from pathlib import Path
 
@@ -6,50 +7,102 @@ import weasyprint
 
 from annotate.adapters.python_chess_diagram_renderer import PythonChessDiagramRenderer
 from annotate.domain.annotation import Annotation
-from annotate.domain.model import format_move_list, san_move_range, total_plies
+from annotate.domain.model import (
+    format_move_list,
+    game_headers,
+    parse_diagram_tokens,
+    san_move_range,
+    total_plies,
+)
 from annotate.ports.document_renderer import DocumentRenderer
 
+# Matches [[diagram <move><side> [<orientation>]]] tokens in annotation text.
+_DIAGRAM_TOKEN_RE = re.compile(
+    r"\[\[diagram\s+(\d+)(w|b)(?:\s+(white|black))?\]\]"
+)
 
-def _build_markdown(annotation: Annotation, diagram_paths: dict[int, Path]) -> str:
+
+def _substitute_diagram_tokens(
+    annotation_text: str,
+    diagram_paths: dict[tuple[int, str], Path],
+    pgn: str,
+) -> str:
+    """Replace ``[[diagram ...]]`` tokens in ``annotation_text`` with inline SVG figures.
+
+    Each token is replaced with a ``<figure>`` block containing the rendered SVG
+    and a caption. Tokens whose ``(ply, orientation)`` key is absent from
+    ``diagram_paths`` are left in place unchanged.
+    """
+    from annotate.domain.model import ply_from_move
+
+    def replace_token(m: re.Match) -> str:
+        move_number = int(m.group(1))
+        side = "white" if m.group(2) == "w" else "black"
+        orientation = m.group(3) or "white"
+        try:
+            ply = ply_from_move(move_number, side)
+        except ValueError:
+            return m.group(0)
+        path = diagram_paths.get((ply, orientation))
+        if path is None:
+            return m.group(0)
+        caption = san_move_range(pgn, ply, ply)
+        svg = path.read_text()
+        return (
+            f'\n<figure class="diagram">\n'
+            f"{svg}\n"
+            f"<figcaption>After {caption}</figcaption>\n"
+            f"</figure>\n"
+        )
+
+    return _DIAGRAM_TOKEN_RE.sub(replace_token, annotation_text)
+
+
+def _build_markdown(
+    annotation: Annotation,
+    diagram_paths: dict[tuple[int, str], Path],
+) -> str:
     """Assemble the Markdown source document for ``annotation``.
 
     Produces a document with a top-level title, an author/date byline, and one
-    ``##``-level section per segment. Each section contains the segment move list,
-    optional annotation text, and an optional inline SVG diagram.
+    ``##``-level section per segment. Each section contains the segment move list
+    and the annotation text, with any ``[[diagram ...]]`` tokens replaced inline
+    by SVG board diagrams.
 
     Args:
         annotation:    The annotation to render.
-        diagram_paths: Map from 0-based segment index to the rendered SVG file
-                       path for that segment. Only segments whose index appears
-                       in this dict will have a diagram included.
+        diagram_paths: Map from ``(ply, orientation)`` pairs to the rendered SVG
+                       file path for that position. Built by the render pipeline
+                       from the tokens found in each segment's annotation text.
     """
     lines: list[str] = []
 
     # Document header: title and byline.
     lines += [f"# {annotation.title}", ""]
-    lines += [f'<p class="byline">{annotation.author} — {annotation.date}</p>', ""]
+    lines += [f'<p class="byline">{annotation.author}</p>', ""]
+    headers = game_headers(annotation.pgn)
+    event = headers.get("Event", "")
+    site = headers.get("Site", "")
+    event_str = event if event and event != "?" else ""
+    site_str = site if site and site != "?" else ""
+    event_site = ", ".join(part for part in [event_str, site_str] if part)
+    if event_site:
+        lines += [f'<p class="event-site">{event_site}</p>', ""]
     lines += ["---", ""]
 
-    for i, seg in enumerate(annotation.segments):
+    for seg in annotation.segments:
         # Section heading from the segment label.
         lines += [f"## {seg.label}", ""]
 
-        start_ply = seg.start_ply
-        end_ply = seg.end_ply
-        move_list = format_move_list(annotation.pgn, start_ply, end_ply)
+        move_list = format_move_list(annotation.pgn, seg.start_ply, seg.end_ply)
         lines += [f'<code class="move-list">{move_list}</code>', ""]
 
-        # Annotation text (only if the author wrote something).
+        # Annotation text with diagram tokens substituted inline.
         if seg.commentary.strip():
-            lines += [seg.commentary.strip(), ""]
-
-        # Inline SVG diagram (only if enabled and a path was rendered).
-        if seg.show_diagram and i in diagram_paths:
-            caption = san_move_range(annotation.pgn, seg.end_ply, seg.end_ply)
-            lines += ['<figure class="diagram">']
-            lines += [diagram_paths[i].read_text()]
-            lines += [f'<figcaption>After {caption}</figcaption>']
-            lines += ["</figure>", ""]
+            substituted = _substitute_diagram_tokens(
+                seg.commentary.strip(), diagram_paths, annotation.pgn
+            )
+            lines += [substituted, ""]
 
         lines += ["---", ""]
 
@@ -107,9 +160,11 @@ class MarkdownHTMLPDFRenderer(DocumentRenderer):
     The pipeline has five stages:
 
     1. **Validate** — check that every segment has a non-blank label and annotation.
-    2. **Render diagrams** — produce SVG files for segments with ``show_diagram=True``,
-       caching them under ``<store_dir>/<game_id>/diagram-cache/``.
-    3. **Build Markdown** — assemble the full document source from segments and diagrams.
+    2. **Render diagrams** — scan all annotation texts for ``[[diagram ...]]`` tokens,
+       then render one SVG per unique ``(ply, orientation)`` pair into the game's
+       ``diagram-cache/`` directory.
+    3. **Build Markdown** — assemble the full document source, substituting each
+       token inline with its rendered SVG figure block.
     4. **Convert to HTML** — render the Markdown to HTML with embedded CSS.
     5. **Render to PDF** — use WeasyPrint to write the final PDF file.
     """
@@ -161,18 +216,20 @@ class MarkdownHTMLPDFRenderer(DocumentRenderer):
         if total_plies(annotation.pgn) == 0:
             raise ValueError("Cannot render: PGN contains no moves")
 
-        # Step 2 — Render diagrams into the game's diagram cache directory.
+        # Step 2 — Render diagrams referenced by tokens in annotation texts.
         cache_dir = Path(store_dir) / annotation.game_id / "diagram-cache"
-        diagram_paths: dict[int, Path] = {}
-        for i, seg in enumerate(annotation.segments):
-            if seg.show_diagram:
-                diagram_paths[i] = self.diagram_renderer.render(
-                    annotation.pgn,
-                    seg.end_ply,
-                    annotation.diagram_orientation,
-                    diagram_size,
-                    cache_dir,
-                )
+        diagram_paths: dict[tuple[int, str], Path] = {}
+        for seg in annotation.segments:
+            for token in parse_diagram_tokens(seg.annotation):
+                key = (token.ply, token.orientation)
+                if key not in diagram_paths:
+                    diagram_paths[key] = self.diagram_renderer.render(
+                        annotation.pgn,
+                        token.ply,
+                        token.orientation,
+                        diagram_size,
+                        cache_dir,
+                    )
 
         # Step 3 — Build the Markdown source document.
         markdown_str = _build_markdown(annotation, diagram_paths)

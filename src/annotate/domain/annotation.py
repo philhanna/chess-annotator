@@ -73,8 +73,8 @@ class Annotation:
 
     * ``annotated.pgn`` — the cleaned PGN with ``{ [%tp] }`` comments at each
       turning-point ply and no other comments or NAGs.
-    * ``annotation.json`` — segment labels, annotation text, and
-      ``show_diagram`` flags keyed by ply, plus top-level game metadata.
+    * ``annotation.json`` — segment labels and annotation text keyed by ply,
+      plus top-level game metadata.
     """
 
     title: str
@@ -82,7 +82,6 @@ class Annotation:
     date: str
     pgn: str
     player_side: str
-    diagram_orientation: str
     game_id: str | None = None
     annotation_id: int | str | None = None
     turning_points: list[int] = field(default_factory=lambda: [1])
@@ -143,26 +142,16 @@ class Annotation:
         date: str,
         pgn: str,
         player_side: str,
-        diagram_orientation: str | None = None,
         game_id: str | None = None,
         annotation_id: int | str | None = None,
     ) -> "Annotation":
-        """Build a new annotation with a single initial segment starting at ply 1.
-
-        If ``diagram_orientation`` is not supplied it defaults to ``"black"`` when
-        ``player_side`` is ``"black"`` (so the annotated player's pieces start at the
-        bottom), and ``"white"`` otherwise.
-        """
-        if diagram_orientation is None:
-            # Show the board from the annotated player's perspective by default.
-            diagram_orientation = "black" if player_side == "black" else "white"
+        """Build a new annotation with a single initial segment starting at ply 1."""
         return cls(
             title=title,
             author=author,
             date=date,
             pgn=pgn,
             player_side=player_side,
-            diagram_orientation=diagram_orientation,
             game_id=game_id,
             annotation_id=annotation_id,
             turning_points=[1],

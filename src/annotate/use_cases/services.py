@@ -65,7 +65,6 @@ class SegmentSummary:
     move_range: str
     label: str
     has_annotation: bool
-    show_diagram: bool
 
 
 @dataclass(frozen=True)
@@ -73,8 +72,8 @@ class SegmentDetail:
     """Full detail view of one segment, used by the ``view`` and ``edit`` commands.
 
     ``move_list`` is the complete SAN move sequence for the segment's ply range.
-    ``diagram_path`` is set when ``show_diagram`` is True and a diagram renderer
-    is configured; it points to a cached SVG file in the game's preview directory.
+    Board diagrams are specified by ``[[diagram ...]]`` tokens embedded in the
+    annotation text and are resolved at render time.
     """
 
     turning_point_ply: int
@@ -84,8 +83,6 @@ class SegmentDetail:
     label: str
     annotation: str
     move_list: str
-    show_diagram: bool
-    diagram_path: Path | None
 
 
 @dataclass(frozen=True)
@@ -153,7 +150,6 @@ def _segment_summary(segment: SegmentView, pgn: str) -> SegmentSummary:
         move_range=san_move_range(pgn, segment.start_ply, segment.end_ply),
         label=segment.label,
         has_annotation=bool(segment.annotation.strip()),
-        show_diagram=segment.show_diagram,
     )
 
 
@@ -219,7 +215,6 @@ class AnnotationService:
         store_dir: Path,
         document_renderer: DocumentRenderer | None = None,
         lichess_uploader: LichessUploader | None = None,
-        diagram_renderer=None,
     ) -> None:
         """Initialise the service with the required and optional port adapters.
 
@@ -229,14 +224,12 @@ class AnnotationService:
             store_dir:         Root store directory for PDF output and diagram caches.
             document_renderer: Optional renderer for producing PDF documents.
             lichess_uploader:  Optional adapter for uploading games to Lichess.
-            diagram_renderer:  Optional adapter for rendering board diagram previews.
         """
         self.repository = repository
         self.pgn_parser = pgn_parser
         self.store_dir = Path(store_dir)
         self.document_renderer = document_renderer
         self.lichess_uploader = lichess_uploader
-        self.diagram_renderer = diagram_renderer
 
     def import_game(
         self,
@@ -246,7 +239,6 @@ class AnnotationService:
         player_side: str,
         author: str = "",
         date: str | None = None,
-        diagram_orientation: str | None = None,
         overwrite: bool = False,
         game_index: int = 0,
     ) -> GameState:
@@ -258,14 +250,13 @@ class AnnotationService:
         one to import.
 
         Args:
-            game_id:             Unique identifier for the new game.
-            pgn_text:            Raw PGN string (may contain multiple games).
-            player_side:         ``"white"`` or ``"black"`` — the annotated player.
-            author:              Author name for the annotation document.
-            date:                Override for the annotation date; defaults to the PGN Date header.
-            diagram_orientation: Board orientation for diagrams; defaults to ``player_side``.
-            overwrite:           If True, delete any existing game with the same id first.
-            game_index:          0-based index of the game to import from a multi-game file.
+            game_id:     Unique identifier for the new game.
+            pgn_text:    Raw PGN string (may contain multiple games).
+            player_side: ``"white"`` or ``"black"`` — the annotated player.
+            author:      Author name for the annotation document.
+            date:        Override for the annotation date; defaults to the PGN Date header.
+            overwrite:   If True, delete any existing game with the same id first.
+            game_index:  0-based index of the game to import from a multi-game file.
 
         Raises:
             OverwriteRequiredError: if ``game_id`` already exists and ``overwrite`` is False.
@@ -294,7 +285,6 @@ class AnnotationService:
             date=date or (info["date"].replace("?", "").strip(".") or ""),
             pgn=cleaned_pgn,
             player_side=player_side,
-            diagram_orientation=diagram_orientation,
         )
         # Save both the canonical copy and a working copy to open the session.
         self.repository.save(annotation)
@@ -486,21 +476,6 @@ class AnnotationService:
         self.repository.save_working_copy(annotation)
         return self._segment_detail(annotation, turning_point_ply)
 
-    def toggle_segment_diagram(
-        self, *, game_id: str, turning_point_ply: int
-    ) -> SegmentDetail:
-        """Toggle the ``show_diagram`` flag for the segment at ``turning_point_ply`` and save the working copy.
-
-        Raises:
-            SessionNotOpenError:  if no working copy exists for ``game_id``.
-            SegmentNotFoundError: if ``turning_point_ply`` is not a turning point.
-        """
-        annotation = self._load_session(game_id)
-        content = self._segment_content(annotation, turning_point_ply)
-        content.show_diagram = not content.show_diagram
-        self.repository.save_working_copy(annotation)
-        return self._segment_detail(annotation, turning_point_ply)
-
     def save_session(self, game_id: str) -> GameState:
         """Commit the working copy to the canonical files while keeping the session open.
 
@@ -613,9 +588,6 @@ class AnnotationService:
     def view_segment(self, *, game_id: str, turning_point_ply: int) -> SegmentDetail:
         """Return full detail for the segment at ``turning_point_ply`` in the open session.
 
-        Renders a diagram preview into the game's ``preview/`` directory when
-        ``show_diagram`` is True and a diagram renderer is configured.
-
         Raises:
             SessionNotOpenError:  if no working copy exists for ``game_id``.
             SegmentNotFoundError: if ``turning_point_ply`` is not a turning point.
@@ -665,7 +637,7 @@ class AnnotationService:
     def _segment_detail(
         self, annotation: Annotation, turning_point_ply: int
     ) -> SegmentDetail:
-        """Build a ``SegmentDetail`` for ``turning_point_ply``, rendering a diagram preview if configured.
+        """Build a ``SegmentDetail`` for ``turning_point_ply``.
 
         Raises ``SegmentNotFoundError`` if the ply is not a turning point.
         """
@@ -673,19 +645,6 @@ class AnnotationService:
             segment = find_segment_by_turning_point(annotation, turning_point_ply)
         except ValueError as exc:
             raise SegmentNotFoundError(str(exc)) from exc
-
-        # Render a diagram preview into the game's preview directory if the
-        # segment has show_diagram enabled and a renderer is available.
-        diagram_path = None
-        if segment.show_diagram and self.diagram_renderer is not None:
-            cache_dir = self.store_dir / annotation.game_id / "preview"
-            diagram_path = self.diagram_renderer.render(
-                annotation.pgn,
-                segment.end_ply,
-                annotation.diagram_orientation,
-                360,
-                cache_dir,
-            )
 
         return SegmentDetail(
             turning_point_ply=segment.turning_point_ply,
@@ -697,6 +656,4 @@ class AnnotationService:
             move_list=format_move_list(
                 annotation.pgn, segment.start_ply, segment.end_ply
             ),
-            show_diagram=segment.show_diagram,
-            diagram_path=diagram_path,
         )

@@ -37,9 +37,10 @@ def test_render_produces_non_empty_pdf(tmp_path):
     # Label the first segment
     annotation.segment_contents[1].label = "The Opening"
 
-    # Add commentary and a diagram to the first segment
-    annotation.segment_contents[1].annotation = "White opens with the Ruy Lopez."
-    annotation.segment_contents[1].show_diagram = True
+    # Add commentary and a diagram token to the first segment
+    annotation.segment_contents[1].annotation = (
+        "White opens with the Ruy Lopez.\n\n[[diagram 5w]]"
+    )
     annotation.segment_contents[11].annotation = "White transitions into a middlegame plan."
 
     output_path = tmp_path / "test_output.pdf"

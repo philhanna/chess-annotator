@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from annotate.adapters.json_file_annotation_repository import JSONFileAnnotationRepository
 from annotate.adapters.lichess_api_uploader import LichessAPIUploader
 from annotate.adapters.markdown_html_pdf_renderer import MarkdownHTMLPDFRenderer
-from annotate.adapters.python_chess_diagram_renderer import PythonChessDiagramRenderer
 from annotate.adapters.python_chess_pgn_parser import PythonChessPGNParser
 from annotate.config import get_config, get_store_dir
 from annotate.domain.model import ply_from_move
@@ -62,7 +61,6 @@ def get_service() -> AnnotationService:
             store_dir=config.store_dir,
             document_renderer=MarkdownHTMLPDFRenderer(),
             lichess_uploader=LichessAPIUploader(),
-            diagram_renderer=PythonChessDiagramRenderer(),
         )
     return _service
 

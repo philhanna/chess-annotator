@@ -9,12 +9,21 @@ h1 {
     font-size: 20pt;
     margin-top: 0;
     margin-bottom: 0.25em;
+    text-align: center;
 }
 
 .byline {
     font-size: 11pt;
     color: #444;
     margin-bottom: 2em;
+}
+
+.event-site {
+    font-size: 16pt;
+    color: #333;
+    margin-top: 0;
+    margin-bottom: 0.25em;
+    text-align: center;
 }
 
 h2 {

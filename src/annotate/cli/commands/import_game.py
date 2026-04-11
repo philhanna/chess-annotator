@@ -43,10 +43,6 @@ def cmd_import(tokens: list[str]) -> None:
         if side in ("white", "black"):
             break
         session.print("Please enter white or black.")
-    default_orientation = "black" if side == "black" else "white"
-    orientation = session.prompt("Diagram orientation", default=default_orientation).lower()
-    if orientation not in ("white", "black"):
-        orientation = default_orientation
 
     try:
         game_state = session.get_service().import_game(
@@ -55,7 +51,6 @@ def cmd_import(tokens: list[str]) -> None:
             player_side=side,
             author=session.get_config().author or "",
             date=date,
-            diagram_orientation=orientation,
         )
     except OverwriteRequiredError:
         answer = input(f"Game id '{game_id}' exists. Overwrite? (yes/no): ").strip().lower()
@@ -68,7 +63,6 @@ def cmd_import(tokens: list[str]) -> None:
             player_side=side,
             author=session.get_config().author or "",
             date=date,
-            diagram_orientation=orientation,
             overwrite=True,
         )
     except UseCaseError as exc:

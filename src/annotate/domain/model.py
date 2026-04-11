@@ -1,9 +1,58 @@
 import io
+import re
+from dataclasses import dataclass
 
 import chess.pgn
 
 from annotate.domain.annotation import Annotation
 from annotate.domain.segment import SegmentContent, SegmentView
+
+
+@dataclass(frozen=True)
+class DiagramToken:
+    """A parsed ``[[diagram ...]]`` token found in annotation text.
+
+    ``ply`` is the 1-based ply number derived from the move notation in the
+    token. ``orientation`` is ``"white"`` or ``"black"`` (defaults to
+    ``"white"`` when omitted from the token). ``raw`` is the original matched
+    string and is used by the renderer to locate the token for substitution.
+    """
+
+    ply: int
+    orientation: str
+    raw: str
+
+
+# Matches [[diagram <move><side> [<orientation>]]] tokens in annotation text.
+# Group 1: move number (integer)
+# Group 2: side letter ("w" or "b")
+# Group 3: optional orientation ("white" or "black")
+_DIAGRAM_TOKEN_RE = re.compile(
+    r"\[\[diagram\s+(\d+)(w|b)(?:\s+(white|black))?\]\]"
+)
+
+
+def parse_diagram_tokens(text: str) -> list[DiagramToken]:
+    """Return all ``[[diagram ...]]`` tokens found in ``text``, in order.
+
+    Each token specifies a ply (via move notation) and an optional board
+    orientation. The move notation is converted to a 1-based ply index using
+    ``ply_from_move``. Orientation defaults to ``"white"`` when omitted.
+
+    Tokens with invalid move notation (move number zero or negative) are
+    silently skipped.
+    """
+    tokens: list[DiagramToken] = []
+    for m in _DIAGRAM_TOKEN_RE.finditer(text):
+        move_number = int(m.group(1))
+        side = "white" if m.group(2) == "w" else "black"
+        orientation = m.group(3) or "white"
+        try:
+            ply = ply_from_move(move_number, side)
+        except ValueError:
+            continue
+        tokens.append(DiagramToken(ply=ply, orientation=orientation, raw=m.group(0)))
+    return tokens
 
 
 def total_plies(pgn: str) -> int:

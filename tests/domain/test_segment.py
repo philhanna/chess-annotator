@@ -7,6 +7,7 @@ from annotate.domain.model import (
     find_segment_index,
     move_from_ply,
     move_range_for_turning_point,
+    parse_diagram_tokens,
     ply_from_move,
     segment_end_ply,
     total_plies,
@@ -97,7 +98,6 @@ def make_annotation(*turning_points: int) -> Annotation:
         date="2024-01-01",
         pgn=_RUY_LOPEZ_PGN,
         player_side="white",
-        diagram_orientation="white",
         turning_points=list(turning_points),
         segment_contents=contents,
     )
@@ -114,7 +114,6 @@ def test_annotation_defaults_to_first_turning_point():
     )
     assert ann.turning_points == [1]
     assert set(ann.segment_contents) == {1}
-    assert ann.segment_contents[1].show_diagram is True
 
 
 def test_annotation_rejects_non_matching_content_keys():
@@ -126,7 +125,6 @@ def test_annotation_rejects_non_matching_content_keys():
             date="2024-01-01",
             pgn=_RUY_LOPEZ_PGN,
             player_side="white",
-            diagram_orientation="white",
             turning_points=[1, 11],
             segment_contents={1: SegmentContent(label="Opening")},
         )
@@ -192,20 +190,17 @@ def test_split_segment_produces_two_turning_points():
     assert result.turning_points == [1, 11]
     assert result.segment_contents[11].label == "Middlegame"
     assert result.segment_contents[11].annotation == ""
-    assert result.segment_contents[11].show_diagram is True
 
 
 def test_split_segment_preserves_earlier_content():
     ann = make_annotation(1)
     ann.segment_contents[1].label = "Opening"
     ann.segment_contents[1].annotation = "Some notes"
-    ann.segment_contents[1].show_diagram = False
 
     result = split_segment(ann, 11, "Middlegame")
     earlier = result.segment_contents[1]
     assert earlier.label == "Opening"
     assert earlier.annotation == "Some notes"
-    assert earlier.show_diagram is False
 
 
 def test_split_segment_at_ply_1_fails():
@@ -308,13 +303,6 @@ def test_merge_segments_by_index_strips_whitespace():
     assert result.segment_contents[1].annotation == "First note\n\nSecond note"
 
 
-def test_merge_segments_by_index_preserves_show_diagram_of_first():
-    ann = make_annotation(1, 7, 15)
-    ann.segment_contents[1].show_diagram = False
-    result = merge_segments_by_index(ann, 1, 2)
-    assert result.segment_contents[1].show_diagram is False
-
-
 def test_merge_segments_by_index_invalid_m_equals_n():
     ann = make_annotation(1, 7, 15)
     with pytest.raises(ValueError):
@@ -337,3 +325,51 @@ def test_merge_segments_by_index_m_zero():
     ann = make_annotation(1, 7, 15)
     with pytest.raises(ValueError):
         merge_segments_by_index(ann, 0, 2)
+
+
+# --- parse_diagram_tokens ---
+
+def test_parse_diagram_tokens_empty_text():
+    assert parse_diagram_tokens("") == []
+
+
+def test_parse_diagram_tokens_no_tokens():
+    assert parse_diagram_tokens("Develop pieces and control the center.") == []
+
+
+def test_parse_diagram_tokens_single_white_move_default_orientation():
+    tokens = parse_diagram_tokens("See the position. [[diagram 14w]]")
+    assert len(tokens) == 1
+    assert tokens[0].ply == 27   # move 14 white = ply 27
+    assert tokens[0].orientation == "white"
+    assert tokens[0].raw == "[[diagram 14w]]"
+
+
+def test_parse_diagram_tokens_single_black_move_explicit_orientation():
+    tokens = parse_diagram_tokens("[[diagram 5b black]]")
+    assert len(tokens) == 1
+    assert tokens[0].ply == 10   # move 5 black = ply 10
+    assert tokens[0].orientation == "black"
+
+
+def test_parse_diagram_tokens_explicit_white_orientation():
+    tokens = parse_diagram_tokens("[[diagram 3w white]]")
+    assert len(tokens) == 1
+    assert tokens[0].orientation == "white"
+
+
+def test_parse_diagram_tokens_multiple_tokens():
+    text = "Before the fork: [[diagram 7w]]\n\nAfter the response: [[diagram 7b black]]"
+    tokens = parse_diagram_tokens(text)
+    assert len(tokens) == 2
+    assert tokens[0].ply == 13   # move 7 white = ply 13
+    assert tokens[0].orientation == "white"
+    assert tokens[1].ply == 14   # move 7 black = ply 14
+    assert tokens[1].orientation == "black"
+
+
+def test_parse_diagram_tokens_duplicate_tokens():
+    text = "[[diagram 1w]] and again [[diagram 1w]]"
+    tokens = parse_diagram_tokens(text)
+    assert len(tokens) == 2
+    assert tokens[0].ply == tokens[1].ply == 1

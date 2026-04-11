@@ -31,12 +31,11 @@ def make_annotation() -> Annotation:
         date="2024-01-01",
         pgn=strip_comments_and_nags(_PGN),
         player_side="white",
-        diagram_orientation="white",
         turning_points=[1, 5, 11],
         segment_contents={
             1: SegmentContent(label="Opening", annotation="Develop pieces"),
             5: SegmentContent(label="Pressure", annotation="Build on e5"),
-            11: SegmentContent(label="Transition", show_diagram=False),
+            11: SegmentContent(label="Transition"),
         },
     )
 
@@ -58,7 +57,7 @@ def test_save_and_load_round_trip(tmp_path):
     assert loaded.turning_points == [1, 5, 11]
     assert loaded.segment_contents[1].label == "Opening"
     assert loaded.segment_contents[5].annotation == "Build on e5"
-    assert loaded.segment_contents[11].show_diagram is False
+    assert loaded.segment_contents[11].label == "Transition"
     assert repo.main_pgn_path("game-1").exists()
     assert repo.main_json_path("game-1").exists()
 
@@ -134,8 +133,8 @@ def test_validate_pgn_json_sync_rejects_mismatch():
     json_data = {
         "game": {"title": annotation.title},
         "segments": {
-            "1": {"label": "Opening", "annotation": "", "show_diagram": True},
-            "7": {"label": "Mismatch", "annotation": "", "show_diagram": True},
+            "1": {"label": "Opening", "annotation": ""},
+            "7": {"label": "Mismatch", "annotation": ""},
         },
     }
 
@@ -153,8 +152,8 @@ def test_load_rejects_mismatched_pgn_and_json(tmp_path):
             {
                 "game": {"title": "Broken"},
                 "segments": {
-                    "1": {"label": "Only", "annotation": "", "show_diagram": True},
-                    "5": {"label": "Extra", "annotation": "", "show_diagram": True},
+                    "1": {"label": "Only", "annotation": ""},
+                    "5": {"label": "Extra", "annotation": ""},
                 },
             }
         )
@@ -184,8 +183,8 @@ def test_load_working_copy_reports_corrupted_storage_message(tmp_path):
             {
                 "game": {"title": annotation.title},
                 "segments": {
-                    "1": {"label": "Opening", "annotation": "", "show_diagram": True},
-                    "9": {"label": "Mismatch", "annotation": "", "show_diagram": True},
+                    "1": {"label": "Opening", "annotation": ""},
+                    "9": {"label": "Mismatch", "annotation": ""},
                 },
             }
         )

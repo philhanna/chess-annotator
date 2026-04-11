@@ -69,13 +69,11 @@ def _annotation_json_data(annotation: Annotation) -> dict:
             "author": annotation.author,
             "date": annotation.date,
             "player_side": annotation.player_side,
-            "diagram_orientation": annotation.diagram_orientation,
         },
         "segments": {
             str(ply): {
                 "label": content.label,
                 "annotation": content.annotation,
-                "show_diagram": content.show_diagram,
             }
             for ply, content in sorted(annotation.segment_contents.items())
         },
@@ -95,11 +93,11 @@ def _annotation_from_json_and_pgn(
     """
     game_data = json_data.get("game", {})
     # Build SegmentContent for each segment, supporting the old "commentary" key name.
+    # "show_diagram" is silently ignored; it was removed in favour of inline diagram tokens.
     segment_contents = {
         int(ply): SegmentContent(
             label=data.get("label", ""),
             annotation=data.get("annotation", data.get("commentary", "")),
-            show_diagram=data.get("show_diagram", True),
         )
         for ply, data in json_data["segments"].items()
     }
@@ -112,7 +110,6 @@ def _annotation_from_json_and_pgn(
         date=game_data.get("date", ""),
         pgn=pgn_text,
         player_side=game_data.get("player_side", "white"),
-        diagram_orientation=game_data.get("diagram_orientation", "white"),
         turning_points=turning_points,
         segment_contents=segment_contents,
     )
@@ -236,8 +233,8 @@ class PGNFileGameRepository(GameRepository):
 
     * ``annotated.pgn``   — the cleaned PGN with ``{ [%tp] }`` comments at each
       turning-point ply and no other comments or NAGs.
-    * ``annotation.json`` — segment labels, annotation text, and ``show_diagram``
-      flags keyed by ply string, plus top-level game metadata.
+    * ``annotation.json`` — segment labels and annotation text keyed by ply
+      string, plus top-level game metadata.
 
     While a session is open two additional working-copy files are maintained:
 

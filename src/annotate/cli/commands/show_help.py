@@ -21,7 +21,6 @@ Commands (session open):
   merge <move>              Remove a turning point
   label <text>              Set the current segment label
   edit                      Edit the current segment annotation in $EDITOR
-  diagram [on|off]          Toggle or set the current segment diagram flag
   save                      Save the open game
   close                     Close the current game
   copy <new-game-id>        Save the current game as a new game id
@@ -29,7 +28,11 @@ Commands (session open):
   see                       Upload the current game to Lichess and open the URL
   json                      Print the working annotation JSON summary
   help                      Show this help
-  quit                      Close the current game and exit"""
+  quit                      Close the current game and exit
+
+Diagrams are placed inline in annotation text using tokens:
+  [[diagram <move><w|b>]]              e.g. [[diagram 14w]]
+  [[diagram <move><w|b> <orientation>]] e.g. [[diagram 14b black]]"""
 
 
 def cmd_help(_tokens: list[str]) -> None:

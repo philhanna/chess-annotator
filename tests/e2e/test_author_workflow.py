@@ -30,7 +30,6 @@ def build_service(tmp_path, uploader=None) -> AnnotationService:
             diagram_renderer=PythonChessDiagramRenderer()
         ),
         lichess_uploader=uploader,
-        diagram_renderer=PythonChessDiagramRenderer(),
     )
 
 

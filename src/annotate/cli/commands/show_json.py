@@ -20,7 +20,6 @@ def cmd_json(_tokens: list[str]) -> None:
             str(ply): {
                 "label": content.label,
                 "annotation": content.annotation,
-                "show_diagram": content.show_diagram,
             }
             for ply, content in annotation.segment_contents.items()
         },
