@@ -9,7 +9,11 @@ def cmd_split(tokens: list[str]) -> None:
     ply = session.parse_move_side(tokens, "split <move><w|b> [label]")
     if ply is None:
         return
-    label = " ".join(tokens[1:]).strip() if len(tokens) > 1 else session.prompt("Label for new segment", default="")
+    label = (
+        " ".join(tokens[1:]).strip("\"'")
+        if len(tokens) > 1
+        else session.prompt("Label for new segment", default="")
+    )
     try:
         segments = session.get_service().add_turning_point(game_id=game_id, ply=ply, label=label)
     except UseCaseError as exc:
