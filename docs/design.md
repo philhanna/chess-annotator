@@ -98,12 +98,17 @@ src/annotate/
     ports/        ← abstract interfaces (contracts)
     adapters/     ← concrete implementations
     use_cases/    ← application services and interactors
-    cli/          ← command-line entry points
+    server/       ← HTTP delivery layer (FastAPI)
+    cli/          ← command-line entry points (HTTP client)
 ```
 
 `python-chess` is treated as a domain library. It is used freely throughout
 the core for PGN parsing, board state, move list generation, SVG diagram
 rendering, and FEN extraction.
+
+`annotate.server` is the single owner of `AnnotationService`. It exposes a
+REST API and is the only layer that touches the repository and adapters at
+runtime. `annotate.cli` communicates with the server exclusively over HTTP.
 
 ### 4.2 Ports
 
@@ -271,8 +276,25 @@ and annotation.
 |---|---|---|
 | `chess-annotate` | `annotate.cli.annotate:main` | Interactive REPL |
 | `chess-render` | `annotate.cli.render:main` | Standalone PDF renderer |
+| `chess-server` | `annotate.server.app:main` | Standalone API server |
 
-### 8.2 `chess-annotate` — Interactive REPL
+`chess-server` accepts `--host` and `--port` flags (defaults: `127.0.0.1`, `8765`).
+
+### 8.2 Server launch
+
+`chess-annotate` manages the server lifecycle automatically:
+
+1. On startup it probes `GET /health` at the configured `server_url`.
+2. If the server is already running (e.g. `chess-server` was started separately),
+   it uses the existing process.
+3. If nothing is listening it starts uvicorn in a background **daemon thread**
+   inside the CLI process. The thread is killed automatically when the CLI exits —
+   no orphan processes.
+
+This means the user always runs a single command and sees a single process. The
+HTTP layer is otherwise transparent.
+
+### 8.3 `chess-annotate` — Interactive REPL
 
 The REPL maintains a session (one open game at a time). The available commands
 depend on whether a session is open.
@@ -312,7 +334,7 @@ depend on whether a session is open.
 | `help` | Show this list |
 | `quit` | Save/discard prompt, then exit |
 
-### 8.3 `chess-render` — Standalone Renderer
+### 8.4 `chess-render` — Standalone Renderer
 
 ```bash
 chess-render <game-id> [--size PX] [--page a4|letter]
@@ -321,16 +343,18 @@ chess-render <game-id> [--size PX] [--page a4|letter]
 Renders the saved game to `<store_dir>/<game_id>/output.pdf`. Does not require
 an open session.
 
-### 8.4 Session State
+### 8.5 Session State
 
 The REPL session state (`annotate.cli.session`) holds:
 
 - the open `game_id` (or `None`)
 - the currently-selected turning-point ply
 
-The session module also provides lazy-initialised access to `AnnotationService`
-and the repository, and exposes shared helpers (`err`, `print`, `prompt`,
-`parse_move_side`, etc.) used by all command modules.
+The session module provides a lazy-initialised `httpx.Client` (`get_client()`)
+pointed at the configured `server_url`, and shared helpers (`err`, `print`,
+`prompt`, `parse_move_side`, etc.) used by all command modules. All service
+calls go through this client; the CLI has no direct access to the repository
+or adapters.
 
 ---
 
@@ -347,6 +371,7 @@ Config file location:
 | `author` | string | `""` | Pre-filled author name at import |
 | `diagram_size` | int | `360` | Board size in pixels |
 | `page_size` | string | `"a4"` | `a4` or `letter` |
+| `server_url` | string | `"http://127.0.0.1:8765"` | URL of the API server |
 
 `CHESS_ANNOTATE_STORE` environment variable overrides `store_dir`.
 
@@ -373,3 +398,5 @@ Store default (if not configured):
 | D-010 | Move input uses compact single-token notation (`5w` / `5b`) rather than two separate tokens. |
 | D-011 | Black move notation omits the space after the ellipsis: `2...dxe4`, not `2... dxe4`. |
 | D-012 | The store directory lives outside the application git repository — it is personal data, not project code. |
+| D-013 | `annotate.server` is the sole delivery layer that instantiates `AnnotationService`. The CLI is a thin HTTP client; all domain logic stays server-side. This allows a future browser front end to be wired to the same server without touching the application core. |
+| D-014 | The server is launched in a background daemon thread by the CLI (Option B). The health-probe pattern means a separately-started `chess-server` is reused automatically, which keeps the door open for running the server standalone for browser access. |
