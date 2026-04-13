@@ -1,3 +1,5 @@
+import httpx
+
 from annotate.cli import session
 from annotate.use_cases import UseCaseError
 
@@ -12,8 +14,9 @@ def cmd_delete(tokens: list[str]) -> None:
         session.print("Delete cancelled.")
         return
     try:
-        session.get_service().delete_game(game_id)
-    except UseCaseError as exc:
+        response = session.get_client().delete(f"/games/{game_id}")
+        session._raise_for_error(response)
+    except (UseCaseError, httpx.TransportError) as exc:
         session.err(str(exc))
         return
     if session.state.game_id == game_id:

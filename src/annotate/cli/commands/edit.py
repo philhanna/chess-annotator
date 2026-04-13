@@ -1,3 +1,5 @@
+import httpx
+
 from annotate.adapters.system_editor_launcher import SystemEditorLauncher
 from annotate.cli import session
 from annotate.use_cases import UseCaseError
@@ -11,19 +13,26 @@ def cmd_edit(_tokens: list[str]) -> None:
     if current is None:
         session.err("No current segment.")
         return
-    detail = session.get_service().view_segment(
-        game_id=game_id,
-        turning_point_ply=current.turning_point_ply,
-    )
-    launcher = SystemEditorLauncher()
-    updated = launcher.edit(detail.annotation)
+    ply = current.turning_point_ply
+
     try:
-        session.get_service().set_segment_annotation(
-            game_id=game_id,
-            turning_point_ply=current.turning_point_ply,
-            annotation_text=updated,
+        response = session.get_client().get(f"/games/{game_id}/session/segments/{ply}")
+        session._raise_for_error(response)
+        detail = response.json()
+    except (UseCaseError, httpx.TransportError) as exc:
+        session.err(str(exc))
+        return
+
+    launcher = SystemEditorLauncher()
+    updated = launcher.edit(detail["annotation"])
+
+    try:
+        response = session.get_client().patch(
+            f"/games/{game_id}/session/segments/{ply}",
+            json={"annotation": updated},
         )
-    except UseCaseError as exc:
+        session._raise_for_error(response)
+    except (UseCaseError, httpx.TransportError) as exc:
         session.err(str(exc))
         return
     session.print("Annotation updated.")

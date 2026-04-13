@@ -1,3 +1,5 @@
+import httpx
+
 from annotate.cli import session
 from annotate.use_cases import UseCaseError
 
@@ -15,12 +17,17 @@ def cmd_split(tokens: list[str]) -> None:
         else session.prompt("Label for new segment", default="")
     )
     try:
-        segments = session.get_service().add_turning_point(game_id=game_id, ply=ply, label=label)
-    except UseCaseError as exc:
+        response = session.get_client().post(
+            f"/games/{game_id}/session/segments",
+            json={"ply": ply, "label": label},
+        )
+        session._raise_for_error(response)
+    except (UseCaseError, httpx.TransportError) as exc:
         session.err(str(exc))
         return
+    segments = response.json()
     for seg in segments:
-        if seg.turning_point_ply == ply:
+        if seg["turning_point_ply"] == ply:
             session.state.current_turning_point_ply = ply
             break
     session.print("Segment split.")

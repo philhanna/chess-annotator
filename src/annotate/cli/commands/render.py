@@ -1,4 +1,7 @@
+import httpx
+
 from annotate.cli import session
+from annotate.config import get_config
 from annotate.use_cases import UseCaseError
 
 
@@ -12,14 +15,16 @@ def cmd_render(tokens: list[str]) -> None:
         return
     if game_id is None:
         return
-    config = session.get_config()
+
     try:
-        output_path = session.get_service().render_pdf(
-            game_id=game_id,
-            diagram_size=config.diagram_size,
-            page_size=config.page_size,
-        )
-    except (UseCaseError, ValueError) as exc:
+        response = session.get_client().post(f"/games/{game_id}/render")
+        session._raise_for_error(response)
+    except (UseCaseError, httpx.TransportError) as exc:
         session.err(str(exc))
         return
+
+    config = get_config()
+    output_path = config.store_dir / game_id / "output.pdf"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_bytes(response.content)
     session.print(f"Rendered: {output_path}")

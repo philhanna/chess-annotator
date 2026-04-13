@@ -2,15 +2,14 @@ import builtins
 import sys
 from dataclasses import dataclass
 
-from annotate.adapters.json_file_annotation_repository import JSONFileAnnotationRepository
-from annotate.adapters.lichess_api_uploader import LichessAPIUploader
-from annotate.adapters.markdown_html_pdf_renderer import MarkdownHTMLPDFRenderer
-from annotate.adapters.python_chess_pgn_parser import PythonChessPGNParser
-from annotate.config import get_config, get_store_dir
+import httpx
+
+from annotate.config import get_config
 from annotate.domain.model import ply_from_move
 from annotate.use_cases import (
-    AnnotationService,
     GameNotFoundError,
+    GameState,
+    SegmentSummary,
     UseCaseError,
 )
 
@@ -35,34 +34,29 @@ class Session:
 
 # Module-level singletons — initialised lazily on first use.
 state = Session()
-_repo: JSONFileAnnotationRepository | None = None
-_service: AnnotationService | None = None
+_client: httpx.Client | None = None
 
 
-def get_repo() -> JSONFileAnnotationRepository:
-    """Return the shared repository instance, creating it on the first call."""
-    global _repo
-    if _repo is None:
-        _repo = JSONFileAnnotationRepository(get_store_dir())
-    return _repo
-
-
-def get_service() -> AnnotationService:
-    """Return the shared ``AnnotationService`` instance, creating it on the first call.
-
-    Wires all concrete adapters together using the current application config.
-    """
-    global _service
-    if _service is None:
+def get_client() -> httpx.Client:
+    """Return a shared ``httpx.Client`` pointed at the server, creating it on first call."""
+    global _client
+    if _client is None:
         config = get_config()
-        _service = AnnotationService(
-            repository=get_repo(),
-            pgn_parser=PythonChessPGNParser(),
-            store_dir=config.store_dir,
-            document_renderer=MarkdownHTMLPDFRenderer(),
-            lichess_uploader=LichessAPIUploader(),
-        )
-    return _service
+        _client = httpx.Client(base_url=config.server_url, timeout=30.0)
+    return _client
+
+
+def _raise_for_error(response: httpx.Response) -> None:
+    """Convert an HTTP error response to an appropriate exception."""
+    if response.is_success:
+        return
+    try:
+        detail = response.json().get("detail", response.text)
+    except Exception:
+        detail = response.text
+    if response.status_code == 404:
+        raise GameNotFoundError(str(detail))
+    raise UseCaseError(str(detail))
 
 
 def print(msg: str = "") -> None:
@@ -132,7 +126,20 @@ def require_open_session() -> str | None:
     return state.game_id
 
 
-def current_segments():
+def _game_state_from_json(data: dict) -> GameState:
+    """Deserialise a ``GameState`` from a JSON dict returned by the server."""
+    segments = [SegmentSummary(**s) for s in data.get("segments", [])]
+    return GameState(
+        game_id=data["game_id"],
+        title=data["title"],
+        session_open=data["session_open"],
+        has_unsaved_changes=data["has_unsaved_changes"],
+        segments=segments,
+        resumed=data.get("resumed", False),
+    )
+
+
+def current_segments() -> list[SegmentSummary] | None:
     """Return ``SegmentSummary`` objects for every segment in the open game.
 
     Returns None (and prints an error) if no game is currently open.
@@ -140,10 +147,19 @@ def current_segments():
     game_id = require_open_session()
     if game_id is None:
         return None
-    return get_service().list_segments(game_id=game_id)
+    try:
+        response = get_client().get(f"/games/{game_id}/session/segments")
+        _raise_for_error(response)
+        return [SegmentSummary(**s) for s in response.json()]
+    except (GameNotFoundError, UseCaseError) as exc:
+        err(str(exc))
+        return None
+    except httpx.TransportError as exc:
+        err(f"Cannot reach server: {exc}")
+        return None
 
 
-def current_segment_summary():
+def current_segment_summary() -> SegmentSummary | None:
     """Return the ``SegmentSummary`` for the currently selected segment.
 
     Falls back to the first segment when the tracked turning-point ply is no longer
@@ -172,12 +188,14 @@ def open_game(game_id: str) -> None:
     any other use-case error occurs.
     """
     try:
-        game_state = get_service().open_game(game_id)
-    except GameNotFoundError as exc:
+        response = get_client().post(f"/games/{game_id}/session")
+        _raise_for_error(response)
+        game_state = _game_state_from_json(response.json())
+    except (GameNotFoundError, UseCaseError) as exc:
         err(str(exc))
         return
-    except UseCaseError as exc:
-        err(str(exc))
+    except httpx.TransportError as exc:
+        err(f"Cannot reach server: {exc}")
         return
     state.game_id = game_state.game_id
     # Default segment selection to the first segment of the opened game.
@@ -197,19 +215,33 @@ def do_close() -> bool:
     if game_id is None:
         return False
     try:
-        # First call with save_changes=None to detect whether confirmation is needed.
-        result = get_service().close_game(game_id, save_changes=None)
-    except UseCaseError as exc:
+        # First call without save_changes to detect whether confirmation is needed.
+        response = get_client().delete(f"/games/{game_id}/session")
+        if response.status_code == 409:
+            detail = response.json().get("detail", {})
+            if isinstance(detail, dict) and detail.get("requires_confirmation"):
+                answer = input(
+                    "You have unsaved changes. Save before closing? (yes/no/cancel): "
+                ).strip().lower()
+                if answer == "cancel":
+                    print("Close cancelled.")
+                    return False
+                save_changes = "true" if answer == "yes" else "false"
+                response = get_client().delete(
+                    f"/games/{game_id}/session",
+                    params={"save_changes": save_changes},
+                )
+                _raise_for_error(response)
+            else:
+                _raise_for_error(response)
+        else:
+            _raise_for_error(response)
+    except (GameNotFoundError, UseCaseError) as exc:
         err(str(exc))
         return False
-    if result.requires_confirmation:
-        # Ask the user what to do with the unsaved changes.
-        answer = input("You have unsaved changes. Save before closing? (yes/no/cancel): ").strip().lower()
-        if answer == "cancel":
-            print("Close cancelled.")
-            return False
-        save_changes = answer == "yes"
-        result = get_service().close_game(game_id, save_changes=save_changes)
+    except httpx.TransportError as exc:
+        err(f"Cannot reach server: {exc}")
+        return False
     # Clear session state regardless of whether changes were saved or discarded.
     state.game_id = None
     state.current_turning_point_ply = None

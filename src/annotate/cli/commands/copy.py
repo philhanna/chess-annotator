@@ -1,5 +1,7 @@
+import httpx
+
 from annotate.cli import session
-from annotate.use_cases import OverwriteRequiredError, UseCaseError
+from annotate.use_cases import UseCaseError
 
 
 def cmd_copy(tokens: list[str]) -> None:
@@ -14,22 +16,23 @@ def cmd_copy(tokens: list[str]) -> None:
             session.err("Usage: copy <source-game-id> <new-game-id>")
             return
         source_game_id, new_game_id = tokens
+
     try:
-        session.get_service().save_game_as(
-            source_game_id=source_game_id,
-            new_game_id=new_game_id,
+        response = session.get_client().post(
+            f"/games/{source_game_id}/copy",
+            json={"new_game_id": new_game_id},
         )
-    except OverwriteRequiredError:
-        answer = input(f"Game id '{new_game_id}' exists. Overwrite? (yes/no): ").strip().lower()
-        if answer != "yes":
-            session.print("Copy cancelled.")
-            return
-        session.get_service().save_game_as(
-            source_game_id=source_game_id,
-            new_game_id=new_game_id,
-            overwrite=True,
-        )
-    except UseCaseError as exc:
+        if response.status_code == 409:
+            answer = input(f"Game id '{new_game_id}' exists. Overwrite? (yes/no): ").strip().lower()
+            if answer != "yes":
+                session.print("Copy cancelled.")
+                return
+            response = session.get_client().post(
+                f"/games/{source_game_id}/copy",
+                json={"new_game_id": new_game_id, "overwrite": True},
+            )
+        session._raise_for_error(response)
+    except (UseCaseError, httpx.TransportError) as exc:
         session.err(str(exc))
         return
     session.print(f"Created: {new_game_id}")

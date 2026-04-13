@@ -1,5 +1,7 @@
 import webbrowser
 
+import httpx
+
 from annotate.cli import session
 from annotate.use_cases import UseCaseError
 
@@ -14,10 +16,14 @@ def cmd_see(tokens: list[str]) -> None:
         return
     if game_id is None:
         return
+
     try:
-        url = session.get_service().upload_to_lichess(game_id=game_id)
-    except UseCaseError as exc:
+        response = session.get_client().post(f"/games/{game_id}/lichess")
+        session._raise_for_error(response)
+    except (UseCaseError, httpx.TransportError) as exc:
         session.err(str(exc))
         return
+
+    url = response.json()["url"]
     webbrowser.open(url)
     session.print(url)

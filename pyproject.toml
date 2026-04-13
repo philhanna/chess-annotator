@@ -12,14 +12,17 @@ dependencies = [
     "weasyprint",
     "mistune",
     "pyyaml",
+    "httpx",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+server = ["fastapi", "uvicorn[standard]"]
+dev = ["pytest", "httpx"]
 
 [project.scripts]
 chess-annotate = "annotate.cli.annotate:main"
 chess-render   = "annotate.cli.render:main"
+chess-server   = "annotate.server.app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

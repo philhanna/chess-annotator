@@ -1,3 +1,5 @@
+import httpx
+
 from annotate.cli import session
 from annotate.use_cases import UseCaseError
 
@@ -19,8 +21,12 @@ def cmd_merge(tokens: list[str]) -> None:
         session.err("Usage: merge <m> <n>")
         return
     try:
-        session.get_service().merge_segments(game_id=game_id, m=m, n=n)
-    except UseCaseError as exc:
+        response = session.get_client().post(
+            f"/games/{game_id}/session/segments/merge",
+            json={"m": m, "n": n},
+        )
+        session._raise_for_error(response)
+    except (UseCaseError, httpx.TransportError) as exc:
         session.err(str(exc))
         return
     session.print("Segments merged.")

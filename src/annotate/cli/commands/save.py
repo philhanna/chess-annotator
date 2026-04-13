@@ -1,3 +1,5 @@
+import httpx
+
 from annotate.cli import session
 from annotate.use_cases import UseCaseError
 
@@ -7,8 +9,9 @@ def cmd_save(_tokens: list[str]) -> None:
     if game_id is None:
         return
     try:
-        session.get_service().save_session(game_id)
-    except UseCaseError as exc:
+        response = session.get_client().post(f"/games/{game_id}/session/save")
+        session._raise_for_error(response)
+    except (UseCaseError, httpx.TransportError) as exc:
         session.err(str(exc))
         return
     session.print("Saved.")

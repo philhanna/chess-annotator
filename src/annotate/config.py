@@ -60,6 +60,7 @@ class Config:
     author: str | None = None
     diagram_size: int = 360
     page_size: str = "a4"
+    server_url: str = "http://127.0.0.1:8765"
 
 
 def get_config() -> Config:
@@ -99,6 +100,7 @@ def get_config() -> Config:
         author=file_data.get("author") or None,
         diagram_size=int(file_data.get("diagram_size", 360)),
         page_size=str(file_data.get("page_size", "a4")).lower(),
+        server_url=str(file_data.get("server_url", "http://127.0.0.1:8765")),
     )
 
 

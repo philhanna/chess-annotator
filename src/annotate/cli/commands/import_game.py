@@ -1,9 +1,12 @@
 from pathlib import Path
 
+import httpx
+
 from annotate.adapters.python_chess_pgn_parser import PythonChessPGNParser
 from annotate.cli import strip_comments
 from annotate.cli import session
-from annotate.use_cases import OverwriteRequiredError, UseCaseError
+from annotate.config import get_config
+from annotate.use_cases import UseCaseError
 
 
 def cmd_import(tokens: list[str]) -> None:
@@ -44,31 +47,36 @@ def cmd_import(tokens: list[str]) -> None:
             break
         session.print("Please enter white or black.")
 
+    config = get_config()
+    payload = {
+        "game_id": game_id,
+        "pgn_text": raw_pgn,
+        "player_side": side,
+        "author": config.author or "",
+        "date": date or None,
+    }
+
     try:
-        game_state = session.get_service().import_game(
-            game_id=game_id,
-            pgn_text=raw_pgn,
-            player_side=side,
-            author=session.get_config().author or "",
-            date=date,
-        )
-    except OverwriteRequiredError:
-        answer = input(f"Game id '{game_id}' exists. Overwrite? (yes/no): ").strip().lower()
-        if answer != "yes":
-            session.print("Import cancelled.")
-            return
-        game_state = session.get_service().import_game(
-            game_id=game_id,
-            pgn_text=raw_pgn,
-            player_side=side,
-            author=session.get_config().author or "",
-            date=date,
-            overwrite=True,
-        )
+        response = session.get_client().post("/games", json=payload)
+        if response.status_code == 409:
+            answer = input(f"Game id '{game_id}' exists. Overwrite? (yes/no): ").strip().lower()
+            if answer != "yes":
+                session.print("Import cancelled.")
+                return
+            payload["overwrite"] = True
+            response = session.get_client().post("/games", json=payload)
+        session._raise_for_error(response)
     except UseCaseError as exc:
         session.err(str(exc))
         return
+    except httpx.TransportError as exc:
+        session.err(f"Cannot reach server: {exc}")
+        return
 
-    session.state.game_id = game_state.game_id
-    session.state.current_turning_point_ply = game_state.segments[0].turning_point_ply
-    session.print(f"Imported and opened: {game_state.title}")
+    data = response.json()
+    session.state.game_id = data["game_id"]
+    segments = data.get("segments", [])
+    session.state.current_turning_point_ply = (
+        segments[0]["turning_point_ply"] if segments else None
+    )
+    session.print(f"Imported and opened: {data['title']}")
