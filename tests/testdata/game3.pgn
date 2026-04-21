@@ -12,7 +12,7 @@
 [ECO "B01"]
 [Opening "Scandinavian Defense: Valencian Variation"]
 
-1. e4 d5 2. exd5 Qxd5 3. Nc3 Qd8 4. Nf3 Nf6 5. Bc4 Bg4 {
+1. e4 d5 2. exd5 Qxd5 3. Nc3 Qd8 4. Nf3 Nf6 5. Bc4 Bg4 $220 {
 Stockfish considers 5 ... Bg4 to be a mistake, because of
 6. Ne5!!.  If black responds 6 ... Nxd1?? then Bxf7# is
 checkmate.  If instead black retreates with 6 ... Be6,
