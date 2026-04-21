@@ -4,31 +4,21 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chess-annotator"
-version = "1.0.1"
+version = "0.9.0"
 description = "Tool for annotating chess games and rendering them as book-quality PDFs"
 requires-python = ">=3.10"
 dependencies = [
     "python-chess",
-    "weasyprint",
-    "mistune",
     "pyyaml",
-    "httpx",
 ]
 
 [project.optional-dependencies]
-server = ["fastapi", "uvicorn[standard]"]
-dev = ["pytest", "httpx"]
-
-[project.scripts]
-chess-annotate = "annotate.cli.annotate:main"
-chess-render   = "annotate.cli.render:main"
-chess-server   = "annotate.server.app:main"
+dev = ["pytest"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-annotate = ["adapters/chess_book.css"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
