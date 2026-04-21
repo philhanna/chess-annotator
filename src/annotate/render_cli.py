@@ -9,7 +9,7 @@ from annotate.adapters.pdf_renderer import ReportLabPdfRenderer
 from annotate.domain.render_model import parse_pgn
 
 
-def _parse_args() -> argparse.Namespace:
+def parse_args() -> argparse.Namespace:
     """Parse command-line arguments for the PDF rendering command."""
 
     parser = argparse.ArgumentParser(
@@ -30,7 +30,7 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     """Run the CLI, validating paths and translating user errors to exit codes."""
 
-    args = _parse_args()
+    args = parse_args()
     pgn_path = Path(args.pgn_file)
     output_path = Path(args.output)
 

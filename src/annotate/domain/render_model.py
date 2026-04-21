@@ -58,7 +58,7 @@ class RenderModel:
 # Pure formatting functions
 # ---------------------------------------------------------------------------
 
-def _format_date(raw: str) -> str:
+def format_date(raw: str) -> str:
     """Convert a PGN date tag into a compact human-readable string."""
 
     parts = raw.split(".")
@@ -77,15 +77,15 @@ def _format_date(raw: str) -> str:
     return f"{day:02d} {calendar.month_abbr[month]} {year}"
 
 
-def _subtitle_text(headers: GameHeaders) -> str | None:
+def subtitle_text(headers: GameHeaders) -> str | None:
     """Build the subtitle line from event and date metadata when available."""
 
-    date_str = _format_date(headers.date)
+    date_str = format_date(headers.date)
     parts = [p for p in [headers.event, date_str] if p]
     return ", ".join(parts) if parts else None
 
 
-def _moves_text(segment: Segment) -> str:
+def moves_text(segment: Segment) -> str:
     """Format a segment's moves into display text with move numbers and NAGs."""
 
     tokens: list[str] = []
@@ -103,7 +103,7 @@ def _moves_text(segment: Segment) -> str:
     return " ".join(tokens)
 
 
-def _caption_text(move: PliedMove) -> str:
+def caption_text(move: PliedMove) -> str:
     """Return the caption shown below a rendered diagram."""
 
     move_number = (move.ply + 1) // 2
@@ -116,25 +116,25 @@ def _caption_text(move: PliedMove) -> str:
 # PGN parsing
 # ---------------------------------------------------------------------------
 
-def _parse_headers(game: chess.pgn.Game) -> GameHeaders:
+def parse_headers(game: chess.pgn.Game) -> GameHeaders:
     """Extract the subset of PGN headers used by the render model."""
 
-    def _tag(name: str) -> str:
+    def tag(name: str) -> str:
         """Return blank strings instead of PGN placeholder values."""
 
         val = game.headers.get(name, "")
         return "" if val == "?" else val
 
     return GameHeaders(
-        white=_tag("White"),
-        black=_tag("Black"),
-        event=_tag("Event"),
-        date=_tag("Date"),
+        white=tag("White"),
+        black=tag("Black"),
+        event=tag("Event"),
+        date=tag("Date"),
         opening=game.headers.get("Opening", ""),
     )
 
 
-def _collect_moves(game: chess.pgn.Game) -> list[PliedMove]:
+def collect_moves(game: chess.pgn.Game) -> list[PliedMove]:
     """Read the mainline moves and capture annotations relevant to rendering."""
 
     moves = []
@@ -155,7 +155,7 @@ def _collect_moves(game: chess.pgn.Game) -> list[PliedMove]:
     return moves
 
 
-def _build_segments(moves: list[PliedMove]) -> tuple:
+def build_segments(moves: list[PliedMove]) -> tuple:
     """Split moves into render segments anchored by leading comments."""
 
     if not moves:
@@ -190,6 +190,6 @@ def parse_pgn(pgn_text: str) -> RenderModel:
     if game is None:
         raise ValueError("PGN contains no game")
     return RenderModel(
-        headers=_parse_headers(game),
-        segments=_build_segments(_collect_moves(game)),
+        headers=parse_headers(game),
+        segments=build_segments(collect_moves(game)),
     )

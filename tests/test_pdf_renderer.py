@@ -9,11 +9,11 @@ from annotate.domain.render_model import (
     GameHeaders,
     PliedMove,
     Segment,
-    _build_segments,
-    _caption_text,
-    _format_date,
-    _moves_text,
-    _subtitle_text,
+    build_segments,
+    caption_text,
+    format_date,
+    moves_text,
+    subtitle_text,
 )
 
 TESTDATA = Path(__file__).parent / "testdata"
@@ -33,70 +33,70 @@ def _seg(moves, comment="", diagram_move=None):
 
 
 # ---------------------------------------------------------------------------
-# _format_date
+# format_date
 # ---------------------------------------------------------------------------
 
 def test_format_date_full():
-    assert _format_date("2026.03.30") == "30 Mar 2026"
+    assert format_date("2026.03.30") == "30 Mar 2026"
 
 
 def test_format_date_no_day():
-    assert _format_date("2026.03.??") == "Mar 2026"
+    assert format_date("2026.03.??") == "Mar 2026"
 
 
 def test_format_date_year_only():
-    assert _format_date("2026.??.??") == "2026"
+    assert format_date("2026.??.??") == "2026"
 
 
 def test_format_date_all_missing():
-    assert _format_date("????.??.??") == ""
+    assert format_date("????.??.??") == ""
 
 
 # ---------------------------------------------------------------------------
-# _subtitle_text
+# subtitle_text
 # ---------------------------------------------------------------------------
 
 def test_subtitle_event_and_date():
     h = GameHeaders(white="", black="", event="World Championship",
                     date="2026.03.30", opening="")
-    assert _subtitle_text(h) == "World Championship, 30 Mar 2026"
+    assert subtitle_text(h) == "World Championship, 30 Mar 2026"
 
 
 def test_subtitle_event_only():
     h = GameHeaders(white="", black="", event="Blitz Open",
                     date="????.??.??", opening="")
-    assert _subtitle_text(h) == "Blitz Open"
+    assert subtitle_text(h) == "Blitz Open"
 
 
 def test_subtitle_date_only():
     h = GameHeaders(white="", black="", event="",
                     date="2026.??.??", opening="")
-    assert _subtitle_text(h) == "2026"
+    assert subtitle_text(h) == "2026"
 
 
 def test_subtitle_neither():
     h = GameHeaders(white="", black="", event="",
                     date="????.??.??", opening="")
-    assert _subtitle_text(h) is None
+    assert subtitle_text(h) is None
 
 
 # ---------------------------------------------------------------------------
-# _moves_text
+# moves_text
 # ---------------------------------------------------------------------------
 
 def test_moves_text_white_start():
     seg = _seg([_make_move(1, "e4"), _make_move(2, "d5"), _make_move(3, "exd5")])
-    assert _moves_text(seg) == "1. e4 d5 2. exd5"
+    assert moves_text(seg) == "1. e4 d5 2. exd5"
 
 
 def test_moves_text_black_start():
     seg = _seg([_make_move(4, "Qxd5"), _make_move(5, "Nc3")])
-    assert _moves_text(seg) == "2... Qxd5 3. Nc3"
+    assert moves_text(seg) == "2... Qxd5 3. Nc3"
 
 
 def test_moves_text_nag_symbol():
     seg = _seg([_make_move(1, "e4"), _make_move(2, "d5", nag_symbol="!")])
-    assert _moves_text(seg) == "1. e4 d5!"
+    assert moves_text(seg) == "1. e4 d5!"
 
 
 def test_moves_text_diagram_nag_not_shown():
@@ -104,7 +104,7 @@ def test_moves_text_diagram_nag_not_shown():
     board.push_san("e4")
     move = _make_move(ply=1, san="e4", diagram_board=board)
     seg = _seg([move], diagram_move=move)
-    assert _moves_text(seg) == "1. e4"
+    assert moves_text(seg) == "1. e4"
 
 
 def test_moves_text_full_sequence():
@@ -115,36 +115,36 @@ def test_moves_text_full_sequence():
         _make_move(4, "Qxd5"),
     ]
     seg = _seg(moves)
-    assert _moves_text(seg) == "1. e4 d5 2. exd5? Qxd5"
+    assert moves_text(seg) == "1. e4 d5 2. exd5? Qxd5"
 
 
 # ---------------------------------------------------------------------------
-# _caption_text
+# caption_text
 # ---------------------------------------------------------------------------
 
 def test_caption_white_move():
-    assert _caption_text(_make_move(ply=5, san="Nc3")) == "After 3. Nc3"
+    assert caption_text(_make_move(ply=5, san="Nc3")) == "After 3. Nc3"
 
 
 def test_caption_black_move():
-    assert _caption_text(_make_move(ply=6, san="Qd8")) == "After 3 ... Qd8"
+    assert caption_text(_make_move(ply=6, san="Qd8")) == "After 3 ... Qd8"
 
 
 def test_caption_ply_1():
-    assert _caption_text(_make_move(ply=1, san="e4")) == "After 1. e4"
+    assert caption_text(_make_move(ply=1, san="e4")) == "After 1. e4"
 
 
 def test_caption_ply_2():
-    assert _caption_text(_make_move(ply=2, san="d5")) == "After 1 ... d5"
+    assert caption_text(_make_move(ply=2, san="d5")) == "After 1 ... d5"
 
 
 # ---------------------------------------------------------------------------
-# _build_segments
+# build_segments
 # ---------------------------------------------------------------------------
 
 def test_no_comments_one_segment():
     moves = [_make_move(1, "e4"), _make_move(2, "d5"), _make_move(3, "exd5")]
-    segs = _build_segments(moves)
+    segs = build_segments(moves)
     assert len(segs) == 1
     assert segs[0].comment == ""
     assert len(segs[0].moves) == 3
@@ -152,7 +152,7 @@ def test_no_comments_one_segment():
 
 def test_comment_on_move_1_one_segment():
     moves = [_make_move(1, "e4", comment="Good opening."), _make_move(2, "d5")]
-    segs = _build_segments(moves)
+    segs = build_segments(moves)
     assert len(segs) == 1
     assert segs[0].comment == "Good opening."
 
@@ -164,7 +164,7 @@ def test_comment_splits_into_two_segments():
         _make_move(3, "Nc3", comment="White develops."),
         _make_move(4, "Nf6"),
     ]
-    segs = _build_segments(moves)
+    segs = build_segments(moves)
     assert len(segs) == 2
     assert segs[0].comment == ""
     assert len(segs[0].moves) == 2
@@ -179,7 +179,7 @@ def test_multiple_comments_three_segments():
         _make_move(3, "exd5"),
         _make_move(4, "Qxd5", comment="Recapture."),
     ]
-    segs = _build_segments(moves)
+    segs = build_segments(moves)
     assert len(segs) == 3
     assert segs[0].comment == ""
     assert segs[1].comment == "Scandinavian."
@@ -194,18 +194,18 @@ def test_first_diagram_per_segment_used():
     board2.push_san("d5")
     m1 = _make_move(1, "e4", diagram_board=board1)
     m2 = _make_move(2, "d5", diagram_board=board2)
-    segs = _build_segments([m1, m2])
+    segs = build_segments([m1, m2])
     assert segs[0].diagram_move is m1
 
 
 def test_no_diagram_move_is_none():
     moves = [_make_move(1, "e4"), _make_move(2, "d5")]
-    segs = _build_segments(moves)
+    segs = build_segments(moves)
     assert segs[0].diagram_move is None
 
 
 def test_empty_moves_returns_empty():
-    assert _build_segments([]) == ()
+    assert build_segments([]) == ()
 
 
 # ---------------------------------------------------------------------------

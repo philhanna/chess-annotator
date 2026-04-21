@@ -17,9 +17,9 @@ from annotate.domain.render_model import (
     PliedMove,
     RenderModel,
     Segment,
-    _caption_text,
-    _moves_text,
-    _subtitle_text,
+    caption_text,
+    moves_text,
+    subtitle_text,
     parse_pgn,
 )
 from annotate.ports.diagram_renderer import DiagramRenderer
@@ -29,7 +29,7 @@ MARGIN = 72.0
 DIAGRAM_SIZE = 80 * mm  # fixed diagram size (~227 pt)
 
 
-def _build_styles() -> dict[str, ParagraphStyle]:
+def build_styles() -> dict[str, ParagraphStyle]:
     """Create the paragraph styles used throughout the generated PDF."""
 
     return {
@@ -68,11 +68,11 @@ class ReportLabPdfRenderer:
     ) -> None:
         """Render the supplied model to ``output_path`` using ReportLab."""
 
-        styles = _build_styles()
+        styles = build_styles()
         story: list = []
-        story.extend(self._title_flowables(model.headers, styles))
+        story.extend(self.title_flowables(model.headers, styles))
         for segment in model.segments:
-            story.extend(self._segment_flowables(segment, orientation, styles))
+            story.extend(self.segment_flowables(segment, orientation, styles))
         doc = SimpleDocTemplate(
             str(output_path),
             pagesize=LETTER,
@@ -83,13 +83,13 @@ class ReportLabPdfRenderer:
         )
         doc.build(story)
 
-    def _title_flowables(self, headers: GameHeaders, styles: dict) -> list:
+    def title_flowables(self, headers: GameHeaders, styles: dict) -> list:
         """Build the title block flowables shown at the top of the document."""
 
         flowables: list = []
         player_line = html.escape(f"{headers.white} – {headers.black}")
         flowables.append(Paragraph(player_line, styles["Title"]))
-        subtitle = _subtitle_text(headers)
+        subtitle = subtitle_text(headers)
         if subtitle:
             flowables.append(Paragraph(html.escape(subtitle), styles["Subtitle"]))
         if headers.opening:
@@ -97,7 +97,7 @@ class ReportLabPdfRenderer:
         flowables.append(Spacer(0, 18))
         return flowables
 
-    def _segment_flowables(
+    def segment_flowables(
         self,
         segment: Segment,
         orientation: str,
@@ -107,13 +107,13 @@ class ReportLabPdfRenderer:
 
         flowables: list = []
         if segment.diagram_move is not None:
-            flowables.extend(self._diagram_flowables(segment.diagram_move, orientation, styles))
-        flowables.append(Paragraph(html.escape(_moves_text(segment)), styles["Moves"]))
+            flowables.extend(self.diagram_flowables(segment.diagram_move, orientation, styles))
+        flowables.append(Paragraph(html.escape(moves_text(segment)), styles["Moves"]))
         if segment.comment:
             flowables.append(Paragraph(html.escape(segment.comment), styles["Comment"]))
         return flowables
 
-    def _diagram_flowables(
+    def diagram_flowables(
         self,
         diagram_move: PliedMove,
         orientation: str,
@@ -137,7 +137,7 @@ class ReportLabPdfRenderer:
         table = Table([[drawing]], colWidths=[TEXT_WIDTH])
         table.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
 
-        caption = Paragraph(_caption_text(diagram_move), styles["Caption"])
+        caption = Paragraph(caption_text(diagram_move), styles["Caption"])
         return [Spacer(0, 12), table, caption, Spacer(0, 12)]
 
 
