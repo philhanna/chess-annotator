@@ -1,4 +1,23 @@
-"""ReportLab-based PDF rendering adapter."""
+"""ReportLab-based PDF rendering adapter.
+
+This module is the concrete implementation of the
+:class:`~annotate.ports.document_renderer.DocumentRenderer` protocol.  It
+converts a :class:`~annotate.domain.render_model_data.RenderModel` into a
+paginated LETTER-format PDF using the ReportLab Platypus layout engine.
+
+Layout overview
+---------------
+The document is built as a linear list of ReportLab *flowables*:
+
+1. **Title block** — player names as a bold centred heading, followed by an
+   optional italic subtitle (event, date) and an optional opening name.
+2. **Segments** — for each :class:`~annotate.domain.segment.Segment`: an
+   optional centred board diagram with caption, a bold move-sequence line,
+   and an optional italic commentary paragraph.
+
+All text is HTML-escaped before being passed to ``Paragraph`` to prevent
+ReportLab from misinterpreting special characters in player names or comments.
+"""
 
 import html
 import io
@@ -30,7 +49,26 @@ DIAGRAM_SIZE = 80 * mm  # fixed diagram size (~227 pt)
 
 
 def build_styles() -> dict[str, ParagraphStyle]:
-    """Create the paragraph styles used throughout the generated PDF."""
+    """Create and return the paragraph styles used throughout the generated PDF.
+
+    Returns a dictionary keyed by style name with the following entries:
+
+    * ``"Title"`` — 16 pt Helvetica Bold, centred, 12 pt space after.  Used
+      for the player-names heading at the top of the document.
+    * ``"Subtitle"`` — 12 pt Helvetica Oblique, centred, 4 pt space after.
+      Used for the event/date line and the opening name.
+    * ``"Moves"`` — 12 pt Helvetica Bold, left-aligned, 6 pt space after.
+      Used for the formatted move-sequence token run in each segment.
+    * ``"Comment"`` — 12 pt Helvetica, left-aligned, 18 pt leading (1.5×),
+      6 pt space after.  Used for prose commentary paragraphs.
+    * ``"Caption"`` — 11 pt Helvetica Oblique, centred, 4 pt space after.
+      Used for the "After N. Move" line below each board diagram.
+
+    Returns:
+        A fresh dictionary of :class:`reportlab.lib.styles.ParagraphStyle`
+        instances.  A new dictionary is created on each call so callers can
+        modify styles without affecting other render passes.
+    """
 
     return {
         "Title":    ParagraphStyle("Title",
@@ -53,10 +91,23 @@ def build_styles() -> dict[str, ParagraphStyle]:
 
 
 class ReportLabPdfRenderer:
-    """Render a :class:`RenderModel` into a paginated PDF document."""
+    """Concrete :class:`~annotate.ports.document_renderer.DocumentRenderer` using ReportLab.
+
+    Renders a :class:`~annotate.domain.render_model_data.RenderModel` to a
+    paginated LETTER PDF via the ReportLab Platypus layout engine.  Board
+    diagrams are produced by the injected
+    :class:`~annotate.ports.diagram_renderer.DiagramRenderer` and converted
+    from SVG to ReportLab ``Drawing`` objects by ``svglib``.
+    """
 
     def __init__(self, diagram_renderer: DiagramRenderer) -> None:
-        """Store the diagram renderer dependency used for board diagrams."""
+        """Initialise the renderer with its diagram-rendering dependency.
+
+        Args:
+            diagram_renderer: An object satisfying the
+                :class:`~annotate.ports.diagram_renderer.DiagramRenderer`
+                protocol, used to produce SVG images for diagram moves.
+        """
 
         self._diagram_renderer = diagram_renderer
 
@@ -66,7 +117,15 @@ class ReportLabPdfRenderer:
         output_path: Path,
         orientation: str = "white",
     ) -> None:
-        """Render the supplied model to ``output_path`` using ReportLab."""
+        """Build a PDF from ``model`` and write it to ``output_path``.
+
+        Args:
+            model: The parsed game data including headers and all segments.
+            output_path: Destination path for the PDF file.  The file is
+                created or overwritten; its parent directory must already exist.
+            orientation: ``"white"`` or ``"black"`` — which side's perspective
+                is used for all board diagrams.  Defaults to ``"white"``.
+        """
 
         styles = build_styles()
         story: list = []
@@ -84,7 +143,18 @@ class ReportLabPdfRenderer:
         doc.build(story)
 
     def title_flowables(self, headers: GameHeaders, styles: dict) -> list:
-        """Build the title block flowables shown at the top of the document."""
+        """Build the ordered list of flowables for the document title block.
+
+        Produces: player-names heading, optional event/date subtitle, optional
+        opening name, then a 18 pt spacer before the first segment.
+
+        Args:
+            headers: Normalised game headers.
+            styles: Paragraph style dictionary from :func:`build_styles`.
+
+        Returns:
+            A list of ReportLab flowables in layout order.
+        """
 
         flowables: list = []
         player_line = html.escape(f"{headers.white} – {headers.black}")
@@ -103,7 +173,21 @@ class ReportLabPdfRenderer:
         orientation: str,
         styles: dict,
     ) -> list:
-        """Convert one segment into the ordered flowables used in the PDF."""
+        """Convert one commentary segment into its ordered list of flowables.
+
+        Layout order within a segment: optional diagram block (diagram + caption
+        + surrounding spacers), bold move-sequence paragraph, optional comment
+        paragraph.
+
+        Args:
+            segment: The segment to render.
+            orientation: Board orientation passed through to
+                :meth:`diagram_flowables`.
+            styles: Paragraph style dictionary from :func:`build_styles`.
+
+        Returns:
+            A list of ReportLab flowables in layout order.
+        """
 
         flowables: list = []
         if segment.diagram_move is not None:
@@ -119,7 +203,28 @@ class ReportLabPdfRenderer:
         orientation: str,
         styles: dict,
     ) -> list:
-        """Render one diagram and its caption as centered ReportLab flowables."""
+        """Render a single board diagram and caption as centred flowables.
+
+        Converts the SVG produced by the diagram renderer into a ReportLab
+        ``Drawing``, scales it to :data:`DIAGRAM_SIZE`, wraps it in a
+        single-column ``Table`` to force centring within the text column, and
+        appends a caption paragraph.
+
+        If ``svglib`` fails to parse the SVG (returns ``None``), the diagram is
+        skipped with a :func:`warnings.warn` call and an empty list is returned
+        so the rest of the document renders normally.
+
+        Args:
+            diagram_move: The move whose ``diagram_board`` is to be rendered.
+                ``diagram_move.diagram_board`` must not be ``None``.
+            orientation: ``"white"`` or ``"black"`` — the viewing perspective
+                for the diagram.
+            styles: Paragraph style dictionary from :func:`build_styles`.
+
+        Returns:
+            ``[Spacer, Table(diagram), Caption, Spacer]`` on success, or
+            ``[]`` when SVG conversion fails.
+        """
 
         svg_text = self._diagram_renderer.render(diagram_move.diagram_board, orientation)
         drawing = svg2rlg(io.StringIO(svg_text))
@@ -146,7 +251,23 @@ def render_pdf(
     output_path: Path,
     orientation: str = "white",
 ) -> None:
-    """Parse PGN text and render a PDF using the default adapter stack."""
+    """Parse PGN text and render a PDF using the default adapter stack.
+
+    Convenience function that wires up the standard
+    :class:`ChessSvgDiagramRenderer` and :class:`ReportLabPdfRenderer` and
+    invokes the full pipeline in one call.  Suitable for use from scripts and
+    tests that do not need to customise the adapter stack.
+
+    Args:
+        pgn_text: The full text of a PGN file.  Only the first game is used.
+        output_path: Destination path for the PDF file.  The file is created
+            or overwritten; its parent directory must already exist.
+        orientation: ``"white"`` or ``"black"`` — the viewing perspective for
+            all board diagrams.  Defaults to ``"white"``.
+
+    Raises:
+        ValueError: If ``pgn_text`` contains no parseable game.
+    """
     model = parse_pgn(pgn_text)
     ReportLabPdfRenderer(diagram_renderer=ChessSvgDiagramRenderer()).render(
         model, output_path, orientation

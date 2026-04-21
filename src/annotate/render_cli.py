@@ -1,4 +1,10 @@
-"""Command-line entry point for rendering annotated PGN files to PDF."""
+"""Command-line entry point for rendering annotated PGN files to PDF.
+
+Installed as the ``chess-render`` console script by ``pyproject.toml``.
+Validates the input path and output directory, delegates parsing and rendering
+to the domain and adapter layers, and maps domain errors to non-zero exit codes
+so callers can detect failures in shell scripts or CI pipelines.
+"""
 
 import argparse
 import sys
@@ -10,7 +16,20 @@ from annotate.domain.render_model import parse_pgn
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments for the PDF rendering command."""
+    """Parse and return the command-line arguments for ``chess-render``.
+
+    Arguments:
+        pgn_file (positional): Path to the annotated ``.pgn`` input file.
+        -o / --output (optional): Path for the output PDF.  Defaults to the
+            input filename with ``.pgn`` replaced by ``.pdf`` in the current
+            working directory.
+        -r / --orientation (optional): ``"white"`` (default) or ``"black"`` —
+            the side shown at the bottom of every board diagram.
+
+    Returns:
+        A populated :class:`argparse.Namespace` with attributes ``pgn_file``,
+        ``output``, and ``orientation``.
+    """
 
     parser = argparse.ArgumentParser(
         prog="chess-render",
@@ -28,7 +47,17 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    """Run the CLI, validating paths and translating user errors to exit codes."""
+    """Entry point for the ``chess-render`` command.
+
+    Validates that the input PGN file exists and that the output directory is
+    accessible, then delegates to the rendering pipeline.  User-facing errors
+    (missing file, bad PGN) are printed to ``stderr`` and cause a non-zero
+    exit; unexpected exceptions propagate normally so stack traces are visible.
+
+    Exit codes:
+        0 — PDF written successfully.
+        1 — Input file not found, output directory missing, or PGN parse error.
+    """
 
     args = parse_args()
     pgn_path = Path(args.pgn_file)
