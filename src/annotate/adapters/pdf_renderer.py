@@ -1,4 +1,5 @@
-# annotate.adapters.pdf_renderer
+"""ReportLab-based PDF rendering adapter."""
+
 import html
 import io
 from pathlib import Path
@@ -29,6 +30,8 @@ DIAGRAM_SIZE = 80 * mm  # fixed diagram size (~227 pt)
 
 
 def _build_styles() -> dict[str, ParagraphStyle]:
+    """Create the paragraph styles used throughout the generated PDF."""
+
     return {
         "Title":    ParagraphStyle("Title",
                         fontName="Helvetica-Bold", fontSize=16,
@@ -50,7 +53,11 @@ def _build_styles() -> dict[str, ParagraphStyle]:
 
 
 class ReportLabPdfRenderer:
+    """Render a :class:`RenderModel` into a paginated PDF document."""
+
     def __init__(self, diagram_renderer: DiagramRenderer) -> None:
+        """Store the diagram renderer dependency used for board diagrams."""
+
         self._diagram_renderer = diagram_renderer
 
     def render(
@@ -59,6 +66,8 @@ class ReportLabPdfRenderer:
         output_path: Path,
         orientation: str = "white",
     ) -> None:
+        """Render the supplied model to ``output_path`` using ReportLab."""
+
         styles = _build_styles()
         story: list = []
         story.extend(self._title_flowables(model.headers, styles))
@@ -75,6 +84,8 @@ class ReportLabPdfRenderer:
         doc.build(story)
 
     def _title_flowables(self, headers: GameHeaders, styles: dict) -> list:
+        """Build the title block flowables shown at the top of the document."""
+
         flowables: list = []
         player_line = html.escape(f"{headers.white} – {headers.black}")
         flowables.append(Paragraph(player_line, styles["Title"]))
@@ -92,6 +103,8 @@ class ReportLabPdfRenderer:
         orientation: str,
         styles: dict,
     ) -> list:
+        """Convert one segment into the ordered flowables used in the PDF."""
+
         flowables: list = []
         if segment.diagram_move is not None:
             flowables.extend(self._diagram_flowables(segment.diagram_move, orientation, styles))
@@ -106,6 +119,8 @@ class ReportLabPdfRenderer:
         orientation: str,
         styles: dict,
     ) -> list:
+        """Render one diagram and its caption as centered ReportLab flowables."""
+
         svg_text = self._diagram_renderer.render(diagram_move.diagram_board, orientation)
         drawing = svg2rlg(io.StringIO(svg_text))
         if drawing is None:
@@ -131,7 +146,7 @@ def render_pdf(
     output_path: Path,
     orientation: str = "white",
 ) -> None:
-    """Convenience wrapper: parse PGN and render to PDF using default adapters."""
+    """Parse PGN text and render a PDF using the default adapter stack."""
     model = parse_pgn(pgn_text)
     ReportLabPdfRenderer(diagram_renderer=ChessSvgDiagramRenderer()).render(
         model, output_path, orientation

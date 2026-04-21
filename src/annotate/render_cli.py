@@ -1,4 +1,5 @@
-# annotate.render_cli
+"""Command-line entry point for rendering annotated PGN files to PDF."""
+
 import argparse
 import sys
 from pathlib import Path
@@ -9,6 +10,8 @@ from annotate.domain.render_model import parse_pgn
 
 
 def _parse_args() -> argparse.Namespace:
+    """Parse command-line arguments for the PDF rendering command."""
+
     parser = argparse.ArgumentParser(
         prog="chess-render",
         description="Render an annotated PGN file as a PDF.",
@@ -25,6 +28,8 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Run the CLI, validating paths and translating user errors to exit codes."""
+
     args = _parse_args()
     pgn_path = Path(args.pgn_file)
     output_path = Path(args.output)

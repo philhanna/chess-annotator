@@ -1,4 +1,5 @@
-# annotate.domain.render_model
+"""Domain model and PGN parsing helpers for PDF rendering."""
+
 import calendar
 import io
 from dataclasses import dataclass
@@ -16,6 +17,8 @@ NAG_DIAGRAM = 220
 
 @dataclass(frozen=True)
 class PliedMove:
+    """Represents one move in the mainline plus any rendering metadata."""
+
     ply: int
     san: str
     nag_symbol: str | None
@@ -25,6 +28,8 @@ class PliedMove:
 
 @dataclass(frozen=True)
 class GameHeaders:
+    """Normalized header fields used in the rendered document title block."""
+
     white: str
     black: str
     event: str
@@ -34,6 +39,8 @@ class GameHeaders:
 
 @dataclass(frozen=True)
 class Segment:
+    """Groups contiguous moves with the comment that introduces that segment."""
+
     moves: tuple
     comment: str
     diagram_move: PliedMove | None
@@ -41,6 +48,8 @@ class Segment:
 
 @dataclass(frozen=True)
 class RenderModel:
+    """Top-level immutable model consumed by document renderers."""
+
     headers: GameHeaders
     segments: tuple
 
@@ -50,6 +59,8 @@ class RenderModel:
 # ---------------------------------------------------------------------------
 
 def _format_date(raw: str) -> str:
+    """Convert a PGN date tag into a compact human-readable string."""
+
     parts = raw.split(".")
     if len(parts) != 3:
         return ""
@@ -67,12 +78,16 @@ def _format_date(raw: str) -> str:
 
 
 def _subtitle_text(headers: GameHeaders) -> str | None:
+    """Build the subtitle line from event and date metadata when available."""
+
     date_str = _format_date(headers.date)
     parts = [p for p in [headers.event, date_str] if p]
     return ", ".join(parts) if parts else None
 
 
 def _moves_text(segment: Segment) -> str:
+    """Format a segment's moves into display text with move numbers and NAGs."""
+
     tokens: list[str] = []
     for move in segment.moves:
         ply = move.ply
@@ -89,6 +104,8 @@ def _moves_text(segment: Segment) -> str:
 
 
 def _caption_text(move: PliedMove) -> str:
+    """Return the caption shown below a rendered diagram."""
+
     move_number = (move.ply + 1) // 2
     if move.ply % 2 == 1:
         return f"After {move_number}. {move.san}"
@@ -100,7 +117,11 @@ def _caption_text(move: PliedMove) -> str:
 # ---------------------------------------------------------------------------
 
 def _parse_headers(game: chess.pgn.Game) -> GameHeaders:
+    """Extract the subset of PGN headers used by the render model."""
+
     def _tag(name: str) -> str:
+        """Return blank strings instead of PGN placeholder values."""
+
         val = game.headers.get(name, "")
         return "" if val == "?" else val
 
@@ -114,12 +135,15 @@ def _parse_headers(game: chess.pgn.Game) -> GameHeaders:
 
 
 def _collect_moves(game: chess.pgn.Game) -> list[PliedMove]:
+    """Read the mainline moves and capture annotations relevant to rendering."""
+
     moves = []
     node = game
     while node.variations:
         node = node.variations[0]
         nag_symbol = next((NAG_SYMBOLS[n] for n in node.nags if n in NAG_SYMBOLS), None)
         has_diagram = NAG_DIAGRAM in node.nags
+        # Copy the board only for requested diagrams so later traversal cannot mutate it.
         diagram_board = node.board().copy() if has_diagram else None
         moves.append(PliedMove(
             ply=node.ply(),
@@ -132,12 +156,15 @@ def _collect_moves(game: chess.pgn.Game) -> list[PliedMove]:
 
 
 def _build_segments(moves: list[PliedMove]) -> tuple:
+    """Split moves into render segments anchored by leading comments."""
+
     if not moves:
         return ()
 
     groups: list[list[PliedMove]] = []
     current: list[PliedMove] = [moves[0]]
     for move in moves[1:]:
+        # A comment starts a new prose segment and belongs to the move it annotates.
         if move.comment:
             groups.append(current)
             current = [move]
@@ -157,6 +184,8 @@ def _build_segments(moves: list[PliedMove]) -> tuple:
 
 
 def parse_pgn(pgn_text: str) -> RenderModel:
+    """Parse PGN text into the immutable render model used by adapters."""
+
     game = chess.pgn.read_game(io.StringIO(pgn_text))
     if game is None:
         raise ValueError("PGN contains no game")
