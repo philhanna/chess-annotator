@@ -34,7 +34,7 @@ exist, the tool exits with a non-zero status and a message to stderr.
 The renderer is implemented as two new modules:
 
 ```
-src/annotate/
+src/render/
   adapters/
     pdf_renderer.py   ← rendering pipeline
   render_cli.py           ← argparse entry point
@@ -257,7 +257,7 @@ def main() -> None:
 
 ```toml
 [project.scripts]
-chess-render = "annotate.render_cli:main"
+chess-render = "render.render_cli:main"
 
 [project.optional-dependencies]
 render = ["reportlab", "svglib"]

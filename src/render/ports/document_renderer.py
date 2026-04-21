@@ -9,7 +9,7 @@ logic.
 from pathlib import Path
 from typing import Protocol
 
-from annotate.domain.render_model_data import RenderModel
+from render.domain.render_model_data import RenderModel
 
 
 class DocumentRenderer(Protocol):

@@ -10,16 +10,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from annotate.domain.game_headers import GameHeaders
-from annotate.domain.segment import Segment
+from render.domain.game_headers import GameHeaders
+from render.domain.segment import Segment
 
 
 @dataclass(frozen=True)
 class RenderModel:
     """Top-level immutable model consumed by all document renderer adapters.
 
-    Produced by :func:`~annotate.domain.render_model.parse_pgn` and passed
-    directly to :class:`~annotate.ports.document_renderer.DocumentRenderer`
+    Produced by :func:`~render.domain.render_model.parse_pgn` and passed
+    directly to :class:`~render.ports.document_renderer.DocumentRenderer`
     implementations.  Being frozen and composed entirely of frozen value
     objects, instances are safe to pass across threads without copying.
 

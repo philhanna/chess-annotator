@@ -7,11 +7,11 @@ This module is the heart of the domain layer.  It owns three concerns:
    library dependencies.
 
 2. **PGN parsing** — functions that read a ``chess.pgn.Game`` and produce the
-   immutable :class:`~annotate.domain.render_model_data.RenderModel` consumed
+   immutable :class:`~render.domain.render_model_data.RenderModel` consumed
    by adapters.
 
 3. **Top-level entry point** — :func:`parse_pgn`, which accepts raw PGN text
-   and returns a fully-built :class:`~annotate.domain.render_model_data.RenderModel`.
+   and returns a fully-built :class:`~render.domain.render_model_data.RenderModel`.
 
 NAG handling
 ------------
@@ -19,7 +19,7 @@ PGN Numeric Annotation Glyphs (NAGs) are integer codes attached to moves.
 This module recognises NAGs 1–6 (the standard move-quality symbols) and maps
 them to the conventional typographic symbols.  NAG 220 is treated as a
 diagram request: the board position after that move is captured and stored in
-the resulting :class:`~annotate.domain.plied_move.PliedMove`.
+the resulting :class:`~render.domain.plied_move.PliedMove`.
 """
 
 import calendar
@@ -28,10 +28,10 @@ import io
 import chess
 import chess.pgn
 
-from annotate.domain.game_headers import GameHeaders
-from annotate.domain.plied_move import PliedMove
-from annotate.domain.render_model_data import RenderModel
-from annotate.domain.segment import Segment
+from render.domain.game_headers import GameHeaders
+from render.domain.plied_move import PliedMove
+from render.domain.render_model_data import RenderModel
+from render.domain.segment import Segment
 
 NAG_SYMBOLS = {1: "!", 2: "?", 3: "!!", 4: "??", 5: "!?", 6: "?!"}
 NAG_DIAGRAM = 220
@@ -174,7 +174,7 @@ def parse_headers(game: chess.pgn.Game) -> GameHeaders:
         game: A parsed PGN game object as returned by ``chess.pgn.read_game``.
 
     Returns:
-        A :class:`~annotate.domain.game_headers.GameHeaders` instance with
+        A :class:`~render.domain.game_headers.GameHeaders` instance with
         normalised string values.
     """
 
@@ -206,7 +206,7 @@ def collect_moves(game: chess.pgn.Game) -> list[PliedMove]:
         game: A parsed PGN game object as returned by ``chess.pgn.read_game``.
 
     Returns:
-        An ordered list of :class:`~annotate.domain.plied_move.PliedMove`
+        An ordered list of :class:`~render.domain.plied_move.PliedMove`
         instances covering every mainline half-move, or an empty list for a
         game with no moves.
     """
@@ -258,7 +258,7 @@ def build_segments(moves: list[PliedMove]) -> tuple:
             :func:`collect_moves`.
 
     Returns:
-        An immutable tuple of :class:`~annotate.domain.segment.Segment`
+        An immutable tuple of :class:`~render.domain.segment.Segment`
         instances in game order, or an empty tuple when ``moves`` is empty.
     """
 
@@ -299,7 +299,7 @@ def parse_pgn(pgn_text: str) -> RenderModel:
             any subsequent games are ignored.
 
     Returns:
-        A fully-populated :class:`~annotate.domain.render_model_data.RenderModel`
+        A fully-populated :class:`~render.domain.render_model_data.RenderModel`
         ready to pass to a document renderer.
 
     Raises:

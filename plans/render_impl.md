@@ -5,8 +5,8 @@
 | File | Action |
 |------|--------|
 | `pyproject.toml` | Add `[render]` optional deps and `chess-render` script |
-| `src/annotate/adapters/pdf_renderer.py` | Create — full rendering pipeline |
-| `src/annotate/render_cli.py` | Create — argparse entry point |
+| `src/render/adapters/pdf_renderer.py` | Create — full rendering pipeline |
+| `src/render/render_cli.py` | Create — argparse entry point |
 | `tests/test_pdf_renderer.py` | Create — unit and smoke tests |
 
 ---
@@ -17,7 +17,7 @@ Add two stanzas:
 
 ```toml
 [project.scripts]
-chess-render = "annotate.render_cli:main"
+chess-render = "render.render_cli:main"
 
 [project.optional-dependencies]
 render = ["reportlab", "svglib"]
@@ -27,7 +27,7 @@ Install with `pip install -e ".[render]"` to make the `chess-render` command ava
 
 ---
 
-## Step 2 — Implement `src/annotate/adapters/pdf_renderer.py`
+## Step 2 — Implement `src/render/adapters/pdf_renderer.py`
 
 The module is self-contained. It imports `chess`, `chess.pgn`, `chess.svg`,
 `reportlab`, and `svglib`. It exports a single public function: `render_pdf`.
@@ -375,14 +375,14 @@ def render_pdf(pgn_text, output_path, orientation="white"):
 
 ---
 
-## Step 3 — Implement `src/annotate/render_cli.py`
+## Step 3 — Implement `src/render/render_cli.py`
 
 ```python
 import argparse
 import sys
 from pathlib import Path
 
-from annotate.adapters.pdf_renderer import render_pdf
+from render.adapters.pdf_renderer import render_pdf
 
 
 def _parse_args():
@@ -584,7 +584,7 @@ def test_empty_moves_returns_empty():
 
 ```python
 from pathlib import Path
-from annotate.adapters.pdf_renderer import render_pdf
+from render.adapters.pdf_renderer import render_pdf
 
 TESTDATA = Path(__file__).parent / "testdata"
 

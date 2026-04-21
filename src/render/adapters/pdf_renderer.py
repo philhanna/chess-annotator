@@ -1,8 +1,8 @@
 """ReportLab-based PDF rendering adapter.
 
 This module is the concrete implementation of the
-:class:`~annotate.ports.document_renderer.DocumentRenderer` protocol.  It
-converts a :class:`~annotate.domain.render_model_data.RenderModel` into a
+:class:`~render.ports.document_renderer.DocumentRenderer` protocol.  It
+converts a :class:`~render.domain.render_model_data.RenderModel` into a
 paginated LETTER-format PDF using the ReportLab Platypus layout engine.
 
 Layout overview
@@ -11,7 +11,7 @@ The document is built as a linear list of ReportLab *flowables*:
 
 1. **Title block** — player names as a bold centred heading, followed by an
    optional italic subtitle (event, date) and an optional opening name.
-2. **Segments** — for each :class:`~annotate.domain.segment.Segment`: an
+2. **Segments** — for each :class:`~render.domain.segment.Segment`: an
    optional centred board diagram with caption, a bold move-sequence line,
    and an optional italic commentary paragraph.
 
@@ -30,18 +30,18 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 from svglib.svglib import svg2rlg
 
-from annotate.adapters.chess_svg_diagram_renderer import ChessSvgDiagramRenderer
-from annotate.domain.game_headers import GameHeaders
-from annotate.domain.plied_move import PliedMove
-from annotate.domain.render_model import (
+from render.adapters.chess_svg_diagram_renderer import ChessSvgDiagramRenderer
+from render.domain.game_headers import GameHeaders
+from render.domain.plied_move import PliedMove
+from render.domain.render_model import (
     caption_text,
     moves_text,
     parse_pgn,
     subtitle_text,
 )
-from annotate.domain.render_model_data import RenderModel
-from annotate.domain.segment import Segment
-from annotate.ports.diagram_renderer import DiagramRenderer
+from render.domain.render_model_data import RenderModel
+from render.domain.segment import Segment
+from render.ports.diagram_renderer import DiagramRenderer
 
 TEXT_WIDTH = 468.0  # 612 - 2×72 pt margins
 MARGIN = 72.0
@@ -91,12 +91,12 @@ def build_styles() -> dict[str, ParagraphStyle]:
 
 
 class ReportLabPdfRenderer:
-    """Concrete :class:`~annotate.ports.document_renderer.DocumentRenderer` using ReportLab.
+    """Concrete :class:`~render.ports.document_renderer.DocumentRenderer` using ReportLab.
 
-    Renders a :class:`~annotate.domain.render_model_data.RenderModel` to a
+    Renders a :class:`~render.domain.render_model_data.RenderModel` to a
     paginated LETTER PDF via the ReportLab Platypus layout engine.  Board
     diagrams are produced by the injected
-    :class:`~annotate.ports.diagram_renderer.DiagramRenderer` and converted
+    :class:`~render.ports.diagram_renderer.DiagramRenderer` and converted
     from SVG to ReportLab ``Drawing`` objects by ``svglib``.
     """
 
@@ -105,7 +105,7 @@ class ReportLabPdfRenderer:
 
         Args:
             diagram_renderer: An object satisfying the
-                :class:`~annotate.ports.diagram_renderer.DiagramRenderer`
+                :class:`~render.ports.diagram_renderer.DiagramRenderer`
                 protocol, used to produce SVG images for diagram moves.
         """
 

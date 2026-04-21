@@ -1,5 +1,5 @@
 # tests.test_caption_text
-from annotate.domain.render_model import caption_text
+from render.domain.render_model import caption_text
 from tests.pdf_renderer_support import make_move
 
 

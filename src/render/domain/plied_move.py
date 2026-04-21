@@ -14,7 +14,7 @@ import chess
 class PliedMove:
     """One mainline half-move together with its rendering annotations.
 
-    Instances are produced by :func:`~annotate.domain.render_model.collect_moves`
+    Instances are produced by :func:`~render.domain.render_model.collect_moves`
     and consumed by formatters and diagram builders.  The dataclass is frozen so
     that segment tuples remain hashable and immutable throughout the pipeline.
 

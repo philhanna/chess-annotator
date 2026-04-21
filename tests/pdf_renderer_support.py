@@ -1,8 +1,8 @@
 # tests.pdf_renderer_support
 from pathlib import Path
 
-from annotate.domain.plied_move import PliedMove
-from annotate.domain.segment import Segment
+from render.domain.plied_move import PliedMove
+from render.domain.segment import Segment
 
 TESTDATA = Path(__file__).parent / "testdata"
 

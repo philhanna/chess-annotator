@@ -1,5 +1,5 @@
 # tests.test_format_date
-from annotate.domain.render_model import format_date
+from render.domain.render_model import format_date
 
 
 def test_format_date_full():

@@ -1,7 +1,7 @@
 # tests.test_build_segments
 import chess
 
-from annotate.domain.render_model import build_segments, parse_pgn
+from render.domain.render_model import build_segments, parse_pgn
 from tests.pdf_renderer_support import TESTDATA, make_move
 
 

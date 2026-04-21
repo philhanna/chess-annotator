@@ -10,9 +10,9 @@ import argparse
 import sys
 from pathlib import Path
 
-from annotate.adapters.chess_svg_diagram_renderer import ChessSvgDiagramRenderer
-from annotate.adapters.pdf_renderer import ReportLabPdfRenderer
-from annotate.domain.render_model import parse_pgn
+from render.adapters.chess_svg_diagram_renderer import ChessSvgDiagramRenderer
+from render.adapters.pdf_renderer import ReportLabPdfRenderer
+from render.domain.render_model import parse_pgn
 
 
 def parse_args() -> argparse.Namespace:

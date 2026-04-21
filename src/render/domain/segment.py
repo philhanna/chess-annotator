@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from annotate.domain.plied_move import PliedMove
+from render.domain.plied_move import PliedMove
 
 
 @dataclass(frozen=True)

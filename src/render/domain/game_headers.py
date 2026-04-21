@@ -22,7 +22,7 @@ class GameHeaders:
         event: Tournament or match name.
         date: Game date in ``YYYY.MM.DD`` PGN format; partial dates use ``?``
             for unknown components (e.g. ``"2024.??.??"``) and are formatted
-            for display by :func:`~annotate.domain.render_model.format_date`.
+            for display by :func:`~render.domain.render_model.format_date`.
         opening: ECO opening name, if present in the PGN.
     """
 

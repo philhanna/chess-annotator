@@ -1,7 +1,7 @@
 """SVG diagram renderer backed by python-chess.
 
 This module is the concrete implementation of the
-:class:`~annotate.ports.diagram_renderer.DiagramRenderer` protocol.  It wraps
+:class:`~render.ports.diagram_renderer.DiagramRenderer` protocol.  It wraps
 ``chess.svg.board`` and applies cosmetic post-processing to produce clean,
 print-quality SVG diagrams.
 """
@@ -23,7 +23,7 @@ COORDINATE_GROUP = re.compile(
 
 
 class ChessSvgDiagramRenderer:
-    """Concrete :class:`~annotate.ports.diagram_renderer.DiagramRenderer` backed by python-chess.
+    """Concrete :class:`~render.ports.diagram_renderer.DiagramRenderer` backed by python-chess.
 
     Produces 300 px SVG board diagrams with a white margin and no border, then
     removes the stroke from coordinate glyphs so rank and file labels render

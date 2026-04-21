@@ -1,7 +1,7 @@
 # tests.test_moves_text
 import chess
 
-from annotate.domain.render_model import moves_text
+from render.domain.render_model import moves_text
 from tests.pdf_renderer_support import make_move, make_segment
 
 

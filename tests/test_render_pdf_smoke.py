@@ -1,5 +1,5 @@
 # tests.test_render_pdf_smoke
-from annotate.adapters.pdf_renderer import render_pdf
+from render.adapters.pdf_renderer import render_pdf
 from tests.pdf_renderer_support import TESTDATA
 
 
