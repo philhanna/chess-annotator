@@ -154,7 +154,7 @@ def _build_styles() -> dict[str, ParagraphStyle]:
     return {
         "Title":    ParagraphStyle("Title",
                         fontName="Helvetica-Bold", fontSize=16,
-                        alignment=TA_CENTER, spaceAfter=4),
+                        alignment=TA_CENTER, spaceAfter=12),
         "Subtitle": ParagraphStyle("Subtitle",
                         fontName="Helvetica-Oblique", fontSize=12,
                         alignment=TA_CENTER, spaceAfter=4),
