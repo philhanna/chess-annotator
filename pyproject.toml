@@ -10,11 +10,11 @@ requires-python = ">=3.10"
 dependencies = [
     "python-chess",
     "pyyaml",
+    "reportlab",
+    "svglib",
+    "pytest",
+    "pytest-cov",
 ]
-
-[project.optional-dependencies]
-dev = ["pytest", "pytest-cov"]
-render = ["reportlab", "svglib"]
 
 [project.scripts]
 chess-render = "annotate.render_cli:main"
