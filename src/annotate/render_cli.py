@@ -32,7 +32,7 @@ def main() -> None:
 
     args = parse_args()
     pgn_path = Path(args.pgn_file)
-    output_path = Path(args.output) if args.output else pgn_path.with_suffix(".pdf")
+    output_path = Path(args.output) if args.output else Path(pgn_path.stem + ".pdf")
 
     if not pgn_path.exists():
         print(f"chess-render: file not found: {pgn_path}", file=sys.stderr)
