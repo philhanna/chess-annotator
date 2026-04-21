@@ -3,7 +3,9 @@ import argparse
 import sys
 from pathlib import Path
 
-from annotate.adapters.pdf_renderer import render_pdf
+from annotate.adapters.chess_svg_diagram_renderer import ChessSvgDiagramRenderer
+from annotate.adapters.pdf_renderer import ReportLabPdfRenderer
+from annotate.domain.render_model import parse_pgn
 
 
 def _parse_args() -> argparse.Namespace:
@@ -35,7 +37,9 @@ def main() -> None:
         sys.exit(1)
 
     try:
-        render_pdf(pgn_path.read_text(), output_path=output_path, orientation=args.orientation)
+        model = parse_pgn(pgn_path.read_text())
+        renderer = ReportLabPdfRenderer(diagram_renderer=ChessSvgDiagramRenderer())
+        renderer.render(model, output_path, args.orientation)
     except ValueError as exc:
         print(f"chess-render: {exc}", file=sys.stderr)
         sys.exit(1)

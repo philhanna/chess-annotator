@@ -4,7 +4,8 @@ from pathlib import Path
 import chess
 import pytest
 
-from annotate.adapters.pdf_renderer import (
+from annotate.adapters.pdf_renderer import render_pdf
+from annotate.domain.render_model import (
     GameHeaders,
     PliedMove,
     Segment,
@@ -13,7 +14,6 @@ from annotate.adapters.pdf_renderer import (
     _format_date,
     _moves_text,
     _subtitle_text,
-    render_pdf,
 )
 
 TESTDATA = Path(__file__).parent / "testdata"
