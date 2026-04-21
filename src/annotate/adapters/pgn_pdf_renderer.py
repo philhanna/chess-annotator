@@ -250,9 +250,9 @@ def _segment_flowables(
     text_width: float,
 ) -> list:
     flowables: list = []
-    flowables.append(Paragraph(html.escape(_moves_text(segment)), styles["Moves"]))
     if segment.diagram_move is not None:
         flowables.extend(_diagram_flowables(segment.diagram_move, orientation, styles, text_width))
+    flowables.append(Paragraph(html.escape(_moves_text(segment)), styles["Moves"]))
     if segment.comment:
         flowables.append(Paragraph(html.escape(segment.comment), styles["Comment"]))
     return flowables
