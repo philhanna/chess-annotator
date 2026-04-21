@@ -163,6 +163,7 @@ def _build_styles() -> dict[str, ParagraphStyle]:
                         alignment=TA_LEFT, spaceAfter=6),
         "Comment":  ParagraphStyle("Comment",
                         fontName="Helvetica", fontSize=12,
+                        leading=18,
                         alignment=TA_LEFT, spaceAfter=6),
         "Caption":  ParagraphStyle("Caption",
                         fontName="Helvetica-Oblique", fontSize=11,
