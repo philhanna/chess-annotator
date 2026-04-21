@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-chess-render = "annotate.render_cli:main"
+chess-render = "annotate.adapters.render_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
