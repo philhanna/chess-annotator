@@ -5,9 +5,9 @@
 | File | Action |
 |------|--------|
 | `pyproject.toml` | Add `[render]` optional deps and `chess-render` script |
-| `src/annotate/adapters/pgn_pdf_renderer.py` | Create — full rendering pipeline |
+| `src/annotate/adapters/pdf_renderer.py` | Create — full rendering pipeline |
 | `src/annotate/render_cli.py` | Create — argparse entry point |
-| `tests/test_pgn_pdf_renderer.py` | Create — unit and smoke tests |
+| `tests/test_pdf_renderer.py` | Create — unit and smoke tests |
 
 ---
 
@@ -27,7 +27,7 @@ Install with `pip install -e ".[render]"` to make the `chess-render` command ava
 
 ---
 
-## Step 2 — Implement `src/annotate/adapters/pgn_pdf_renderer.py`
+## Step 2 — Implement `src/annotate/adapters/pdf_renderer.py`
 
 The module is self-contained. It imports `chess`, `chess.pgn`, `chess.svg`,
 `reportlab`, and `svglib`. It exports a single public function: `render_pdf`.
@@ -382,7 +382,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from annotate.adapters.pgn_pdf_renderer import render_pdf
+from annotate.adapters.pdf_renderer import render_pdf
 
 
 def _parse_args():
@@ -423,7 +423,7 @@ def main() -> None:
 
 ---
 
-## Step 4 — Write `tests/test_pgn_pdf_renderer.py`
+## Step 4 — Write `tests/test_pdf_renderer.py`
 
 ### Unit tests
 
@@ -584,7 +584,7 @@ def test_empty_moves_returns_empty():
 
 ```python
 from pathlib import Path
-from annotate.adapters.pgn_pdf_renderer import render_pdf
+from annotate.adapters.pdf_renderer import render_pdf
 
 TESTDATA = Path(__file__).parent / "testdata"
 
@@ -616,7 +616,7 @@ def test_smoke_render_black_orientation(tmp_path):
 
 1. Update `pyproject.toml`; run `pip install -e ".[render]"` to pull in
    `reportlab` and `svglib`.
-2. Implement `pgn_pdf_renderer.py` in this sequence:
+2. Implement `pdf_renderer.py` in this sequence:
    - Data model (`PliedMove`, `GameHeaders`, `Segment`, `RenderModel`)
    - `_format_date`
    - `_parse_headers`
@@ -632,7 +632,7 @@ def test_smoke_render_black_orientation(tmp_path):
    - `_segment_flowables`
    - `render_pdf`
 3. Implement `render_cli.py`.
-4. Write `tests/test_pgn_pdf_renderer.py`.
+4. Write `tests/test_pdf_renderer.py`.
 5. Run `pytest` and fix failures.
 6. Smoke-test the CLI: `chess-render tests/testdata/game1.pgn -o /tmp/game1.pdf`
    and open the output to verify layout visually.

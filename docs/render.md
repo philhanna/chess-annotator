@@ -36,7 +36,7 @@ The renderer is implemented as two new modules:
 ```
 src/annotate/
   adapters/
-    pgn_pdf_renderer.py   ← rendering pipeline
+    pdf_renderer.py   ← rendering pipeline
   render_cli.py           ← argparse entry point
 ```
 

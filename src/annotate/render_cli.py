@@ -3,7 +3,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from annotate.adapters.pgn_pdf_renderer import render_pdf
+from annotate.adapters.pdf_renderer import render_pdf
 
 
 def _parse_args() -> argparse.Namespace:

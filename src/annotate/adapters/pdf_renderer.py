@@ -1,4 +1,4 @@
-# annotate.adapters.pgn_pdf_renderer
+# annotate.adapters.pdf_renderer
 import calendar
 import html
 import io

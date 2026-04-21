@@ -1,10 +1,10 @@
-# tests.test_pgn_pdf_renderer
+# tests.test_pdf_renderer
 from pathlib import Path
 
 import chess
 import pytest
 
-from annotate.adapters.pgn_pdf_renderer import (
+from annotate.adapters.pdf_renderer import (
     GameHeaders,
     PliedMove,
     Segment,
