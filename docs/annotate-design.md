@@ -8,7 +8,7 @@ The application is structured to decouple the core chess annotation logic from e
 * **Domain Core**: Manages the chess game state, move navigation, and annotation logic using `python-chess`.
 * **Driving Adapters (Input)**:
     * **CLI Adapter**: Handles command-line arguments, file loading, and process lifecycle.
-    * **Web Adapter**: A local REST API (using `Flask` or `FastAPI`) that serves game data to the SPA.
+    * **Web Adapter**: A local REST API (using `FastAPI`) that serves game data to the SPA.
 * **Driven Adapters (Output)**:
     * **PGN Persistence Adapter**: Manages reading and writing `.pgn` files in strict export format.
     * **View Adapter**: Generates SVG board representations via `chess.svg`.
