@@ -14,3 +14,4 @@ class PliedMove:
     nag_symbol: str | None
     diagram_board: chess.Board | None
     comment: str
+    result: str | None = None

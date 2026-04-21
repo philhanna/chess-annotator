@@ -4,14 +4,17 @@ from pathlib import Path
 import chess
 import pytest
 
+from annotate.adapters.chess_svg_diagram_renderer import ChessSvgDiagramRenderer
 from annotate.adapters.pdf_renderer import render_pdf
 from annotate.domain.game_headers import GameHeaders
 from annotate.domain.plied_move import PliedMove
 from annotate.domain.render_model import (
     build_segments,
     caption_text,
+    collect_moves,
     format_date,
     moves_text,
+    parse_pgn,
     subtitle_text,
 )
 from annotate.domain.segment import Segment
@@ -23,9 +26,9 @@ TESTDATA = Path(__file__).parent / "testdata"
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_move(ply, san, nag_symbol=None, comment="", diagram_board=None):
+def _make_move(ply, san, nag_symbol=None, comment="", diagram_board=None, result=None):
     return PliedMove(ply=ply, san=san, nag_symbol=nag_symbol,
-                     diagram_board=diagram_board, comment=comment)
+                     diagram_board=diagram_board, comment=comment, result=result)
 
 
 def _seg(moves, comment="", diagram_move=None):
@@ -118,6 +121,11 @@ def test_moves_text_full_sequence():
     assert moves_text(seg) == "1. e4 d5 2. exd5? Qxd5"
 
 
+def test_moves_text_appends_result_to_final_move():
+    seg = _seg([_make_move(1, "e4"), _make_move(2, "e5", result="1/2-1/2")])
+    assert moves_text(seg) == "1. e4 e5 1/2-1/2"
+
+
 # ---------------------------------------------------------------------------
 # caption_text
 # ---------------------------------------------------------------------------
@@ -206,6 +214,22 @@ def test_no_diagram_move_is_none():
 
 def test_empty_moves_returns_empty():
     assert build_segments([]) == ()
+
+
+def test_collect_moves_sets_result_on_final_move():
+    pgn_text = (TESTDATA / "game1.pgn").read_text()
+    model = parse_pgn(pgn_text)
+    assert model.segments[-1].moves[-1].result == "0-1"
+
+
+# ---------------------------------------------------------------------------
+# diagram rendering
+# ---------------------------------------------------------------------------
+
+def test_chess_svg_diagram_renderer_uses_white_margin_and_black_coordinates():
+    svg = ChessSvgDiagramRenderer().render(chess.Board(), "white")
+    assert 'stroke="#ffffff"' in svg
+    assert 'fill="#000000" stroke="none"' in svg
 
 
 # ---------------------------------------------------------------------------

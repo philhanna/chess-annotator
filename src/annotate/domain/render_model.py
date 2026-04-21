@@ -50,10 +50,12 @@ def moves_text(segment: Segment) -> str:
     """Format a segment's moves into display text with move numbers and NAGs."""
 
     tokens: list[str] = []
-    for move in segment.moves:
+    for index, move in enumerate(segment.moves):
         ply = move.ply
         move_number = (ply + 1) // 2
         san_with_nag = move.san + (move.nag_symbol or "")
+        if index == len(segment.moves) - 1 and move.result:
+            san_with_nag = f"{san_with_nag} {move.result}"
         if ply % 2 == 1:
             tokens.append(f"{move_number}. {san_with_nag}")
         else:
@@ -113,6 +115,17 @@ def collect_moves(game: chess.pgn.Game) -> list[PliedMove]:
             diagram_board=diagram_board,
             comment=node.comment.strip(),
         ))
+    result = game.headers.get("Result", "")
+    if moves and result and result != "*":
+        final_move = moves[-1]
+        moves[-1] = PliedMove(
+            ply=final_move.ply,
+            san=final_move.san,
+            nag_symbol=final_move.nag_symbol,
+            diagram_board=final_move.diagram_board,
+            comment=final_move.comment,
+            result=result,
+        )
     return moves
 
 
