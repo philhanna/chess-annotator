@@ -11,6 +11,7 @@ import chess.svg
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 from svglib.svglib import svg2rlg
 
@@ -19,6 +20,7 @@ NAG_DIAGRAM = 220
 
 TEXT_WIDTH = 468.0  # 612 - 2×72 pt margins
 MARGIN = 72.0
+DIAGRAM_SIZE = 80 * mm  # fixed diagram size (~227 pt)
 
 
 # ---------------------------------------------------------------------------
@@ -228,11 +230,12 @@ def _diagram_flowables(
         warnings.warn(f"svglib failed to convert diagram at ply {diagram_move.ply}; skipping")
         return []
 
-    scale = text_width / drawing.width
-    drawing.width = text_width
-    drawing.height = drawing.height * scale
+    scale = DIAGRAM_SIZE / drawing.width
+    drawing.width = DIAGRAM_SIZE
+    drawing.height = DIAGRAM_SIZE
     drawing.transform = (scale, 0, 0, scale, 0, 0)
 
+    # Centre within the text column, which is itself centred on the page
     table = Table([[drawing]], colWidths=[text_width])
     table.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
 
