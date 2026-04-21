@@ -5,16 +5,16 @@ import chess
 import pytest
 
 from annotate.adapters.pdf_renderer import render_pdf
+from annotate.domain.game_headers import GameHeaders
+from annotate.domain.plied_move import PliedMove
 from annotate.domain.render_model import (
-    GameHeaders,
-    PliedMove,
-    Segment,
     build_segments,
     caption_text,
     format_date,
     moves_text,
     subtitle_text,
 )
+from annotate.domain.segment import Segment
 
 TESTDATA = Path(__file__).parent / "testdata"
 

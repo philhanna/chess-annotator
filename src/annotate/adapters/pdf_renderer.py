@@ -12,16 +12,16 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 from svglib.svglib import svg2rlg
 
 from annotate.adapters.chess_svg_diagram_renderer import ChessSvgDiagramRenderer
+from annotate.domain.game_headers import GameHeaders
+from annotate.domain.plied_move import PliedMove
 from annotate.domain.render_model import (
-    GameHeaders,
-    PliedMove,
-    RenderModel,
-    Segment,
     caption_text,
     moves_text,
-    subtitle_text,
     parse_pgn,
+    subtitle_text,
 )
+from annotate.domain.render_model_data import RenderModel
+from annotate.domain.segment import Segment
 from annotate.ports.diagram_renderer import DiagramRenderer
 
 TEXT_WIDTH = 468.0  # 612 - 2×72 pt margins

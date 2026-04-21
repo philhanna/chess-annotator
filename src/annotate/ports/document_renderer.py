@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Protocol
 
-from annotate.domain.render_model import RenderModel
+from annotate.domain.render_model_data import RenderModel
 
 
 class DocumentRenderer(Protocol):

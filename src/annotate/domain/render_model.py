@@ -2,56 +2,17 @@
 
 import calendar
 import io
-from dataclasses import dataclass
 
 import chess
 import chess.pgn
 
+from annotate.domain.game_headers import GameHeaders
+from annotate.domain.plied_move import PliedMove
+from annotate.domain.render_model_data import RenderModel
+from annotate.domain.segment import Segment
+
 NAG_SYMBOLS = {1: "!", 2: "?", 3: "!!", 4: "??", 5: "!?", 6: "?!"}
 NAG_DIAGRAM = 220
-
-
-# ---------------------------------------------------------------------------
-# Data model
-# ---------------------------------------------------------------------------
-
-@dataclass(frozen=True)
-class PliedMove:
-    """Represents one move in the mainline plus any rendering metadata."""
-
-    ply: int
-    san: str
-    nag_symbol: str | None
-    diagram_board: chess.Board | None
-    comment: str
-
-
-@dataclass(frozen=True)
-class GameHeaders:
-    """Normalized header fields used in the rendered document title block."""
-
-    white: str
-    black: str
-    event: str
-    date: str
-    opening: str
-
-
-@dataclass(frozen=True)
-class Segment:
-    """Groups contiguous moves with the comment that introduces that segment."""
-
-    moves: tuple
-    comment: str
-    diagram_move: PliedMove | None
-
-
-@dataclass(frozen=True)
-class RenderModel:
-    """Top-level immutable model consumed by document renderers."""
-
-    headers: GameHeaders
-    segments: tuple
 
 
 # ---------------------------------------------------------------------------
