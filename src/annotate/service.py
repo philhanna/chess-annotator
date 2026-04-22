@@ -92,7 +92,7 @@ class AnnotateSession:
 
         if games:
             self._selected_game_index = 0
-            self._selected_ply = games[0].moves[0].ply if games[0].moves else None
+            self._selected_ply = 0
         else:
             self._selected_game_index = None
             self._selected_ply = None
@@ -108,7 +108,7 @@ class AnnotateSession:
 
         game = self._games[index]
         self._selected_game_index = index
-        self._selected_ply = game.moves[0].ply if game.moves else None
+        self._selected_ply = 0
         return self.current_view()
 
     def select_ply(self, ply: int) -> dict[str, object]:
@@ -130,7 +130,7 @@ class AnnotateSession:
             return self.current_view()
 
         plies = [move.ply for move in game.moves]
-        current_ply = self._selected_ply if self._selected_ply is not None else plies[0]
+        current_ply = self._selected_ply if self._selected_ply is not None else 0
         current_index = plies.index(current_ply)
 
         if action == "start":
@@ -159,10 +159,13 @@ class AnnotateSession:
             raise ValueError(f"ply not found in selected game: {self._selected_ply}")
 
         node.comment = comment.strip()
-        if diagram:
-            node.nags.add(NAG_DIAGRAM)
+        if self._selected_ply == 0:
+            diagram = False
         else:
-            node.nags.discard(NAG_DIAGRAM)
+            if diagram:
+                node.nags.add(NAG_DIAGRAM)
+            else:
+                node.nags.discard(NAG_DIAGRAM)
 
         self._replace_selected_game(parse_game(game.game, index=game.summary.index))
         self._unsaved_changes = True
@@ -188,8 +191,7 @@ class AnnotateSession:
         self._replace_selected_game(parse_game(game.game, index=game.summary.index))
         self._unsaved_changes = True
 
-        replacement = self._selected_game()
-        self._selected_ply = replacement.moves[0].ply if replacement.moves else None
+        self._selected_ply = 0
         return self.current_view()
 
     def save_payload(self) -> dict[str, object]:
@@ -224,6 +226,8 @@ class AnnotateSession:
             "board_svg": self._board_svg(),
             "move_rows": [],
             "editor": asdict(self._editor_state()),
+            "editor_enabled": self._selected_game_index is not None,
+            "diagram_enabled": self._selected_game_index is not None and self._selected_ply != 0,
         }
 
         if self._selected_game_index is not None:
@@ -252,7 +256,12 @@ class AnnotateSession:
         game = self._games[self._selected_game_index]
         move = self._selected_move()
         fen = move.fen if move is not None else game.initial_fen
-        return self._board_renderer.render(fen)
+        lastmove = None
+        if self._selected_ply not in {None, 0}:
+            node = selected_node(game.game, self._selected_ply)
+            if node is not None:
+                lastmove = node.move
+        return self._board_renderer.render(fen, lastmove=lastmove)
 
     def _selected_move(self):
         if self._selected_game_index is None or self._selected_ply is None:

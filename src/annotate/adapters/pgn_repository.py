@@ -39,6 +39,7 @@ class MoveEntry:
     comment_preview: str
     diagram: bool
     fen: str
+    is_initial_position: bool = False
 
 
 @dataclass(frozen=True)
@@ -113,7 +114,19 @@ def build_game_summary(game: chess.pgn.Game, index: int) -> GameSummary:
 def build_move_entries(game: chess.pgn.Game) -> list[MoveEntry]:
     """Build flat move entries for the game's mainline."""
 
-    entries: list[MoveEntry] = []
+    entries: list[MoveEntry] = [
+        MoveEntry(
+            ply=0,
+            side="white",
+            move_number=0,
+            san="Start",
+            comment=game.comment.strip(),
+            comment_preview=truncate_comment(game.comment),
+            diagram=False,
+            fen=game.board().fen(),
+            is_initial_position=True,
+        )
+    ]
     node = game
 
     while node.variations:
@@ -129,6 +142,7 @@ def build_move_entries(game: chess.pgn.Game) -> list[MoveEntry]:
                 comment_preview=truncate_comment(node.comment),
                 diagram=NAG_DIAGRAM in node.nags,
                 fen=node.board().fen(),
+                is_initial_position=False,
             )
         )
 
@@ -152,8 +166,11 @@ def truncate_comment(comment: str, limit: int = 36) -> str:
     return squashed[: limit - 1].rstrip() + "…"
 
 
-def selected_node(game: chess.pgn.Game, ply: int) -> chess.pgn.ChildNode | None:
+def selected_node(game: chess.pgn.Game, ply: int) -> chess.pgn.Game | chess.pgn.ChildNode | None:
     """Return the mainline node for the given ply, or ``None`` if absent."""
+
+    if ply == 0:
+        return game
 
     node = game
     while node.variations:

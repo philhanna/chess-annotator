@@ -220,6 +220,11 @@ textarea {
   gap: 0.5rem;
 }
 
+.moves-layout {
+  display: grid;
+  gap: 0.5rem;
+}
+
 .move-column {
   display: grid;
   gap: 0.4rem;
@@ -244,6 +249,12 @@ textarea {
 .move-row.selected {
   background: #efe1ca;
   border-color: var(--accent);
+}
+
+.move-row-initial {
+  background: #f3ede2;
+  border-style: dashed;
+  border-color: var(--panel-border);
 }
 
 .move-head {

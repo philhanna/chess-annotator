@@ -188,16 +188,24 @@ function renderBoard(svgMarkup) {
 function buildMoveButton(move) {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = `move-row${move.selected ? " selected" : ""}`;
+  button.className = `move-row${move.selected ? " selected" : ""}${move.is_initial_position ? " move-row-initial" : ""}`;
   button.dataset.ply = String(move.ply);
 
   const head = document.createElement("div");
   head.className = "move-head";
-  head.innerHTML = `
-    <span class="move-number">${move.move_number}${move.side === "white" ? "." : "..."}</span>
-    <span class="move-san">${move.san}</span>
-    <span class="move-diagram">${move.diagram ? "*" : ""}</span>
-  `;
+  if (move.is_initial_position) {
+    head.innerHTML = `
+      <span class="move-number">0.</span>
+      <span class="move-san">Start Position</span>
+      <span class="move-diagram"></span>
+    `;
+  } else {
+    head.innerHTML = `
+      <span class="move-number">${move.move_number}${move.side === "white" ? "." : "..."}</span>
+      <span class="move-san">${move.san}</span>
+      <span class="move-diagram">${move.diagram ? "*" : ""}</span>
+    `;
+  }
 
   const preview = document.createElement("div");
   preview.className = "move-preview";
@@ -226,14 +234,22 @@ function renderMoves(moveRows) {
   blackColumn.className = "move-column";
   const grid = document.createElement("div");
   grid.className = "moves-grid";
+  const wrapper = document.createElement("div");
+  wrapper.className = "moves-layout";
 
   for (const move of moveRows) {
+    if (move.is_initial_position) {
+      wrapper.append(buildMoveButton(move));
+      continue;
+    }
+
     const target = move.side === "white" ? whiteColumn : blackColumn;
     target.append(buildMoveButton(move));
   }
 
   grid.append(whiteColumn, blackColumn);
-  movesPane.replaceChildren(grid);
+  wrapper.append(grid);
+  movesPane.replaceChildren(wrapper);
   navButtons.forEach((button) => {
     button.disabled = false;
   });
@@ -279,7 +295,7 @@ function syncDraftButtons(enabled) {
   cancelButton.disabled = !enabled || !editorDraft.dirty;
 }
 
-function renderEditor(editor, enabled) {
+function renderEditor(editor, enabled, diagramEnabled) {
   editorDraft.comment = editor.comment || "";
   editorDraft.diagram = Boolean(editor.diagram);
   editorDraft.dirty = false;
@@ -287,7 +303,7 @@ function renderEditor(editor, enabled) {
   commentEditor.value = editorDraft.comment;
   commentEditor.disabled = !enabled;
   diagramCheckbox.checked = editorDraft.diagram;
-  diagramCheckbox.disabled = !enabled;
+  diagramCheckbox.disabled = !diagramEnabled;
   clearCommentsButton.disabled = !enabled;
   syncDraftButtons(enabled);
 }
@@ -333,7 +349,7 @@ function renderView(view) {
   gameSelect.dataset.currentValue = view.selected_game ? String(view.selected_game.index) : "";
   renderMoves(view.move_rows);
   ensureSelectedMoveVisible();
-  renderEditor(view.editor, Boolean(view.selected_game));
+  renderEditor(view.editor, Boolean(view.editor_enabled), Boolean(view.diagram_enabled));
 
   if (view.selected_game) {
     setStatus(

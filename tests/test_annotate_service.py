@@ -4,6 +4,15 @@ from annotate.adapters.pgn_repository import parse_pgn_collection, suggested_out
 from annotate.service import AnnotateSession
 
 
+class RecordingBoardRenderer:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, object]] = []
+
+    def render(self, fen: str, lastmove=None) -> str:
+        self.calls.append((fen, lastmove))
+        return "<svg></svg>"
+
+
 def test_new_session_starts_idle(tmp_path: Path) -> None:
     session = AnnotateSession(frontend_root=tmp_path)
 
@@ -26,6 +35,8 @@ def test_parse_pgn_collection_handles_multiple_games() -> None:
     assert len(games) == 2
     assert games[0].summary.white == "Tom Smith"
     assert games[1].summary.white == "Nakamura"
+    assert games[0].moves[0].ply == 0
+    assert games[0].moves[0].is_initial_position is True
 
 
 def test_open_pgn_builds_document_view(tmp_path: Path) -> None:
@@ -37,8 +48,10 @@ def test_open_pgn_builds_document_view(tmp_path: Path) -> None:
     assert view["session"]["status"] == "document-loaded"
     assert view["session"]["source_name"] == "game3.pgn"
     assert view["selected_game"]["white"] == "Nakamura"
-    assert view["selected_ply"] == 1
+    assert view["selected_ply"] == 0
     assert view["editor"]["comment"] == ""
+    assert view["diagram_enabled"] is False
+    assert view["move_rows"][0]["is_initial_position"] is True
     assert any(row["diagram"] for row in view["move_rows"])
     assert view["board_svg"].startswith("<svg")
 
@@ -66,7 +79,7 @@ def test_navigate_moves_between_plies(tmp_path: Path) -> None:
     assert view["selected_ply"] == 58
 
     view = session.navigate("start")
-    assert view["selected_ply"] == 1
+    assert view["selected_ply"] == 0
 
 
 def test_select_game_switches_active_game(tmp_path: Path) -> None:
@@ -78,7 +91,7 @@ def test_select_game_switches_active_game(tmp_path: Path) -> None:
 
     assert view["selected_game"]["index"] == 1
     assert view["selected_game"]["white"] == "Nakamura"
-    assert view["selected_ply"] == 1
+    assert view["selected_ply"] == 0
 
 
 def test_apply_annotation_updates_stored_comment_and_diagram(tmp_path: Path) -> None:
@@ -96,6 +109,35 @@ def test_apply_annotation_updates_stored_comment_and_diagram(tmp_path: Path) -> 
     assert selected_row["comment"] == "Fresh note"
     assert selected_row["comment_preview"] == "Fresh note"
     assert selected_row["diagram"] is False
+
+
+def test_apply_annotation_supports_zeroth_ply_comment(tmp_path: Path) -> None:
+    session = AnnotateSession(frontend_root=tmp_path)
+    pgn_text = Path("tests/testdata/game1.pgn").read_text()
+    session.open_pgn("game1.pgn", pgn_text)
+
+    view = session.apply_annotation("Opening overview", True)
+
+    selected_row = next(row for row in view["move_rows"] if row["selected"])
+    assert view["selected_ply"] == 0
+    assert view["editor"]["comment"] == "Opening overview"
+    assert view["editor"]["diagram"] is False
+    assert view["diagram_enabled"] is False
+    assert selected_row["is_initial_position"] is True
+    assert selected_row["comment"] == "Opening overview"
+    assert selected_row["diagram"] is False
+
+
+def test_board_renderer_receives_lastmove_for_selected_ply(tmp_path: Path) -> None:
+    renderer = RecordingBoardRenderer()
+    session = AnnotateSession(frontend_root=tmp_path, board_renderer=renderer)
+    pgn_text = Path("tests/testdata/game1.pgn").read_text()
+
+    session.open_pgn("game1.pgn", pgn_text)
+    assert renderer.calls[-1][1] is None
+
+    session.select_ply(1)
+    assert renderer.calls[-1][1] is not None
 
 
 def test_cancel_annotation_returns_current_stored_state(tmp_path: Path) -> None:
