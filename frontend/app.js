@@ -232,32 +232,46 @@ function renderBoard(svgMarkup, selectedGame, flipped) {
 }
 
 function buildMoveButton(move) {
+  const hasComment = Boolean(move.comment_preview);
   const button = document.createElement("button");
   button.type = "button";
-  button.className = `move-row${move.selected ? " selected" : ""}${move.is_initial_position ? " move-row-initial" : ""}`;
+  button.className = [
+    "move-row",
+    move.selected ? "selected" : "",
+    move.is_initial_position ? "move-row-initial" : "",
+    hasComment ? "has-comment" : "",
+  ].filter(Boolean).join(" ");
   button.dataset.ply = String(move.ply);
 
-  const head = document.createElement("div");
-  head.className = "move-head";
+  const numSpan = document.createElement("span");
+  numSpan.className = "move-number";
+  const sanSpan = document.createElement("span");
+  sanSpan.className = "move-san";
+
   if (move.is_initial_position) {
-    head.innerHTML = `
-      <span class="move-number">0.</span>
-      <span class="move-san">Start Position</span>
-      <span class="move-diagram"></span>
-    `;
+    numSpan.textContent = "0.";
+    sanSpan.textContent = "Start Position";
+    button.append(numSpan, sanSpan);
   } else {
-    head.innerHTML = `
-      <span class="move-number">${move.move_number}${move.side === "white" ? "." : "..."}</span>
-      <span class="move-san">${move.san}</span>
-      <span class="move-diagram">${move.diagram ? "*" : ""}</span>
-    `;
+    numSpan.textContent = `${move.move_number}${move.side === "white" ? "." : "..."}`;
+    sanSpan.textContent = move.san;
+    button.append(numSpan, sanSpan);
+
+    if (move.diagram) {
+      const diagSpan = document.createElement("span");
+      diagSpan.className = "move-diagram";
+      diagSpan.textContent = "*";
+      button.append(diagSpan);
+    }
+
+    if (hasComment) {
+      const previewSpan = document.createElement("span");
+      previewSpan.className = "move-preview";
+      previewSpan.textContent = move.comment_preview;
+      button.append(previewSpan);
+    }
   }
 
-  const preview = document.createElement("div");
-  preview.className = "move-preview";
-  preview.textContent = move.comment_preview || " ";
-
-  button.append(head, preview);
   button.addEventListener("click", () => {
     void selectPly(move.ply);
   });
@@ -274,10 +288,6 @@ function renderMoves(moveRows) {
     return;
   }
 
-  const whiteColumn = document.createElement("div");
-  whiteColumn.className = "move-column";
-  const blackColumn = document.createElement("div");
-  blackColumn.className = "move-column";
   const grid = document.createElement("div");
   grid.className = "moves-grid";
   const wrapper = document.createElement("div");
@@ -289,11 +299,9 @@ function renderMoves(moveRows) {
       continue;
     }
 
-    const target = move.side === "white" ? whiteColumn : blackColumn;
-    target.append(buildMoveButton(move));
+    grid.append(buildMoveButton(move));
   }
 
-  grid.append(whiteColumn, blackColumn);
   wrapper.append(grid);
   movesPane.replaceChildren(wrapper);
   navButtons.forEach((button) => {
@@ -598,8 +606,10 @@ closeButton.addEventListener("click", async () => {
     return;
   }
 
-  if (!confirmDiscardDocumentIfNeeded()) {
-    return;
+  if (currentSession.unsaved_changes) {
+    if (!window.confirm("You have unsaved annotation changes. Close the application anyway?")) {
+      return;
+    }
   }
 
   try {
