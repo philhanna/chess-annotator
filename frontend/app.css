@@ -168,9 +168,9 @@ textarea {
   min-height: 0;
   border: 1px solid var(--panel-border);
   border-radius: 0.5rem;
-  background: linear-gradient(180deg, rgba(24, 34, 49, 0.96) 0%, rgba(14, 22, 34, 0.96) 100%);
-  color: var(--text);
-  box-shadow: inset 0 1px 0 rgba(220, 234, 255, 0.08);
+  background: #ffffff;
+  color: #1f2b3a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .board-pane {
@@ -245,8 +245,8 @@ textarea {
   border-radius: 0.5rem;
   border: 1px solid transparent;
   padding: 0.55rem 0.6rem;
-  background: linear-gradient(180deg, rgba(75, 95, 122, 0.42) 0%, rgba(38, 50, 68, 0.42) 100%);
-  color: var(--text);
+  background: linear-gradient(180deg, rgba(223, 231, 242, 0.9) 0%, rgba(199, 211, 228, 0.95) 100%);
+  color: #1f2b3a;
   cursor: pointer;
   scroll-margin-block: 0.5rem;
 }
@@ -256,12 +256,12 @@ textarea {
 }
 
 .move-row.selected {
-  background: linear-gradient(180deg, rgba(160, 198, 235, 0.3) 0%, rgba(92, 121, 156, 0.34) 100%);
+  background: linear-gradient(180deg, rgba(203, 224, 247, 0.95) 0%, rgba(176, 200, 230, 0.98) 100%);
   border-color: var(--accent);
 }
 
 .move-row-initial {
-  background: linear-gradient(180deg, rgba(95, 112, 138, 0.38) 0%, rgba(53, 67, 88, 0.38) 100%);
+  background: linear-gradient(180deg, rgba(233, 238, 246, 0.92) 0%, rgba(214, 222, 234, 0.96) 100%);
   border-style: dashed;
   border-color: var(--panel-border);
 }
