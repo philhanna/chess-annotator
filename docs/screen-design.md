@@ -82,6 +82,12 @@ The left side is dedicated to visualizing the current position in the game.
 When the user selects a move in the move list, the board updates to show the
 position at that ply.
 
+The board rendering should also provide lightweight visual move context:
+
+* the currently selected move should be highlighted on the board when the
+  selected ply is a real move, and
+* a checked king should be highlighted when the current position is check.
+
 ### 3.2 Content
 
 The pane contains:
@@ -134,6 +140,10 @@ The move list is presented in two columns:
 
 This arrangement is intended to make the game easier to scan visually than a
 single long linear movetext display.
+
+The move list should also include a dedicated zeroth-ply row representing the
+initial position before White's first move. This row sits above the two
+columns and can be selected like any other ply.
 
 ### 5.2 Row Structure
 
@@ -190,6 +200,9 @@ This selected ply should be visually obvious in the move list.
 Clicking on any move entry in either column makes that ply the currently
 selected ply.
 
+Clicking on the zeroth-ply row selects the initial position before the first
+move.
+
 When the selected ply changes:
 
 * the highlight moves to the newly selected row,
@@ -206,6 +219,7 @@ These controls are modeled after transport controls on audio or video devices.
 The default concept is:
 
 * `<<` to jump to the beginning of the game,
+  meaning the zeroth ply,
 * `<` to move back by one ply,
 * `>` to move forward by one ply,
 * `>>` to jump to the end of the game.
@@ -266,6 +280,10 @@ be generated for the selected ply.
 
 This checkbox is the editing control for the diagram marker whose summary is
 shown in the move list.
+
+For the zeroth ply, the comment editor remains active but the diagram checkbox
+should be disabled, since diagram-after-this-ply semantics apply to actual
+moves rather than the pre-game position.
 
 ### 6.3 Editing Controls
 

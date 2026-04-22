@@ -13,8 +13,12 @@ The `annotate` project is a local-only Python application that utilizes a web br
 * **Technology**: Vanilla JavaScript, HTML, CSS. No frameworks.
 * **Layout**:
     * **Library / Session Controls**: UI controls for opening a PGN file, choosing a game within that file, and switching to another game without restarting the application.
-    * **Move List**: A scrollable list of plies. Clicking a move updates the Board Pane.
-    * **Board Pane**: Displays an SVG rendering of the current position. 
+    * **Move List**: A scrollable list of plies, including a selectable zeroth
+      ply representing the position before White's first move. Clicking a move
+      updates the Board Pane.
+    * **Board Pane**: Displays an SVG rendering of the current position.
+      Selected moves should be highlighted on the board, and check should be
+      highlighted when present in the current position.
 * **Visual Continuity**: To prevent "jitter," the SVG container must have fixed dimensions. The frontend will replace the SVG content in-place to ensure the UI does not "jump."
 * **Annotation Controls**:
     * A persistent text area for entering/editing move commentary.
@@ -39,6 +43,11 @@ The `annotate` project is a local-only Python application that utilizes a web br
     * A single `.pgn` file may contain multiple games.
     * The UI must present the games as a selectable list using identifying metadata where available (for example, players, event, round, date, result).
     * The user must be able to switch between games in the same file without restarting the CLI.
+* **Selected Ply Model**:
+    * The application must support a real zeroth ply representing the initial
+      position before the first move.
+    * Rewinding to the beginning of the game selects this zeroth ply.
+    * The zeroth ply may carry a comment just like other plies.
 * **Resume Workflow**:
     * Saving writes annotations back to disk so the user can stop and continue later.
     * After reopening the application, the user can reopen a previously saved annotated PGN file and continue annotating from that point.
@@ -59,6 +68,8 @@ The `annotate` project is a local-only Python application that utilizes a web br
     * If both a NAG and a comment exist for a move, the comment follows the NAG.
     * Existing comments in an imported PGN are preserved by default.
     * The application may provide an explicit user action to clear existing comments for the selected game when the user wants a clean annotation pass.
+    * A comment may also be attached to the zeroth ply, representing the
+      position before the first move.
 
 ### 4.4 Data Integrity
 * **Validation**:

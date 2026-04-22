@@ -35,14 +35,18 @@ The backend leverages the `python-chess` library for all move validation and PGN
     * the browser-visible name of the currently opened PGN file,
     * an ordered collection of parsed `chess.pgn.Game` objects for that file,
     * the identifier or index of the currently selected game,
-    * the currently selected ply,
+    * the currently selected ply, including a true zeroth ply for the initial
+      position before the first move,
     * the most recently saved output name, and
     * a document-level unsaved-changes flag.
 * **SVG Generation**: Uses `chess.svg.board()` with a fixed `size` parameter
-  to ensure consistent dimensions for the frontend.
+  to ensure consistent dimensions for the frontend, and passes move/highlight
+  metadata so the currently selected move and any checked king are highlighted
+  in the board view.
 * **Annotation Logic**:
     * **NAG $220**: Adds `220` to the `node.nags` set of the selected move.
-    * **Comment**: Sets the `node.comment` string for the selected move.
+    * **Comment**: Sets the `node.comment` string for the selected move, or
+      `game.comment` when the selected ply is the zeroth ply.
     * **Apply / Cancel**: Treats the browser editor as a draft surface and
       applies or discards those drafts against the in-memory PGN state.
 * **Game Switching**: Exposes operations to list available games and switch
@@ -83,9 +87,12 @@ The frontend is a single-page application with no external dependencies.
 * **File / Game Selection**: Provides browser-controlled controls to open a
   PGN file, show all games contained in that file, and switch the active game.
 * **Move List**: Renders the game's main line as a selectable two-column list
-  of plies with move number, diagram marker, and truncated comment preview.
+  of plies with move number, diagram marker, and truncated comment preview,
+  along with a dedicated start-position row for ply zero.
 * **Editor Workflow**: Maintains local draft state for the selected ply's
   comment and diagram flag, with explicit `Apply` and `Cancel` actions.
+* **Zeroth Ply Behavior**: Supports comment editing for the initial position
+  before the first move. The diagram toggle is disabled for that row.
 * **Unsaved-Work Protection**: Warns before discarding draft edits, warns
   before discarding applied-but-unsaved document changes, and registers a
   `beforeunload` guard for browser/tab close.
@@ -102,10 +109,10 @@ The frontend is a single-page application with no external dependencies.
 2.  **Startup**: CLI chooses an available local port, starts the local server, and opens the SPA.
 3.  **Open File**: User chooses a `.pgn` file via the browser UI.
 4.  **Game Selection**: Backend parses all games in the file and the UI presents them for selection.
-5.  **Interaction**: User selects a game, navigates moves, edits the selected
-    ply's comment and diagram flag in the bottom-right pane, applies or
-    cancels those edits, and may optionally clear existing comments for that
-    game.
+5.  **Interaction**: User selects a game, begins at ply zero, navigates moves,
+    edits the selected ply's comment and diagram flag in the bottom-right
+    pane, applies or cancels those edits, and may optionally clear existing
+    comments for that game.
 6.  **Commitment**: User clicks **"Save"**, the browser save flow writes the
     serialized in-memory PGN collection to a user-chosen output file, and the
     UI records the chosen output name for session feedback.
