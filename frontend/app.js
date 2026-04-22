@@ -6,6 +6,10 @@ const saveButton = document.getElementById("save-button");
 const openFileInput = document.getElementById("open-file-input");
 const boardPane = document.getElementById("board-pane");
 const movesPane = document.getElementById("moves-pane");
+const workspace = document.querySelector(".workspace");
+const rightPane = document.querySelector(".right-pane");
+const mainSplitter = document.getElementById("main-splitter");
+const rightSplitter = document.getElementById("right-splitter");
 const gameSelect = document.getElementById("game-select");
 const commentEditor = document.getElementById("comment-editor");
 const diagramCheckbox = document.getElementById("diagram-checkbox");
@@ -20,8 +24,83 @@ const editorDraft = {
   dirty: false,
 };
 
+const layoutStorageKeys = {
+  workspaceLeft: "annotate.workspace.left",
+  rightTop: "annotate.right.top",
+};
+
 function setStatus(message) {
   statusBar.textContent = message;
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function setCssVariable(name, value) {
+  document.documentElement.style.setProperty(name, value);
+}
+
+function loadPersistedLayout() {
+  const savedLeft = window.localStorage.getItem(layoutStorageKeys.workspaceLeft);
+  const savedTop = window.localStorage.getItem(layoutStorageKeys.rightTop);
+
+  if (savedLeft) {
+    setCssVariable("--workspace-left", savedLeft);
+  }
+  if (savedTop) {
+    setCssVariable("--right-top", savedTop);
+  }
+}
+
+function startSplitterDrag(splitter, onMove, onEnd) {
+  splitter.classList.add("dragging");
+
+  function handlePointerMove(event) {
+    onMove(event);
+  }
+
+  function handlePointerUp() {
+    splitter.classList.remove("dragging");
+    window.removeEventListener("pointermove", handlePointerMove);
+    window.removeEventListener("pointerup", handlePointerUp);
+    if (onEnd) {
+      onEnd();
+    }
+  }
+
+  window.addEventListener("pointermove", handlePointerMove);
+  window.addEventListener("pointerup", handlePointerUp);
+}
+
+function enableSplitters() {
+  mainSplitter.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    startSplitterDrag(
+      mainSplitter,
+      (moveEvent) => {
+        const rect = workspace.getBoundingClientRect();
+        const percent = clamp(((moveEvent.clientX - rect.left) / rect.width) * 100, 25, 75);
+        const value = `${percent.toFixed(1)}%`;
+        setCssVariable("--workspace-left", value);
+        window.localStorage.setItem(layoutStorageKeys.workspaceLeft, value);
+      }
+    );
+  });
+
+  rightSplitter.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    startSplitterDrag(
+      rightSplitter,
+      (moveEvent) => {
+        const rect = rightPane.getBoundingClientRect();
+        const percent = clamp(((moveEvent.clientY - rect.top) / rect.height) * 100, 25, 75);
+        const value = `${percent.toFixed(1)}%`;
+        setCssVariable("--right-top", value);
+        window.localStorage.setItem(layoutStorageKeys.rightTop, value);
+      }
+    );
+  });
 }
 
 async function fetchJson(url, options = {}) {
@@ -487,3 +566,5 @@ saveButton.addEventListener("click", async () => {
 });
 
 void loadSession();
+loadPersistedLayout();
+enableSplitters();

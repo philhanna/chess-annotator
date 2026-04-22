@@ -7,6 +7,9 @@
   --accent: #6f4e37;
   --text: #2a211b;
   --muted: #786a5b;
+  --workspace-left: 42%;
+  --right-top: 50%;
+  --splitter-size: 10px;
 }
 
 * {
@@ -67,7 +70,10 @@ body {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(18rem, 1fr) minmax(24rem, 1.3fr);
+  grid-template-columns:
+    minmax(18rem, var(--workspace-left))
+    var(--splitter-size)
+    minmax(24rem, calc(100% - var(--workspace-left) - var(--splitter-size)));
   min-height: 0;
   overflow: hidden;
 }
@@ -92,9 +98,51 @@ body {
 
 .right-pane {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows:
+    minmax(10rem, var(--right-top))
+    var(--splitter-size)
+    minmax(10rem, calc(100% - var(--right-top) - var(--splitter-size)));
   min-height: 0;
   overflow: hidden;
+}
+
+.splitter {
+  position: relative;
+  background: transparent;
+  z-index: 2;
+}
+
+.splitter::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  background: var(--panel-border);
+  border-radius: 999px;
+  opacity: 0.9;
+}
+
+.splitter:hover::before,
+.splitter.dragging::before {
+  background: var(--accent);
+}
+
+.splitter-vertical {
+  cursor: col-resize;
+}
+
+.splitter-vertical::before {
+  width: 4px;
+  height: 60%;
+}
+
+.splitter-horizontal {
+  cursor: row-resize;
+}
+
+.splitter-horizontal::before {
+  width: 60%;
+  height: 4px;
 }
 
 .pane-title {
