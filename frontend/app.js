@@ -24,6 +24,11 @@ const editorDraft = {
   dirty: false,
 };
 
+let currentSession = {
+  status: "idle",
+  unsaved_changes: false,
+};
+
 const layoutStorageKeys = {
   workspaceLeft: "annotate.workspace.left",
   rightTop: "annotate.right.top",
@@ -302,8 +307,17 @@ function confirmDiscardDraftIfNeeded() {
   return window.confirm("Discard unapplied annotation changes for the current ply?");
 }
 
+function confirmDiscardDocumentIfNeeded() {
+  if (!currentSession.unsaved_changes) {
+    return true;
+  }
+
+  return window.confirm("Discard unsaved changes for the current PGN document?");
+}
+
 function renderView(view) {
   const session = view.session;
+  currentSession = session;
   if (session.status === "idle") {
     renderIdle(session);
     return;
@@ -311,8 +325,9 @@ function renderView(view) {
 
   const sourceLabel = session.source_name || "Loaded PGN";
   const savedSuffix = session.last_saved_name ? ` | Last saved: ${session.last_saved_name}` : "";
-  documentMeta.textContent = `${sourceLabel}${savedSuffix}`;
-  saveButton.disabled = false;
+  const dirtySuffix = session.unsaved_changes ? " | Unsaved changes" : "";
+  documentMeta.textContent = `${sourceLabel}${savedSuffix}${dirtySuffix}`;
+  saveButton.disabled = !session.unsaved_changes;
   renderBoard(view.board_svg);
   renderGames(view.games, view.selected_game);
   gameSelect.dataset.currentValue = view.selected_game ? String(view.selected_game.index) : "";
@@ -332,6 +347,7 @@ function renderView(view) {
 async function loadSession() {
   try {
     const session = await fetchJson("/api/session");
+    currentSession = session;
     renderIdle(session);
   } catch (error) {
     setStatus(`Unable to load session: ${error.message}`);
@@ -418,6 +434,11 @@ openFileInput.addEventListener("change", async (event) => {
     return;
   }
 
+  if (!confirmDiscardDocumentIfNeeded()) {
+    openFileInput.value = "";
+    return;
+  }
+
   try {
     setStatus(`Opening ${file.name}…`);
     await openSelectedFile(file);
@@ -490,6 +511,14 @@ cancelButton.addEventListener("click", async () => {
 });
 
 closeButton.addEventListener("click", async () => {
+  if (!confirmDiscardDraftIfNeeded()) {
+    return;
+  }
+
+  if (!confirmDiscardDocumentIfNeeded()) {
+    return;
+  }
+
   try {
     await fetchJson("/api/close", {
       method: "POST",
@@ -563,6 +592,15 @@ saveButton.addEventListener("click", async () => {
   } catch (error) {
     setStatus(`Unable to save PGN: ${error.message}`);
   }
+});
+
+window.addEventListener("beforeunload", (event) => {
+  if (!editorDraft.dirty && !currentSession.unsaved_changes) {
+    return;
+  }
+
+  event.preventDefault();
+  event.returnValue = "";
 });
 
 void loadSession();
