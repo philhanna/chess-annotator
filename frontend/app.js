@@ -11,7 +11,7 @@ const rightPane = document.querySelector(".right-pane");
 const mainSplitter = document.getElementById("main-splitter");
 const rightSplitter = document.getElementById("right-splitter");
 const gameSelect = document.getElementById("game-select");
-const boardFlipCheckbox = document.getElementById("board-flip-checkbox");
+const boardFlipButton = document.getElementById("board-flip-button");
 const commentEditor = document.getElementById("comment-editor");
 const diagramCheckbox = document.getElementById("diagram-checkbox");
 const clearCommentsButton = document.getElementById("clear-comments-button");
@@ -49,8 +49,8 @@ function renderClosedState() {
   gameSelect.disabled = true;
   openButton.disabled = true;
   saveButton.disabled = true;
-  boardFlipCheckbox.checked = false;
-  boardFlipCheckbox.disabled = true;
+  boardFlipButton.disabled = true;
+  boardFlipButton.setAttribute("aria-pressed", "false");
   closeButton.disabled = true;
   commentEditor.value = "";
   commentEditor.disabled = true;
@@ -164,8 +164,8 @@ function renderIdle(session) {
   gameSelect.innerHTML = "<option>No games loaded</option>";
   gameSelect.disabled = true;
   saveButton.disabled = true;
-  boardFlipCheckbox.checked = false;
-  boardFlipCheckbox.disabled = true;
+  boardFlipButton.disabled = true;
+  boardFlipButton.setAttribute("aria-pressed", "false");
   commentEditor.value = "";
   commentEditor.disabled = true;
   diagramCheckbox.checked = false;
@@ -210,12 +210,22 @@ function saveWithDownload(pgnText, suggestedFilename) {
   return suggestedFilename;
 }
 
-function renderBoard(svgMarkup) {
+function renderBoard(svgMarkup, selectedGame, flipped) {
   if (!svgMarkup) {
     boardPane.innerHTML = '<div class="board-placeholder">No board available.</div>';
     return;
   }
-  boardPane.innerHTML = svgMarkup;
+
+  const topPlayer = flipped ? (selectedGame?.white || "White") : (selectedGame?.black || "Black");
+  const bottomPlayer = flipped ? (selectedGame?.black || "Black") : (selectedGame?.white || "White");
+
+  boardPane.innerHTML = `
+    <div class="board-layout">
+      <div class="board-player board-player-top">${topPlayer}</div>
+      <div class="board-svg">${svgMarkup}</div>
+      <div class="board-player board-player-bottom">${bottomPlayer}</div>
+    </div>
+  `;
 }
 
 function buildMoveButton(move) {
@@ -377,9 +387,9 @@ function renderView(view) {
   const dirtySuffix = session.unsaved_changes ? " | Unsaved changes" : "";
   documentMeta.textContent = `${sourceLabel}${savedSuffix}${dirtySuffix}`;
   saveButton.disabled = !session.unsaved_changes;
-  boardFlipCheckbox.checked = Boolean(view.board_flipped);
-  boardFlipCheckbox.disabled = !view.flip_enabled;
-  renderBoard(view.board_svg);
+  boardFlipButton.disabled = !view.flip_enabled;
+  boardFlipButton.setAttribute("aria-pressed", String(Boolean(view.board_flipped)));
+  renderBoard(view.board_svg, view.selected_game, Boolean(view.board_flipped));
   renderGames(view.games, view.selected_game);
   gameSelect.dataset.currentValue = view.selected_game ? String(view.selected_game.index) : "";
   renderMoves(view.move_rows);
@@ -526,7 +536,8 @@ diagramCheckbox.addEventListener("change", () => {
   updateDraftFromControls();
 });
 
-boardFlipCheckbox.addEventListener("change", async () => {
+boardFlipButton.addEventListener("click", async () => {
+  const flipped = boardFlipButton.getAttribute("aria-pressed") !== "true";
   try {
     const view = await fetchJson("/api/set-board-flipped", {
       method: "POST",
@@ -534,13 +545,12 @@ boardFlipCheckbox.addEventListener("change", async () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        flipped: boardFlipCheckbox.checked,
+        flipped,
       }),
     });
     renderView(view);
-    setStatus(`Board orientation ${boardFlipCheckbox.checked ? "flipped" : "reset"}.`);
+    setStatus(`Board orientation ${flipped ? "flipped" : "reset"}.`);
   } catch (error) {
-    boardFlipCheckbox.checked = !boardFlipCheckbox.checked;
     setStatus(`Unable to update board orientation: ${error.message}`);
   }
 });
