@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 from dataclasses import dataclass
+from pathlib import PurePath
 
 import chess
 import chess.pgn
@@ -47,6 +48,7 @@ class ParsedGame:
     summary: GameSummary
     moves: tuple[MoveEntry, ...]
     initial_fen: str
+    game: chess.pgn.Game
 
 
 def parse_pgn_collection(pgn_text: str) -> tuple[ParsedGame, ...]:
@@ -62,15 +64,22 @@ def parse_pgn_collection(pgn_text: str) -> tuple[ParsedGame, ...]:
             break
 
         games.append(
-            ParsedGame(
-                summary=build_game_summary(game, index=index),
-                moves=tuple(build_move_entries(game)),
-                initial_fen=game.board().fen(),
-            )
+            parse_game(game, index=index)
         )
         index += 1
 
     return tuple(games)
+
+
+def parse_game(game: chess.pgn.Game, index: int) -> ParsedGame:
+    """Build the parsed annotate representation for one game."""
+
+    return ParsedGame(
+        summary=build_game_summary(game, index=index),
+        moves=tuple(build_move_entries(game)),
+        initial_fen=game.board().fen(),
+        game=game,
+    )
 
 
 def build_game_summary(game: chess.pgn.Game, index: int) -> GameSummary:
@@ -141,3 +150,45 @@ def truncate_comment(comment: str, limit: int = 36) -> str:
     if len(squashed) <= limit:
         return squashed
     return squashed[: limit - 1].rstrip() + "…"
+
+
+def selected_node(game: chess.pgn.Game, ply: int) -> chess.pgn.ChildNode | None:
+    """Return the mainline node for the given ply, or ``None`` if absent."""
+
+    node = game
+    while node.variations:
+        node = node.variations[0]
+        if node.ply() == ply:
+            return node
+    return None
+
+
+def serialize_pgn_collection(games: tuple[ParsedGame, ...]) -> str:
+    """Serialize the current PGN collection in export form."""
+
+    parts: list[str] = []
+    exporter = chess.pgn.StringExporter(
+        headers=True,
+        variations=True,
+        comments=True,
+        columns=80,
+    )
+
+    for parsed_game in games:
+        parts.append(parsed_game.game.accept(exporter).strip())
+
+    if not parts:
+        return ""
+    return "\n\n".join(parts) + "\n"
+
+
+def suggested_output_name(source_name: str | None) -> str:
+    """Return a suggested output filename for browser save."""
+
+    if not source_name:
+        return "annotated-game.pgn"
+
+    source_path = PurePath(source_name)
+    stem = source_path.stem or source_path.name or "annotated-game"
+    suffix = source_path.suffix or ".pgn"
+    return f"{stem}-annotated{suffix}"

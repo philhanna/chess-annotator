@@ -7,7 +7,15 @@ from pathlib import Path
 
 import chess
 
-from annotate.adapters.pgn_repository import ParsedGame, parse_pgn_collection
+from annotate.adapters.pgn_repository import (
+    NAG_DIAGRAM,
+    ParsedGame,
+    parse_game,
+    parse_pgn_collection,
+    serialize_pgn_collection,
+    selected_node,
+    suggested_output_name,
+)
 from annotate.adapters.svg_board_renderer import SvgBoardRenderer
 
 
@@ -20,6 +28,7 @@ class SessionState:
     source_name: str | None
     selected_game_index: int | None
     selected_ply: int | None
+    last_saved_name: str | None
     unsaved_changes: bool
     status: str
 
@@ -42,6 +51,7 @@ class AnnotateSession:
         self._games: tuple[ParsedGame, ...] = ()
         self._selected_game_index: int | None = None
         self._selected_ply: int | None = None
+        self._last_saved_name: str | None = None
         self._unsaved_changes = False
 
     @property
@@ -66,6 +76,7 @@ class AnnotateSession:
             source_name=self._source_name,
             selected_game_index=self._selected_game_index,
             selected_ply=self._selected_ply,
+            last_saved_name=self._last_saved_name,
             unsaved_changes=self._unsaved_changes,
             status=status,
         )
@@ -76,6 +87,7 @@ class AnnotateSession:
         games = parse_pgn_collection(pgn_text)
         self._source_name = display_name
         self._games = games
+        self._last_saved_name = None
         self._unsaved_changes = False
 
         if games:
@@ -133,6 +145,51 @@ class AnnotateSession:
             raise ValueError(f"unknown navigation action: {action}")
 
         self._selected_ply = plies[new_index]
+        return self.current_view()
+
+    def apply_annotation(self, comment: str, diagram: bool) -> dict[str, object]:
+        """Apply stored annotation state to the selected ply."""
+
+        game = self._selected_game()
+        if self._selected_ply is None:
+            raise ValueError("no ply is currently selected")
+
+        node = selected_node(game.game, self._selected_ply)
+        if node is None:
+            raise ValueError(f"ply not found in selected game: {self._selected_ply}")
+
+        node.comment = comment.strip()
+        if diagram:
+            node.nags.add(NAG_DIAGRAM)
+        else:
+            node.nags.discard(NAG_DIAGRAM)
+
+        self._replace_selected_game(parse_game(game.game, index=game.summary.index))
+        self._unsaved_changes = True
+        return self.current_view()
+
+    def cancel_annotation(self) -> dict[str, object]:
+        """Return the currently stored annotation state without mutation."""
+
+        self._require_document_loaded()
+        return self.current_view()
+
+    def save_payload(self) -> dict[str, object]:
+        """Return PGN content and metadata for browser-controlled save."""
+
+        self._require_document_loaded()
+        return {
+            "pgn_text": serialize_pgn_collection(self._games),
+            "suggested_filename": suggested_output_name(self._source_name),
+            "unsaved_changes": self._unsaved_changes,
+        }
+
+    def confirm_save(self, output_name: str) -> dict[str, object]:
+        """Mark the current in-memory document as saved by the browser."""
+
+        self._require_document_loaded()
+        self._last_saved_name = output_name
+        self._unsaved_changes = False
         return self.current_view()
 
     def current_view(self) -> dict[str, object]:
@@ -193,6 +250,12 @@ class AnnotateSession:
         self._require_document_loaded()
         assert self._selected_game_index is not None
         return self._games[self._selected_game_index]
+
+    def _replace_selected_game(self, replacement: ParsedGame) -> None:
+        assert self._selected_game_index is not None
+        games = list(self._games)
+        games[self._selected_game_index] = replacement
+        self._games = tuple(games)
 
     def _require_document_loaded(self) -> None:
         if not self._games:

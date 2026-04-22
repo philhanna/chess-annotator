@@ -134,6 +134,49 @@ class AnnotateRequestHandler(BaseHTTPRequestHandler):
                 self._send_json_error(HTTPStatus.BAD_REQUEST, str(exc))
             return
 
+        if self.path == "/api/apply-annotation":
+            payload = self._read_json()
+            if payload is None:
+                return
+            try:
+                self._send_json(
+                    self.server.annotate_session.apply_annotation(
+                        comment=require_string(payload, "comment"),
+                        diagram=require_bool(payload, "diagram"),
+                    )
+                )
+            except ValueError as exc:
+                self._send_json_error(HTTPStatus.BAD_REQUEST, str(exc))
+            return
+
+        if self.path == "/api/save":
+            try:
+                self._send_json(self.server.annotate_session.save_payload())
+            except ValueError as exc:
+                self._send_json_error(HTTPStatus.BAD_REQUEST, str(exc))
+            return
+
+        if self.path == "/api/confirm-save":
+            payload = self._read_json()
+            if payload is None:
+                return
+            try:
+                self._send_json(
+                    self.server.annotate_session.confirm_save(
+                        require_string(payload, "output_name")
+                    )
+                )
+            except ValueError as exc:
+                self._send_json_error(HTTPStatus.BAD_REQUEST, str(exc))
+            return
+
+        if self.path == "/api/cancel-annotation":
+            try:
+                self._send_json(self.server.annotate_session.cancel_annotation())
+            except ValueError as exc:
+                self._send_json_error(HTTPStatus.BAD_REQUEST, str(exc))
+            return
+
         if self.path == "/api/close":
             self._send_json({"status": "closing"})
             threading.Thread(target=self.server.shutdown, daemon=True).start()
@@ -214,6 +257,15 @@ def require_int(payload: dict[str, object], key: str) -> int:
     value = payload.get(key)
     if not isinstance(value, int):
         raise ValueError(f"expected integer field: {key}")
+    return value
+
+
+def require_bool(payload: dict[str, object], key: str) -> bool:
+    """Return a required bool from a decoded JSON payload."""
+
+    value = payload.get(key)
+    if not isinstance(value, bool):
+        raise ValueError(f"expected boolean field: {key}")
     return value
 
 

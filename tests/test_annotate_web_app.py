@@ -27,3 +27,7 @@ def test_require_string_accepts_string_payload() -> None:
 
 def test_require_int_accepts_integer_payload() -> None:
     assert web_app.require_int({"ply": 12}, "ply") == 12
+
+
+def test_require_bool_accepts_boolean_payload() -> None:
+    assert web_app.require_bool({"diagram": True}, "diagram") is True

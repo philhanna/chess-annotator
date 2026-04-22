@@ -9,7 +9,15 @@ const movesPane = document.getElementById("moves-pane");
 const gameSelect = document.getElementById("game-select");
 const commentEditor = document.getElementById("comment-editor");
 const diagramCheckbox = document.getElementById("diagram-checkbox");
+const applyButton = document.getElementById("apply-button");
+const cancelButton = document.getElementById("cancel-button");
 const navButtons = Array.from(document.querySelectorAll(".nav-button"));
+
+const editorDraft = {
+  comment: "",
+  diagram: false,
+  dirty: false,
+};
 
 function setStatus(message) {
   statusBar.textContent = message;
@@ -44,10 +52,43 @@ function renderIdle(session) {
   commentEditor.disabled = true;
   diagramCheckbox.checked = false;
   diagramCheckbox.disabled = true;
+  applyButton.disabled = true;
+  cancelButton.disabled = true;
   navButtons.forEach((button) => {
     button.disabled = true;
   });
   setStatus(`Status: ${session.status}`);
+}
+
+async function saveWithFilePicker(pgnText, suggestedFilename) {
+  const handle = await window.showSaveFilePicker({
+    suggestedName: suggestedFilename,
+    types: [
+      {
+        description: "PGN files",
+        accept: {
+          "application/x-chess-pgn": [".pgn"],
+          "text/plain": [".pgn"],
+        },
+      },
+    ],
+  });
+
+  const writable = await handle.createWritable();
+  await writable.write(pgnText);
+  await writable.close();
+  return handle.name || suggestedFilename;
+}
+
+function saveWithDownload(pgnText, suggestedFilename) {
+  const blob = new Blob([pgnText], { type: "application/x-chess-pgn;charset=utf-8" });
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = suggestedFilename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+  return suggestedFilename;
 }
 
 function renderBoard(svgMarkup) {
@@ -147,11 +188,36 @@ function renderGames(games, selectedGame) {
   gameSelect.disabled = false;
 }
 
+function syncDraftButtons(enabled) {
+  applyButton.disabled = !enabled || !editorDraft.dirty;
+  cancelButton.disabled = !enabled || !editorDraft.dirty;
+}
+
 function renderEditor(editor, enabled) {
-  commentEditor.value = editor.comment || "";
+  editorDraft.comment = editor.comment || "";
+  editorDraft.diagram = Boolean(editor.diagram);
+  editorDraft.dirty = false;
+
+  commentEditor.value = editorDraft.comment;
   commentEditor.disabled = !enabled;
-  diagramCheckbox.checked = Boolean(editor.diagram);
+  diagramCheckbox.checked = editorDraft.diagram;
   diagramCheckbox.disabled = !enabled;
+  syncDraftButtons(enabled);
+}
+
+function updateDraftFromControls() {
+  editorDraft.comment = commentEditor.value;
+  editorDraft.diagram = diagramCheckbox.checked;
+  editorDraft.dirty = true;
+  syncDraftButtons(true);
+}
+
+function confirmDiscardDraftIfNeeded() {
+  if (!editorDraft.dirty) {
+    return true;
+  }
+
+  return window.confirm("Discard unapplied annotation changes for the current ply?");
 }
 
 function renderView(view) {
@@ -161,20 +227,23 @@ function renderView(view) {
     return;
   }
 
-  documentMeta.textContent = session.source_name || "Loaded PGN";
-  saveButton.disabled = true;
+  const sourceLabel = session.source_name || "Loaded PGN";
+  const savedSuffix = session.last_saved_name ? ` | Last saved: ${session.last_saved_name}` : "";
+  documentMeta.textContent = `${sourceLabel}${savedSuffix}`;
+  saveButton.disabled = false;
   renderBoard(view.board_svg);
   renderGames(view.games, view.selected_game);
+  gameSelect.dataset.currentValue = view.selected_game ? String(view.selected_game.index) : "";
   renderMoves(view.move_rows);
   ensureSelectedMoveVisible();
-  renderEditor(view.editor, false);
+  renderEditor(view.editor, Boolean(view.selected_game));
 
   if (view.selected_game) {
     setStatus(
-      `Loaded ${view.games.length} game(s). Selected game: ${view.selected_game.white} vs ${view.selected_game.black}.`
+      `Loaded ${view.games.length} game(s). Selected game: ${view.selected_game.white} vs ${view.selected_game.black}.${session.unsaved_changes ? " Unsaved changes." : ""}`
     );
   } else {
-    setStatus(`Loaded ${view.games.length} game(s).`);
+    setStatus(`Loaded ${view.games.length} game(s).${session.unsaved_changes ? " Unsaved changes." : ""}`);
   }
 }
 
@@ -204,6 +273,10 @@ async function openSelectedFile(file) {
 }
 
 async function selectPly(ply) {
+  if (!confirmDiscardDraftIfNeeded()) {
+    return;
+  }
+
   const view = await fetchJson("/api/select-ply", {
     method: "POST",
     headers: {
@@ -216,6 +289,10 @@ async function selectPly(ply) {
 }
 
 async function navigate(action) {
+  if (!confirmDiscardDraftIfNeeded()) {
+    return;
+  }
+
   const view = await fetchJson("/api/navigate", {
     method: "POST",
     headers: {
@@ -228,6 +305,11 @@ async function navigate(action) {
 }
 
 async function selectGame(gameIndex) {
+  if (!confirmDiscardDraftIfNeeded()) {
+    gameSelect.value = gameSelect.dataset.currentValue || "";
+    return;
+  }
+
   const view = await fetchJson("/api/select-game", {
     method: "POST",
     headers: {
@@ -246,6 +328,11 @@ openButton.addEventListener("click", () => {
 openFileInput.addEventListener("change", async (event) => {
   const [file] = event.target.files;
   if (!file) {
+    return;
+  }
+
+  if (!confirmDiscardDraftIfNeeded()) {
+    openFileInput.value = "";
     return;
   }
 
@@ -277,6 +364,49 @@ for (const button of navButtons) {
   });
 }
 
+commentEditor.addEventListener("input", () => {
+  updateDraftFromControls();
+});
+
+diagramCheckbox.addEventListener("change", () => {
+  updateDraftFromControls();
+});
+
+applyButton.addEventListener("click", async () => {
+  try {
+    const view = await fetchJson("/api/apply-annotation", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        comment: editorDraft.comment,
+        diagram: editorDraft.diagram,
+      }),
+    });
+    renderView(view);
+    setStatus("Annotation applied.");
+  } catch (error) {
+    setStatus(`Unable to apply annotation: ${error.message}`);
+  }
+});
+
+cancelButton.addEventListener("click", async () => {
+  try {
+    const view = await fetchJson("/api/cancel-annotation", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+    renderView(view);
+    setStatus("Annotation changes discarded.");
+  } catch (error) {
+    setStatus(`Unable to cancel annotation changes: ${error.message}`);
+  }
+});
+
 closeButton.addEventListener("click", async () => {
   try {
     await fetchJson("/api/close", {
@@ -289,6 +419,43 @@ closeButton.addEventListener("click", async () => {
     setStatus("Closing application…");
   } catch (error) {
     setStatus(`Unable to close application: ${error.message}`);
+  }
+});
+
+saveButton.addEventListener("click", async () => {
+  if (editorDraft.dirty) {
+    setStatus("Apply or cancel the current annotation edits before saving.");
+    return;
+  }
+
+  try {
+    const payload = await fetchJson("/api/save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+
+    let outputName;
+    if (typeof window.showSaveFilePicker === "function") {
+      outputName = await saveWithFilePicker(payload.pgn_text, payload.suggested_filename);
+      const view = await fetchJson("/api/confirm-save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ output_name: outputName }),
+      });
+      renderView(view);
+      setStatus(`Saved to ${outputName}.`);
+      return;
+    }
+
+    outputName = saveWithDownload(payload.pgn_text, payload.suggested_filename);
+    setStatus(`Download started for ${outputName}. Browser save could not be confirmed.`);
+  } catch (error) {
+    setStatus(`Unable to save PGN: ${error.message}`);
   }
 });
 
