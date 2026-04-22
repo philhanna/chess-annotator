@@ -25,6 +25,8 @@ The SPA is divided into a left-hand side and a right-hand side.
   or to the move-and-annotation side.
 * The application should preserve a stable layout while the user navigates
   through the game.
+* A top-level action area should be present in the SPA for file and lifecycle
+  actions.
 
 Conceptually:
 
@@ -38,6 +40,30 @@ Conceptually:
 |                      |                              |
 +----------------------+------------------------------+
 ```
+
+### 2.1 Top-Level Actions
+
+The SPA should provide a small set of top-level actions that remain available
+regardless of which ply is currently selected.
+
+The actions currently defined are:
+
+* `Open`: opens a file chooser for selecting the input `.pgn` file.
+* `Save`: writes the current annotated game state to a new output `.pgn` file.
+* `Close`: closes the application and shuts down the local backend process.
+
+### 2.2 Save Behavior
+
+Saving should be non-destructive with respect to the input file.
+
+* The application should not overwrite the original input `.pgn` file.
+* When the user activates `Save`, the application should require a new output
+  file name to be specified.
+* The save flow should therefore behave more like "Save As" than "save in
+  place," even if the visible top-level action is labeled simply `Save`.
+
+This matches the intended workflow that the source PGN remains untouched and
+the annotated result is written to a separate file.
 
 ## 3. Left Pane
 
@@ -74,7 +100,7 @@ The right-hand side is divided vertically into a top half and a bottom half.
 
 * These two sections are separated by a movable partition.
 * The user can drag this partition to allocate more space to the move list or
-  to whatever lower panel content is later defined.
+  to the comment editor.
 
 Conceptually:
 
@@ -86,11 +112,9 @@ Conceptually:
 +----------------------------------+
 |        Bottom Right Pane         |
 |                                  |
-|      content to be defined       |
+|        comment editor view       |
 +----------------------------------+
 ```
-
-This document only defines the top half so far.
 
 ## 5. Top Right Pane: Move List
 
@@ -198,14 +222,65 @@ same navigation surface.
 
 ## 6. Bottom Right Pane
 
-The bottom half of the right-hand side exists in the layout, but its contents
-have not yet been defined in this document.
+The bottom half of the right-hand side is used for viewing and editing comments
+for the currently selected ply.
 
-For now, the only requirement is structural:
+### 6.1 Purpose
 
-* it occupies the lower portion of the right pane,
-* it is separated from the move list by a movable partition,
-* its detailed content will be specified later.
+This pane is where the user works with the full comment text for the selected
+move. It complements the move-list preview above:
+
+* the top-right move list helps the user scan the game,
+* the bottom-right pane shows the complete comment for the selected ply.
+
+### 6.2 Content
+
+The pane always shows a view of the existing comment for the currently selected
+move ply.
+
+If the selected ply already has a comment:
+
+* the full existing comment is shown in this pane.
+
+If the selected ply has no comment:
+
+* the pane still remains active for that ply, ready to display or edit comment
+  content as the user works.
+
+The pane is also where the user edits the comment text for the selected ply.
+
+### 6.3 Editing Controls
+
+The comment editor should not use the `Enter` key to mean "done editing,"
+because the user may want to enter multiple lines or blank lines.
+
+Instead, the pane should provide explicit edit-completion controls:
+
+* `Apply`: accepts the current edits for the selected ply.
+* `Cancel`: discards the current in-progress edits for the selected ply and
+  returns to the prior comment content.
+
+These controls apply only to the selected ply's in-memory comment editing
+session. They are distinct from the top-level `Save` action, which writes the
+overall annotated PGN to a new file.
+
+### 6.4 Relationship to Selection
+
+The bottom-right pane is driven entirely by the currently selected ply.
+
+Whenever the selected ply changes:
+
+* the comment pane updates to show the comment associated with the new
+  selection,
+* the pane therefore always stays synchronized with the move highlight in the
+  top-right pane and the board position in the left pane.
+
+### 6.5 Layout Notes
+
+* The pane occupies the lower portion of the right side of the screen.
+* It is separated from the move list by a movable partition.
+* The user can resize the move-list area and the comment area according to the
+  current task.
 
 ## 7. Interaction Summary
 
@@ -213,23 +288,28 @@ The screen layout described so far supports the following interaction pattern:
 
 1. The user selects a move from the move list in the top-right pane.
 2. The current board position updates in the left pane.
-3. The user scans move numbers, diagram markers, and comment snippets in the
+3. The bottom-right pane updates to show the existing comment for the selected
+   ply.
+4. The user can edit the comment in the bottom-right pane and use `Apply` or
+   `Cancel` to finish or discard that edit session.
+5. The user scans move numbers, diagram markers, and comment snippets in the
    move list to decide where to work next.
-4. The user can also use transport-style controls at the bottom of the move
+6. The user can also use transport-style controls at the bottom of the move
    list to jump to the beginning or end, or move one ply backward or forward.
-5. The user can resize both the main left-right split and the upper-lower split
+7. The user can use the top-level actions to open a PGN, save annotated output
+   to a new file, or close the application.
+8. The user can resize both the main left-right split and the upper-lower split
    on the right side to suit his current task.
 
 ## 8. Open Items
 
 The following screen-design topics are still intentionally unspecified:
 
-* the content of the bottom-right pane,
 * the exact appearance of the move rows,
 * the exact symbol, styling, or color treatment for the diagram marker,
 * the exact highlight styling for the selected ply,
 * the truncation rules for comment previews,
-* placement of file, save, game-selection, or close controls,
+* the exact placement and styling of the top-level action area,
 * behavior on narrow screens.
 
 These can be added as the screen design continues.
