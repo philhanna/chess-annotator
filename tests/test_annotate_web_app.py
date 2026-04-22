@@ -13,3 +13,9 @@ def test_create_session_uses_frontend_root() -> None:
     session = web_app.create_session()
 
     assert session.frontend_root == web_app.frontend_root()
+
+
+def test_asset_content_type_for_css() -> None:
+    content_type = web_app.asset_content_type(Path("frontend/app.css"))
+
+    assert content_type == "text/css"

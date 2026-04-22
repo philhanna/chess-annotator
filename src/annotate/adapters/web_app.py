@@ -1,7 +1,12 @@
-"""FastAPI application factory for the annotate SPA."""
+"""Standard-library HTTP server for the annotate SPA."""
 
 from __future__ import annotations
 
+import json
+import mimetypes
+import threading
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from annotate.service import AnnotateSession
@@ -19,49 +24,83 @@ def create_session() -> AnnotateSession:
     return AnnotateSession(frontend_root=frontend_root())
 
 
-def create_app():
-    """Create and return the FastAPI app.
+def asset_content_type(path: Path) -> str:
+    """Return the best-effort content type for a frontend asset."""
 
-    FastAPI is imported lazily so modules can still be imported in environments
-    where the dependency has not been installed yet.
-    """
+    guessed, _ = mimetypes.guess_type(str(path))
+    return guessed or "application/octet-stream"
 
-    try:
-        from fastapi import FastAPI
-        from fastapi.responses import FileResponse
-    except ModuleNotFoundError as exc:  # pragma: no cover - exercised at runtime
-        raise RuntimeError(
-            "fastapi is required to run chess-annotate. Install project "
-            "dependencies before launching the app."
-        ) from exc
 
-    session = create_session()
-    app = FastAPI(title="chess-annotate")
-    app.state.annotate_session = session
+class AnnotateHTTPServer(ThreadingHTTPServer):
+    """HTTP server carrying annotate session state."""
 
-    @app.get("/api/session")
-    def get_session() -> dict[str, object]:
-        """Return the current high-level SPA session state."""
+    def __init__(
+        self,
+        server_address: tuple[str, int],
+        session: AnnotateSession,
+    ) -> None:
+        super().__init__(server_address, AnnotateRequestHandler)
+        self.annotate_session = session
 
-        return session.snapshot().__dict__
 
-    @app.get("/")
-    def index():
-        """Serve the SPA entry point."""
+class AnnotateRequestHandler(BaseHTTPRequestHandler):
+    """Request handler for the initial annotate SPA routes."""
 
-        return FileResponse(session.frontend_root / "index.html")
+    server: AnnotateHTTPServer
 
-    @app.get("/app.css")
-    def app_css():
-        """Serve the SPA stylesheet."""
+    def do_GET(self) -> None:  # noqa: N802 - stdlib handler API
+        """Serve JSON session data and static SPA assets."""
 
-        return FileResponse(session.frontend_root / "app.css")
+        if self.path == "/api/session":
+            self._send_json(self.server.annotate_session.snapshot().__dict__)
+            return
 
-    @app.get("/app.js")
-    def app_js():
-        """Serve the SPA JavaScript."""
+        if self.path == "/":
+            self._send_asset("index.html")
+            return
 
-        return FileResponse(session.frontend_root / "app.js")
+        if self.path in {"/app.css", "/app.js"}:
+            self._send_asset(self.path.lstrip("/"))
+            return
 
-    return app
+        self.send_error(HTTPStatus.NOT_FOUND)
 
+    def do_POST(self) -> None:  # noqa: N802 - stdlib handler API
+        """Handle simple POST routes for the SPA."""
+
+        if self.path == "/api/close":
+            self._send_json({"status": "closing"})
+            threading.Thread(target=self.server.shutdown, daemon=True).start()
+            return
+
+        self.send_error(HTTPStatus.NOT_FOUND)
+
+    def log_message(self, format: str, *args) -> None:  # noqa: A003
+        """Silence default request logging for the local app."""
+
+    def _send_json(self, payload: dict[str, object]) -> None:
+        body = json.dumps(payload).encode("utf-8")
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _send_asset(self, relative_name: str) -> None:
+        path = self.server.annotate_session.frontend_root / relative_name
+        if not path.is_file():
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return
+
+        body = path.read_bytes()
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", asset_content_type(path))
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+
+def create_server(host: str = "127.0.0.1", port: int = 0) -> AnnotateHTTPServer:
+    """Create the annotate HTTP server bound to the given address."""
+
+    return AnnotateHTTPServer((host, port), session=create_session())

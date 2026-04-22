@@ -9,7 +9,6 @@ description = "Tool for annotating chess games and rendering them as book-qualit
 requires-python = ">=3.10"
 dependencies = [
     "python-chess",
-    "fastapi",
     "pyyaml",
     "reportlab",
     "svglib",
