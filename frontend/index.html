@@ -9,35 +9,55 @@
   <body>
     <div class="app">
       <header class="action-bar">
-        <h1>Chess Annotator</h1>
+        <div class="title-block">
+          <h1>Chess Annotator</h1>
+          <div class="document-meta" id="document-meta">No PGN loaded</div>
+        </div>
         <div class="actions">
-          <button type="button" disabled>Open</button>
-          <button type="button" disabled>Save</button>
-          <button type="button" disabled>Close</button>
+          <label class="game-picker">
+            <span>Game</span>
+            <select id="game-select" disabled>
+              <option>No games loaded</option>
+            </select>
+          </label>
+          <button type="button" id="open-button">Open</button>
+          <button type="button" id="save-button" disabled>Save</button>
+          <button type="button" id="close-button">Close</button>
         </div>
       </header>
+      <input id="open-file-input" type="file" accept=".pgn" hidden>
 
       <main class="workspace">
         <section class="left-pane">
           <div class="pane-title">Board</div>
-          <div class="board-placeholder">Board SVG will render here.</div>
+          <div class="board-pane" id="board-pane">
+            <div class="board-placeholder">Board SVG will render here.</div>
+          </div>
         </section>
 
         <section class="right-pane">
           <div class="top-pane">
             <div class="pane-title">Moves</div>
-            <div class="moves-placeholder">Move list will render here.</div>
+            <div class="moves-pane" id="moves-pane">
+              <div class="moves-placeholder">Move list will render here.</div>
+            </div>
+            <div class="transport-controls">
+              <button type="button" class="nav-button" data-action="start" disabled>&lt;&lt;</button>
+              <button type="button" class="nav-button" data-action="prev" disabled>&lt;</button>
+              <button type="button" class="nav-button" data-action="next" disabled>&gt;</button>
+              <button type="button" class="nav-button" data-action="end" disabled>&gt;&gt;</button>
+            </div>
           </div>
           <div class="bottom-pane">
             <div class="pane-title">Annotation</div>
             <label class="checkbox-row">
-              <input type="checkbox" disabled>
+              <input type="checkbox" id="diagram-checkbox" disabled>
               Diagram follows
             </label>
-            <textarea rows="10" disabled placeholder="Comment editor will render here."></textarea>
+            <textarea id="comment-editor" rows="10" disabled placeholder="Comment editor will render here."></textarea>
             <div class="editor-actions">
-              <button type="button" disabled>Apply</button>
-              <button type="button" disabled>Cancel</button>
+              <button type="button" id="apply-button" disabled>Apply</button>
+              <button type="button" id="cancel-button" disabled>Cancel</button>
             </div>
           </div>
         </section>

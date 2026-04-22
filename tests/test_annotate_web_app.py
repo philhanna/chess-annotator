@@ -19,3 +19,11 @@ def test_asset_content_type_for_css() -> None:
     content_type = web_app.asset_content_type(Path("frontend/app.css"))
 
     assert content_type == "text/css"
+
+
+def test_require_string_accepts_string_payload() -> None:
+    assert web_app.require_string({"name": "demo"}, "name") == "demo"
+
+
+def test_require_int_accepts_integer_payload() -> None:
+    assert web_app.require_int({"ply": 12}, "ply") == 12

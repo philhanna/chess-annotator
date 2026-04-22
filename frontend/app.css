@@ -45,10 +45,22 @@ body {
   gap: 1rem;
 }
 
+.title-block h1 {
+  margin: 0;
+}
+
+.document-meta {
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
 .actions,
 .editor-actions {
   display: flex;
   gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .workspace {
@@ -82,8 +94,8 @@ body {
   margin-bottom: 0.75rem;
 }
 
-.board-placeholder,
-.moves-placeholder,
+.board-pane,
+.moves-pane,
 textarea {
   width: 100%;
   min-height: 12rem;
@@ -92,10 +104,29 @@ textarea {
   background: #fff;
 }
 
+.board-pane {
+  padding: 0.5rem;
+  overflow: auto;
+  display: grid;
+  place-items: center;
+}
+
+.board-pane svg {
+  width: min(100%, 32rem);
+  height: auto;
+}
+
+.moves-pane {
+  min-height: 16rem;
+  overflow: auto;
+  padding: 0.5rem;
+}
+
 .board-placeholder,
 .moves-placeholder {
   display: grid;
   place-items: center;
+  min-height: 100%;
   color: var(--muted);
 }
 
@@ -111,9 +142,97 @@ textarea {
   margin-bottom: 0.75rem;
 }
 
+.game-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+}
+
+.game-picker select {
+  max-width: 24rem;
+}
+
+.moves-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+.move-column {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.move-row {
+  width: 100%;
+  text-align: left;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  padding: 0.55rem 0.6rem;
+  background: #fff9f0;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.move-row:hover {
+  border-color: var(--panel-border);
+}
+
+.move-row.selected {
+  background: #efe1ca;
+  border-color: var(--accent);
+}
+
+.move-head {
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+  font-size: 0.92rem;
+  margin-bottom: 0.25rem;
+}
+
+.move-number {
+  color: var(--muted);
+  min-width: 2.6rem;
+}
+
+.move-san {
+  font-weight: 700;
+}
+
+.move-diagram {
+  color: var(--accent);
+}
+
+.move-preview {
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.3;
+}
+
+.transport-controls {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.nav-button {
+  min-width: 3rem;
+}
+
 button {
   padding: 0.55rem 0.9rem;
   border: 1px solid var(--panel-border);
   border-radius: 999px;
   background: white;
+}
+
+button:disabled,
+select:disabled,
+textarea:disabled,
+input:disabled {
+  opacity: 0.6;
+  cursor: default;
 }

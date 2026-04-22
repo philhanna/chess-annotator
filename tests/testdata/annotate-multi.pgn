@@ -1,0 +1,75 @@
+[Event "Sample Tournament"]
+[Site "Charlotte, NC"]
+[Date "2026.03.30"]
+[White "Tom Smith"]
+[Black "Phil Hanna"]
+[Result "0-1"]
+[WhiteElo "1260"]
+[BlackElo "1192"]
+[TimeControl "3600"]
+[Termination "Phil Hanna won by resignation"]
+[Variant "Standard"]
+[ECO "B01"]
+[Opening "Scandinavian Defense: Valencian Variation"]
+
+1. e4 d5 $1 2. exd5 $2 Qxd5 3. Nc3 $220 Qd8 4. Nf3 Nf6 5. Bc4 Bg4 6. h3 Bh5 7. d3 e6 8. Bg5 Bb4 9. Qe2 O-O 10. O-O Nbd7 11. Ne4 h6 12. Nxf6+ Nxf6 13. Bd2 Bxf3 14. gxf3 Be7 15. Bc3 Nd5 16. Bxd5 Qxd5 17. Qe5 Qxe5 18. Bxe5 c6 19. Bd4 c5 20. Be3 Rad8 21. Kh2 Rd5 22. Rg1 Bd6+ 23. Kh1 Rh5 24. Kg2 f5 25. f4 Rf6 26. Kh2 b6 27. b3 e5 28. fxe5 Bxe5+ 29. Kh1 Rxh3+ 0-1
+
+[Event "2026 Fictional Open"]
+[Site "New York"]
+[Date "2026.03.30"]
+[White "Nakamura"]
+[Black "Hanna"]
+[Result "0-1"]
+[WhiteElo "1260"]
+[BlackElo "1192"]
+[TimeControl "3600"]
+[Termination "pehanna7 won by resignation"]
+[Variant "Standard"]
+[ECO "B01"]
+[Opening "Scandinavian Defense: Valencian Variation"]
+
+1. e4 d5 2. exd5 Qxd5 3. Nc3 Qd8 4. Nf3 Nf6 5. Bc4 Bg4 $220 {
+Stockfish considers 5 ... Bg4 to be a mistake, because of
+6. Ne5!!.  If black responds 6 ... Nxd1?? then Bxf7# is
+checkmate.  If instead black retreates with 6 ... Be6,
+white can exchange bishops with 7. Bxe6 fxe6, leaving
+black's pawn structure damaged.  But neither player saw it.
+}
+6. h3 Bh5 7. d3 e6 8. Bg5 Bb4 9. Qe2 O-O 10. O-O Nbd7 11. Ne4 $220 {
+I played the standard Scandinavian opening, with 3 ... Qd8.
+After 11. Ne4, white has two attackers for the f6 square and
+black has three defenders.  I would rather not capture gxf6
+because that opens the g file for attacking my king. So I played
+h6 to induce the bishop to move.  }
+11...h6 12. Nxf6+ Nxf6 13. Bd2 $220 {
+White exchanged knights and then retreats his bishop to d2,
+attacking my bishop on b4.  I thought about 13 ... a5 to protect
+the bishop, but saw that capturing the knight with 13 ... Bxf3!
+was stronger.  If white recaptures with queen, he loses the bishop
+on d2.  So he is forced to recapture with the g2 pawn, opening the
+g file in front of his king.  Then I can retreate my bishop
+to safety with 14 ... Be7.
+}
+Bxf3! 14. gxf3 Be7 15. Bc3 Nd5 16. Bxd5 Qxd5 17. Qe5 Qxe5 18. Bxe5 $220 {
+Black trades a bishop for a knight, then exchanges queens. 
+}
+18 ... c6 19. Bd4 c5 20. Be3 {
+A brief skirmish follows there black tightens up his queenside
+pawn structure.
+} 20 ... Rad8 21. Kh2 Rd5 22. Rg1 Bd6+ 23. Kh1 Rh5
+24. Kg2 $220
+{
+Black lifts his a8 rook in preparation for joining in the kingside
+attack.  With 22 ... Bd6+, black is able to push the king back in
+front of his rook, where he is vulnerable.
+24 ... f5 threatens to block the bishop with 25 ... f4.  So white
+preempts this by pushing his own pawn to f4. But black is able to move
+the rook to the stonger f6 square.  26 ... b6 locks in black's
+pawn chain so that his bishop is free to move.
+}
+24 ...f5 25.f4 Rf6 26. Kh2 b6 27. b3 e5
+28. fxe5?? $220 {
+With 28. fxe5??, white makes the mistake of opening his position
+up to a double attack on his king and rook.  After 28 ... Bxe5+,
+white resigns.
+} 28 ... Bxe5+ 29. Kh1 Rxh3+ 0-1
