@@ -17,7 +17,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--browser",
-        help="Browser name to use instead of the system default (for example: firefox, edge, chrome).",
+        help="Browser name to use instead of the system default (for example: firefox, microsoft-edge, chrome).",
     )
     return parser.parse_args(argv)
 
