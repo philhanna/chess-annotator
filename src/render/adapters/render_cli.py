@@ -74,6 +74,7 @@ def main() -> None:
         model = parse_pgn(pgn_path.read_text())
         renderer = ReportLabPdfRenderer(diagram_renderer=ChessSvgDiagramRenderer())
         renderer.render(model, output_path, args.orientation)
+        print(f"PDF written to: {output_path.resolve()}")
     except ValueError as exc:
         print(f"chess-render: {exc}", file=sys.stderr)
         sys.exit(1)
