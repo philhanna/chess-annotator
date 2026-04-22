@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chess Annotator</title>
+    <link rel="stylesheet" href="/app.css">
+  </head>
+  <body>
+    <div class="app">
+      <header class="action-bar">
+        <h1>Chess Annotator</h1>
+        <div class="actions">
+          <button type="button" disabled>Open</button>
+          <button type="button" disabled>Save</button>
+          <button type="button" disabled>Close</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="left-pane">
+          <div class="pane-title">Board</div>
+          <div class="board-placeholder">Board SVG will render here.</div>
+        </section>
+
+        <section class="right-pane">
+          <div class="top-pane">
+            <div class="pane-title">Moves</div>
+            <div class="moves-placeholder">Move list will render here.</div>
+          </div>
+          <div class="bottom-pane">
+            <div class="pane-title">Annotation</div>
+            <label class="checkbox-row">
+              <input type="checkbox" disabled>
+              Diagram follows
+            </label>
+            <textarea rows="10" disabled placeholder="Comment editor will render here."></textarea>
+            <div class="editor-actions">
+              <button type="button" disabled>Apply</button>
+              <button type="button" disabled>Cancel</button>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="status-bar" id="status-bar">Loading session…</footer>
+    </div>
+    <script src="/app.js"></script>
+  </body>
+</html>

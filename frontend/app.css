@@ -1,0 +1,119 @@
+:root {
+  color-scheme: light;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --bg: #f5f0e8;
+  --panel: #fffaf2;
+  --panel-border: #c7b9a3;
+  --accent: #6f4e37;
+  --text: #2a211b;
+  --muted: #786a5b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #efe5d6 0%, var(--bg) 100%);
+  color: var(--text);
+}
+
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+}
+
+.action-bar,
+.status-bar {
+  padding: 0.75rem 1rem;
+  background: rgba(255, 250, 242, 0.95);
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.status-bar {
+  border-top: 1px solid var(--panel-border);
+  border-bottom: 0;
+  color: var(--muted);
+}
+
+.action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.actions,
+.editor-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1fr) minmax(24rem, 1.3fr);
+  min-height: 0;
+}
+
+.left-pane,
+.top-pane,
+.bottom-pane {
+  margin: 0.75rem;
+  padding: 1rem;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 0.75rem;
+}
+
+.right-pane {
+  display: grid;
+  grid-template-rows: minmax(14rem, 1fr) minmax(14rem, 1fr);
+  min-height: 0;
+}
+
+.pane-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.75rem;
+}
+
+.board-placeholder,
+.moves-placeholder,
+textarea {
+  width: 100%;
+  min-height: 12rem;
+  border: 1px dashed var(--panel-border);
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+.board-placeholder,
+.moves-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+textarea {
+  padding: 0.75rem;
+  resize: vertical;
+}
+
+.checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+button {
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: white;
+}
