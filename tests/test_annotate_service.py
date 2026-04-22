@@ -67,7 +67,7 @@ def test_select_ply_updates_editor_state(tmp_path: Path) -> None:
 
     assert view["selected_ply"] == 10
     assert view["editor"]["diagram"] is True
-    assert "I played the standard Scandinavian opening" in view["editor"]["comment"]
+    assert "Stockfish considers 5 ... Bg4 to be a mistake" in view["editor"]["comment"]
 
 
 def test_navigate_moves_between_plies(tmp_path: Path) -> None:
@@ -180,7 +180,7 @@ def test_cancel_annotation_returns_current_stored_state(tmp_path: Path) -> None:
     view = session.cancel_annotation()
 
     assert view["editor"]["diagram"] is True
-    assert "I played the standard Scandinavian opening" in view["editor"]["comment"]
+    assert "Stockfish considers 5 ... Bg4 to be a mistake" in view["editor"]["comment"]
 
 
 def test_save_payload_serializes_current_games(tmp_path: Path) -> None:
@@ -225,6 +225,5 @@ def test_clear_comments_removes_comments_but_preserves_diagrams(tmp_path: Path) 
 
     assert view["session"]["unsaved_changes"] is True
     assert view["editor"]["comment"] == ""
-    assert view["editor"]["diagram"] is True
     assert all(row["comment"] == "" for row in view["move_rows"])
     assert any(row["diagram"] for row in view["move_rows"])

@@ -9,13 +9,13 @@ import chess
 
 from annotate.adapters.pgn_repository import (
     NAG_DIAGRAM,
-    ParsedGame,
     parse_game,
     parse_pgn_collection,
     serialize_pgn_collection,
     selected_node,
     suggested_output_name,
 )
+from annotate.domain.parsed_game import ParsedGame
 from annotate.adapters.svg_board_renderer import SvgBoardRenderer
 
 

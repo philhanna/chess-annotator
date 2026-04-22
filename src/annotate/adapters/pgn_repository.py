@@ -3,57 +3,18 @@
 from __future__ import annotations
 
 import io
-from dataclasses import dataclass
 from pathlib import PurePath
 
 import chess
 import chess.pgn
 
+from annotate.domain.game_summary import GameSummary
+from annotate.domain.move_entry import MoveEntry
+from annotate.domain.parsed_game import ParsedGame
 from render.domain.render_model import format_date
 
 
 NAG_DIAGRAM = 220
-
-
-@dataclass(frozen=True)
-class GameSummary:
-    """Summary fields for one game in a PGN collection."""
-
-    index: int
-    label: str
-    white: str
-    black: str
-    event: str
-    round: str
-    date: str
-    board_title: str
-    result: str
-
-
-@dataclass(frozen=True)
-class MoveEntry:
-    """Mainline move view model for one ply."""
-
-    ply: int
-    side: str
-    move_number: int
-    san: str
-    comment: str
-    comment_preview: str
-    diagram: bool
-    fen: str
-    is_initial_position: bool = False
-
-
-@dataclass(frozen=True)
-class ParsedGame:
-    """Parsed representation of one PGN game for the annotate UI."""
-
-    summary: GameSummary
-    moves: tuple[MoveEntry, ...]
-    initial_fen: str
-    flipped: bool
-    game: chess.pgn.Game
 
 
 def parse_pgn_collection(pgn_text: str) -> tuple[ParsedGame, ...]:
