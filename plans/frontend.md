@@ -4,7 +4,6 @@
 
 Implement the first working version of the `chess-annotate` SPA described in:
 
-* `docs/annotate-requirements.md`
 * `docs/annotate-design.md`
 * `docs/use-cases.md`
 * `docs/screen-design.md`

@@ -1,8 +1,8 @@
 # design.md: Detailed Design Document (v1.1)
 
-This document provides a detailed technical design for the
-**chess-annotate** application, implementing the requirements specified in
-`annotate-requirements.md` and adhering to the PGN standards defined in
+This document provides the detailed design for the **chess-annotate**
+application and serves as the primary product and technical reference for the
+annotate workflow, while also adhering to the PGN standards defined in
 `pgn-spec.txt`.
 
 ## 1. Architectural Strategy: Hexagonal (Ports & Adapters)
