@@ -170,6 +170,13 @@ class AnnotateRequestHandler(BaseHTTPRequestHandler):
                 self._send_json_error(HTTPStatus.BAD_REQUEST, str(exc))
             return
 
+        if self.path == "/api/clear-comments":
+            try:
+                self._send_json(self.server.annotate_session.clear_comments())
+            except ValueError as exc:
+                self._send_json_error(HTTPStatus.BAD_REQUEST, str(exc))
+            return
+
         if self.path == "/api/cancel-annotation":
             try:
                 self._send_json(self.server.annotate_session.cancel_annotation())

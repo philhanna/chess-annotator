@@ -140,3 +140,18 @@ def test_confirm_save_clears_unsaved_flag(tmp_path: Path) -> None:
 def test_suggested_output_name_defaults_safely() -> None:
     assert suggested_output_name(None) == "annotated-game.pgn"
     assert suggested_output_name("sample.pgn") == "sample-annotated.pgn"
+
+
+def test_clear_comments_removes_comments_but_preserves_diagrams(tmp_path: Path) -> None:
+    session = AnnotateSession(frontend_root=tmp_path)
+    pgn_text = Path("tests/testdata/game3.pgn").read_text()
+    session.open_pgn("game3.pgn", pgn_text)
+    session.select_ply(10)
+
+    view = session.clear_comments()
+
+    assert view["session"]["unsaved_changes"] is True
+    assert view["editor"]["comment"] == ""
+    assert view["editor"]["diagram"] is True
+    assert all(row["comment"] == "" for row in view["move_rows"])
+    assert any(row["diagram"] for row in view["move_rows"])

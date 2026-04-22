@@ -174,6 +174,24 @@ class AnnotateSession:
         self._require_document_loaded()
         return self.current_view()
 
+    def clear_comments(self) -> dict[str, object]:
+        """Clear all comments in the currently selected game."""
+
+        game = self._selected_game()
+        game.game.comment = ""
+
+        node = game.game
+        while node.variations:
+            node = node.variations[0]
+            node.comment = ""
+
+        self._replace_selected_game(parse_game(game.game, index=game.summary.index))
+        self._unsaved_changes = True
+
+        replacement = self._selected_game()
+        self._selected_ply = replacement.moves[0].ply if replacement.moves else None
+        return self.current_view()
+
     def save_payload(self) -> dict[str, object]:
         """Return PGN content and metadata for browser-controlled save."""
 
