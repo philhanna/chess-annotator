@@ -42,8 +42,8 @@ Conceptually:
 ## 3. Left Pane
 
 The left pane displays the chessboard for the current ply.
-An implementation note: The board image should be generated
-by the Python chess library on the server side.
+An implementation note: The board should be rendered as SVG generated on the
+server side by the Python chess library.
 
 ### 3.1 Purpose
 
