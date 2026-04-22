@@ -460,8 +460,9 @@ Build in this order:
 * Move-list row identity should be based on ply, not on display text.
 * Comment preview truncation should be deterministic and centralized in the
   backend so the UI does not duplicate formatting rules.
-* The current design docs still mention FastAPI in places. The implementation
-  should follow the actual stdlib server now in the repo.
+* Keep the design docs synchronized with the actual stdlib server and route
+  set so future implementation slices are not planned against stale
+  architecture notes.
 * Avoid mixing "stored annotation state" with "draft editor state" too early.
   That boundary matters for the next slice.
 

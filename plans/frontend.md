@@ -24,15 +24,15 @@ required to support the UI.
 | `src/annotate/ports/__init__.py` | Create package |
 | `src/annotate/adapters/__init__.py` | Create package |
 | `src/annotate/adapters/cli.py` | Create CLI entry point |
-| `src/annotate/adapters/web_app.py` | Create FastAPI app and routes |
+| `src/annotate/adapters/web_app.py` | Create stdlib HTTP server and routes |
 | `src/annotate/adapters/pgn_repository.py` | Create PGN load/save adapter |
 | `src/annotate/adapters/svg_board_renderer.py` | Create server-side SVG adapter |
 | `src/annotate/service.py` | Create application service / state holder |
-| `src/annotate/static/index.html` | Create SPA shell |
-| `src/annotate/static/app.css` | Create layout and visual styling |
-| `src/annotate/static/app.js` | Create SPA behavior |
+| `frontend/index.html` | Create SPA shell |
+| `frontend/app.css` | Create layout and visual styling |
+| `frontend/app.js` | Create SPA behavior |
 | `tests/test_annotate_service.py` | Create backend service tests |
-| `tests/test_annotate_web_api.py` | Create API tests |
+| `tests/test_annotate_web_app.py` | Create API tests |
 | `tests/test_annotate_frontend_smoke.py` | Optional later smoke test |
 
 The exact module names may change, but the separation of responsibilities
@@ -51,13 +51,10 @@ Add:
 ```toml
 [project.scripts]
 chess-annotate = "annotate.adapters.cli:main"
-
-[project.optional-dependencies]
-annotate = ["fastapi", "uvicorn", "python-chess"]
 ```
 
-If serving static files requires an additional dependency already preferred by
-the team, add it here as well.
+The initial implementation can stay dependency-light and use only the runtime
+packages already required elsewhere in the project.
 
 ### 1b — Create the CLI adapter
 
@@ -83,7 +80,7 @@ Before building the UI, define the state the backend must expose.
 
 The service should maintain:
 
-* the currently opened PGN file path, if any,
+* the browser-visible name of the currently opened PGN file, if any,
 * the ordered list of parsed games from that file,
 * the currently selected game index,
 * the currently selected ply within that game,
@@ -118,16 +115,13 @@ The frontend will move quickly if the API is stabilized early.
 These routes are sufficient for the first version:
 
 * `GET /api/session`
-  Returns high-level app state: whether a file is open, active file path,
+  Returns high-level app state: whether a file is open, active source name,
   selected game, selected ply, save target if any, and unsaved status.
 
 * `POST /api/open`
   Opens a PGN file chosen through the browser-controlled open flow. This route
   should accept the browser-provided file content and metadata needed to create
   the in-memory document state.
-
-* `GET /api/games`
-  Returns summary rows for all games in the opened PGN file.
 
 * `POST /api/select-game`
   Sets the active game by index and returns the full UI payload for that game.
@@ -152,10 +146,18 @@ These routes are sufficient for the first version:
   Optional. Can simply echo the currently stored annotation state so the
   frontend can reset its draft controls.
 
+* `POST /api/clear-comments`
+  Clears comments in the currently selected game while preserving diagram
+  markers and other game state.
+
 * `POST /api/save`
   Returns the serialized PGN data needed for a browser-controlled save flow, or
   otherwise supports that browser save path without overwriting the currently
   opened file in the same session.
+
+* `POST /api/confirm-save`
+  Marks the in-memory document as saved after the browser completes its save
+  flow and reports the output name back to the backend.
 
 * `POST /api/close`
   Initiates clean shutdown.
@@ -217,6 +219,16 @@ Each move row should include:
 * diagram marker flag,
 * truncated comment preview,
 * selected status.
+
+### 4c — Save and mutation state
+
+The service should also support:
+
+* applying the editor draft for the selected ply,
+* cancelling the editor draft by reloading stored state,
+* clearing comments for the current game,
+* serializing the full PGN collection for browser save,
+* confirming a completed save so document-level unsaved state can reset.
 
 This is the place to centralize comment truncation rules.
 
