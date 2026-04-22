@@ -48,22 +48,27 @@ regardless of which ply is currently selected.
 
 The actions currently defined are:
 
-* `Open`: opens a file chooser for selecting the input `.pgn` file.
-* `Save`: writes the current annotated game state to a new output `.pgn` file.
+* `Open`: uses the browser's open flow to select the input `.pgn` file.
+* `Save`: uses the browser's save flow to write the current annotated game
+  state to a chosen output `.pgn` file.
 * `Close`: closes the application and shuts down the local backend process.
 
 ### 2.2 Save Behavior
 
 Saving should be non-destructive with respect to the input file.
 
-* The application should not overwrite the original input `.pgn` file.
-* When the user activates `Save`, the application should require a new output
-  file name to be specified.
+* In a given session, the application should not overwrite the `.pgn` file
+  that was opened with `Open`.
+* When the user activates `Save`, the browser save flow should require a new
+  output file to be chosen.
 * The save flow should therefore behave more like "Save As" than "save in
   place," even if the visible top-level action is labeled simply `Save`.
+* A file produced by an earlier save may later be reopened in a new session and
+  used as the starting point for further annotation.
 
-This matches the intended workflow that the source PGN remains untouched and
-the annotated result is written to a separate file.
+This matches the intended workflow that the session's source PGN remains
+untouched while the annotated result is written to a separate file, yet a
+previously saved annotated file can still be reopened in a later session.
 
 ## 3. Left Pane
 
@@ -222,16 +227,18 @@ same navigation surface.
 
 ## 6. Bottom Right Pane
 
-The bottom half of the right-hand side is used for viewing and editing comments
-for the currently selected ply.
+The bottom half of the right-hand side is used for editing annotation details
+for the currently selected ply, including both comment text and diagram
+selection.
 
 ### 6.1 Purpose
 
-This pane is where the user works with the full comment text for the selected
-move. It complements the move-list preview above:
+This pane is where the user works with the full annotation state for the
+selected move. It complements the move-list preview above:
 
 * the top-right move list helps the user scan the game,
-* the bottom-right pane shows the complete comment for the selected ply.
+* the bottom-right pane shows the complete comment and diagram-toggle state for
+  the selected ply.
 
 ### 6.2 Content
 
@@ -248,6 +255,17 @@ If the selected ply has no comment:
   content as the user works.
 
 The pane is also where the user edits the comment text for the selected ply.
+
+The pane should also include a checkbox that controls whether a diagram should
+be generated for the selected ply.
+
+* If the checkbox is checked, the selected ply is marked for diagram
+  generation.
+* If the checkbox is unchecked, the selected ply is not marked for diagram
+  generation.
+
+This checkbox is the editing control for the diagram marker whose summary is
+shown in the move list.
 
 ### 6.3 Editing Controls
 
@@ -272,6 +290,8 @@ Whenever the selected ply changes:
 
 * the comment pane updates to show the comment associated with the new
   selection,
+* the diagram checkbox updates to reflect whether the selected ply is currently
+  marked for diagram generation,
 * the pane therefore always stays synchronized with the move highlight in the
   top-right pane and the board position in the left pane.
 
@@ -290,15 +310,18 @@ The screen layout described so far supports the following interaction pattern:
 2. The current board position updates in the left pane.
 3. The bottom-right pane updates to show the existing comment for the selected
    ply.
-4. The user can edit the comment in the bottom-right pane and use `Apply` or
-   `Cancel` to finish or discard that edit session.
-5. The user scans move numbers, diagram markers, and comment snippets in the
+4. The bottom-right pane also shows a checkbox for whether a diagram should be
+   generated for the selected ply.
+5. The user can edit the comment in the bottom-right pane, toggle the diagram
+   checkbox, and use `Apply` or `Cancel` to finish or discard that edit
+   session.
+6. The user scans move numbers, diagram markers, and comment snippets in the
    move list to decide where to work next.
-6. The user can also use transport-style controls at the bottom of the move
+7. The user can also use transport-style controls at the bottom of the move
    list to jump to the beginning or end, or move one ply backward or forward.
-7. The user can use the top-level actions to open a PGN, save annotated output
+8. The user can use the top-level actions to open a PGN, save annotated output
    to a new file, or close the application.
-8. The user can resize both the main left-right split and the upper-lower split
+9. The user can resize both the main left-right split and the upper-lower split
    on the right side to suit his current task.
 
 ## 8. Open Items

@@ -28,7 +28,9 @@ The `annotate` project is a local-only Python application that utilizes a web br
 * **Execution**: `chess-annotate`
 * **Startup Logic**: 
     * **Server Startup**: The CLI starts the local server and opens the browser UI without requiring a PGN path on the command line.
+    * **Port Selection**: The application chooses its local port automatically.
     * **Initial State**: The application may launch with no game loaded. Opening a PGN file is a normal first action in the UI.
+    * **Minimal CLI Surface**: The CLI is intentionally minimal and does not expose workflow options for opening files, saving files, selecting games, or controlling annotation behavior.
 * **Termination**: Clicking the "Close" button in the SPA triggers the backend to shut down the web server and exit the CLI process.
 
 ### 4.2 Persistence & "Desktop-Style" Saving
@@ -39,11 +41,14 @@ The `annotate` project is a local-only Python application that utilizes a web br
     * The user must be able to switch between games in the same file without restarting the CLI.
 * **Resume Workflow**:
     * Saving writes annotations back to disk so the user can stop and continue later.
-    * After reopening the application, the user can reopen the same PGN file and continue annotating a previously saved game.
+    * After reopening the application, the user can reopen a previously saved annotated PGN file and continue annotating from that point.
 * **Save Trigger**:
     * **State Management**: The SPA includes a **"Save"** button.
     * **Feedback**: Upon a successful write, the UI provides a "File Saved" notification.
+    * **Browser-Controlled File Selection**: The browser UI controls both opening and saving. `Open` is initiated from the browser, and `Save` is initiated from the browser's save flow.
     * **Scope**: Save behavior must be explicit about whether it writes the selected game only or rewrites the entire PGN file containing all games. The preferred behavior is to preserve the full file and update only the selected game content within it.
+    * **Non-Destructive Session Save**: During a given annotation session, the file opened via `Open` must not be overwritten directly. Saving should write to a user-selected output file.
+    * **Continuation by Reopen**: A file produced by an earlier save may later be reopened in a new invocation of the application and used as the starting point for additional annotation.
 * **No Database**: All persistence is handled via PGN files.
 
 ### 4.3 Export Standards
