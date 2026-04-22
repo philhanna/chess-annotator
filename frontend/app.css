@@ -17,11 +17,13 @@ body {
   margin: 0;
   background: linear-gradient(180deg, #efe5d6 0%, var(--bg) 100%);
   color: var(--text);
+  overflow: hidden;
 }
 
 .app {
   display: grid;
   grid-template-rows: auto 1fr auto;
+  height: 100vh;
   min-height: 100vh;
 }
 
@@ -67,22 +69,32 @@ body {
   display: grid;
   grid-template-columns: minmax(18rem, 1fr) minmax(24rem, 1.3fr);
   min-height: 0;
+  overflow: hidden;
 }
 
 .left-pane,
 .top-pane,
 .bottom-pane {
+  display: grid;
+  grid-template-rows: auto 1fr;
   margin: 0.75rem;
   padding: 1rem;
   background: var(--panel);
   border: 1px solid var(--panel-border);
   border-radius: 0.75rem;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.bottom-pane {
+  grid-template-rows: auto auto 1fr auto;
 }
 
 .right-pane {
   display: grid;
-  grid-template-rows: minmax(14rem, 1fr) minmax(14rem, 1fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   min-height: 0;
+  overflow: hidden;
 }
 
 .pane-title {
@@ -98,7 +110,7 @@ body {
 .moves-pane,
 textarea {
   width: 100%;
-  min-height: 12rem;
+  min-height: 0;
   border: 1px dashed var(--panel-border);
   border-radius: 0.5rem;
   background: #fff;
@@ -117,7 +129,6 @@ textarea {
 }
 
 .moves-pane {
-  min-height: 16rem;
   overflow: auto;
   padding: 0.5rem;
 }
@@ -131,8 +142,10 @@ textarea {
 }
 
 textarea {
+  min-height: 0;
+  height: 100%;
   padding: 0.75rem;
-  resize: vertical;
+  resize: none;
 }
 
 .checkbox-row {
@@ -173,6 +186,7 @@ textarea {
   background: #fff9f0;
   color: var(--text);
   cursor: pointer;
+  scroll-margin-block: 0.5rem;
 }
 
 .move-row:hover {
@@ -216,6 +230,7 @@ textarea {
   justify-content: center;
   gap: 0.5rem;
   margin-top: 0.75rem;
+  flex-shrink: 0;
 }
 
 .nav-button {

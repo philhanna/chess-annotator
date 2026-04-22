@@ -112,6 +112,18 @@ function renderMoves(moveRows) {
   });
 }
 
+function ensureSelectedMoveVisible() {
+  const selectedRow = movesPane.querySelector(".move-row.selected");
+  if (!selectedRow) {
+    return;
+  }
+
+  selectedRow.scrollIntoView({
+    block: "nearest",
+    inline: "nearest",
+  });
+}
+
 function renderGames(games, selectedGame) {
   gameSelect.innerHTML = "";
   if (!games.length) {
@@ -154,6 +166,7 @@ function renderView(view) {
   renderBoard(view.board_svg);
   renderGames(view.games, view.selected_game);
   renderMoves(view.move_rows);
+  ensureSelectedMoveVisible();
   renderEditor(view.editor, false);
 
   if (view.selected_game) {
