@@ -312,4 +312,5 @@ def parse_pgn(pgn_text: str) -> RenderModel:
     return RenderModel(
         headers=parse_headers(game),
         segments=build_segments(collect_moves(game)),
+        pre_game_comment=game.comment.strip(),
     )

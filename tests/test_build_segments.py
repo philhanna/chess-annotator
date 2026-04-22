@@ -75,3 +75,19 @@ def test_collect_moves_sets_result_on_final_move():
     pgn_text = (TESTDATA / "game1.pgn").read_text()
     model = parse_pgn(pgn_text)
     assert model.segments[-1].moves[-1].result == "0-1"
+
+
+def test_parse_pgn_captures_pre_game_comment():
+    pgn_text = (
+        '[White "A"]\n[Black "B"]\n\n'
+        "{ This is the opening note. }\n"
+        "1. e4 e5 *\n"
+    )
+    model = parse_pgn(pgn_text)
+    assert model.pre_game_comment == "This is the opening note."
+
+
+def test_parse_pgn_pre_game_comment_empty_when_absent():
+    pgn_text = '[White "A"]\n[Black "B"]\n\n1. e4 e5 *\n'
+    model = parse_pgn(pgn_text)
+    assert model.pre_game_comment == ""

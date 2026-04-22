@@ -130,6 +130,8 @@ class ReportLabPdfRenderer:
         styles = build_styles()
         story: list = []
         story.extend(self.title_flowables(model.headers, styles))
+        if model.pre_game_comment:
+            story.append(Paragraph(html.escape(model.pre_game_comment), styles["Comment"]))
         for segment in model.segments:
             story.extend(self.segment_flowables(segment, orientation, styles))
         doc = SimpleDocTemplate(

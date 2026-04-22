@@ -32,3 +32,4 @@ class RenderModel:
 
     headers: GameHeaders
     segments: tuple[Segment, ...]
+    pre_game_comment: str = ""
