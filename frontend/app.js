@@ -216,11 +216,14 @@ function renderBoard(svgMarkup, selectedGame, flipped) {
     return;
   }
 
+  const boardTitle = selectedGame?.board_title || "";
   const topPlayer = flipped ? (selectedGame?.white || "White") : (selectedGame?.black || "Black");
   const bottomPlayer = flipped ? (selectedGame?.black || "Black") : (selectedGame?.white || "White");
+  const titleMarkup = boardTitle ? `<div class="board-title">${boardTitle}</div>` : "";
 
   boardPane.innerHTML = `
     <div class="board-layout">
+      ${titleMarkup}
       <div class="board-player board-player-top">${topPlayer}</div>
       <div class="board-svg">${svgMarkup}</div>
       <div class="board-player board-player-bottom">${bottomPlayer}</div>

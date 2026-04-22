@@ -9,6 +9,8 @@ from pathlib import PurePath
 import chess
 import chess.pgn
 
+from render.domain.render_model import format_date
+
 
 NAG_DIAGRAM = 220
 
@@ -24,6 +26,7 @@ class GameSummary:
     event: str
     round: str
     date: str
+    board_title: str
     result: str
 
 
@@ -95,6 +98,7 @@ def build_game_summary(game: chess.pgn.Game, index: int) -> GameSummary:
     round_name = normalize_header(headers.get("Round", "?"))
     date = normalize_header(headers.get("Date", "?"))
     result = normalize_header(headers.get("Result", "*"))
+    board_title = build_board_title(event, date, round_name)
 
     parts = [f"{white} vs {black}"]
     detail_parts = [part for part in [event, round_name, date, result] if part]
@@ -109,8 +113,18 @@ def build_game_summary(game: chess.pgn.Game, index: int) -> GameSummary:
         event=event,
         round=round_name,
         date=date,
+        board_title=board_title,
         result=result,
     )
+
+
+def build_board_title(event: str, date: str, round_name: str) -> str:
+    """Build the board title from event, formatted date, and round."""
+
+    parts = [part for part in [event, format_date(date)] if part]
+    if round_name:
+        parts.append(f"Round {round_name}")
+    return " ".join(parts)
 
 
 def build_move_entries(game: chess.pgn.Game) -> list[MoveEntry]:
