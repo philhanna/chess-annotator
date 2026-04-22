@@ -142,6 +142,58 @@ At this stage, the indicator is not fully designed. The current concept is:
 The final symbol and styling can be refined later, but the move list should
 make diagram-marked plies immediately visible when scanning the game.
 
+### 5.5 Selected Ply
+
+The interface has a notion of the currently selected move, more precisely the
+currently selected ply.
+
+This selected ply should be visually obvious in the move list.
+
+* If the selected ply is a White move, the highlighted row appears in the White
+  column.
+* If the selected ply is a Black move, the highlighted row appears in the Black
+  column.
+* The highlight treatment should be strong enough that the user can identify
+  the current ply at a glance while scanning the list.
+
+Clicking on any move entry in either column makes that ply the currently
+selected ply.
+
+When the selected ply changes:
+
+* the highlight moves to the newly selected row,
+* the board in the left pane updates to the corresponding position,
+* any other annotation-related UI should follow the newly selected ply.
+
+### 5.6 Move Navigation Controls
+
+At the bottom of the move list in the top-right pane, there should be a compact
+set of navigation controls for moving the selected ply backward and forward
+through the game.
+
+These controls are modeled after transport controls on audio or video devices.
+The default concept is:
+
+* `<<` to jump to the beginning of the game,
+* `<` to move back by one ply,
+* `>` to move forward by one ply,
+* `>>` to jump to the end of the game.
+
+Another equivalent visual convention is acceptable if it is clearer, but the
+behavior should remain the same.
+
+These controls provide an alternative to clicking directly in the move list and
+should always operate on the currently selected ply.
+
+When the user activates one of these controls:
+
+* the selected ply changes accordingly,
+* the highlight in the move list updates,
+* the left-pane board updates to the new current position.
+
+The controls should remain close to the move list so they feel like part of the
+same navigation surface.
+
 ## 6. Bottom Right Pane
 
 The bottom half of the right-hand side exists in the layout, but its contents
@@ -161,7 +213,9 @@ The screen layout described so far supports the following interaction pattern:
 2. The current board position updates in the left pane.
 3. The user scans move numbers, diagram markers, and comment snippets in the
    move list to decide where to work next.
-4. The user can resize both the main left-right split and the upper-lower split
+4. The user can also use transport-style controls at the bottom of the move
+   list to jump to the beginning or end, or move one ply backward or forward.
+5. The user can resize both the main left-right split and the upper-lower split
    on the right side to suit his current task.
 
 ## 8. Open Items
@@ -171,6 +225,7 @@ The following screen-design topics are still intentionally unspecified:
 * the content of the bottom-right pane,
 * the exact appearance of the move rows,
 * the exact symbol, styling, or color treatment for the diagram marker,
+* the exact highlight styling for the selected ply,
 * the truncation rules for comment previews,
 * placement of file, save, game-selection, or close controls,
 * behavior on narrow screens.
