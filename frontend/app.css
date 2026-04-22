@@ -229,7 +229,7 @@ textarea {
 }
 
 .board-pane svg {
-  width: min(100%, 24rem);
+  width: min(100%, 18rem);
   height: auto;
 }
 
