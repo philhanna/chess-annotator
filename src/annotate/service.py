@@ -167,8 +167,18 @@ class AnnotateSession:
             else:
                 node.nags.discard(NAG_DIAGRAM)
 
-        self._replace_selected_game(parse_game(game.game, index=game.summary.index))
+        self._replace_selected_game(parse_game(game.game, index=game.summary.index, flipped=game.flipped))
         self._unsaved_changes = True
+        return self.current_view()
+
+    def set_board_flipped(self, flipped: bool) -> dict[str, object]:
+        """Set the selected game's board orientation preference."""
+
+        game = self._selected_game()
+        if game.flipped == flipped:
+            return self.current_view()
+
+        self._replace_selected_game(parse_game(game.game, index=game.summary.index, flipped=flipped))
         return self.current_view()
 
     def cancel_annotation(self) -> dict[str, object]:
@@ -188,7 +198,7 @@ class AnnotateSession:
             node = node.variations[0]
             node.comment = ""
 
-        self._replace_selected_game(parse_game(game.game, index=game.summary.index))
+        self._replace_selected_game(parse_game(game.game, index=game.summary.index, flipped=game.flipped))
         self._unsaved_changes = True
 
         self._selected_ply = 0
@@ -224,6 +234,8 @@ class AnnotateSession:
             "selected_game": None,
             "selected_ply": self._selected_ply,
             "board_svg": self._board_svg(),
+            "board_flipped": False,
+            "flip_enabled": self._selected_game_index is not None,
             "move_rows": [],
             "editor": asdict(self._editor_state()),
             "editor_enabled": self._selected_game_index is not None,
@@ -233,6 +245,7 @@ class AnnotateSession:
         if self._selected_game_index is not None:
             game = self._games[self._selected_game_index]
             payload["selected_game"] = asdict(game.summary)
+            payload["board_flipped"] = game.flipped
             payload["move_rows"] = [
                 {
                     **asdict(move),
@@ -261,7 +274,7 @@ class AnnotateSession:
             node = selected_node(game.game, self._selected_ply)
             if node is not None:
                 lastmove = node.move
-        return self._board_renderer.render(fen, lastmove=lastmove)
+        return self._board_renderer.render(fen, lastmove=lastmove, flipped=game.flipped)
 
     def _selected_move(self):
         if self._selected_game_index is None or self._selected_ply is None:

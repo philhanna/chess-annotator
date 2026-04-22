@@ -149,6 +149,20 @@ class AnnotateRequestHandler(BaseHTTPRequestHandler):
                 self._send_json_error(HTTPStatus.BAD_REQUEST, str(exc))
             return
 
+        if self.path == "/api/set-board-flipped":
+            payload = self._read_json()
+            if payload is None:
+                return
+            try:
+                self._send_json(
+                    self.server.annotate_session.set_board_flipped(
+                        require_bool(payload, "flipped")
+                    )
+                )
+            except ValueError as exc:
+                self._send_json_error(HTTPStatus.BAD_REQUEST, str(exc))
+            return
+
         if self.path == "/api/save":
             try:
                 self._send_json(self.server.annotate_session.save_payload())

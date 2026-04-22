@@ -161,6 +161,23 @@ body {
   margin-bottom: 0.75rem;
 }
 
+.pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.pane-header .pane-title {
+  margin-bottom: 0;
+}
+
+.pane-toggle {
+  margin-bottom: 0;
+  color: var(--text);
+  white-space: nowrap;
+}
+
 .board-pane,
 .moves-pane,
 textarea {

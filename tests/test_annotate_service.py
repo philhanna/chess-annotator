@@ -6,10 +6,10 @@ from annotate.service import AnnotateSession
 
 class RecordingBoardRenderer:
     def __init__(self) -> None:
-        self.calls: list[tuple[str, object]] = []
+        self.calls: list[tuple[str, object, bool]] = []
 
-    def render(self, fen: str, lastmove=None) -> str:
-        self.calls.append((fen, lastmove))
+    def render(self, fen: str, lastmove=None, flipped: bool = False) -> str:
+        self.calls.append((fen, lastmove, flipped))
         return "<svg></svg>"
 
 
@@ -51,6 +51,8 @@ def test_open_pgn_builds_document_view(tmp_path: Path) -> None:
     assert view["selected_ply"] == 0
     assert view["editor"]["comment"] == ""
     assert view["diagram_enabled"] is False
+    assert view["board_flipped"] is False
+    assert view["flip_enabled"] is True
     assert view["move_rows"][0]["is_initial_position"] is True
     assert any(row["diagram"] for row in view["move_rows"])
     assert view["board_svg"].startswith("<svg")
@@ -135,9 +137,38 @@ def test_board_renderer_receives_lastmove_for_selected_ply(tmp_path: Path) -> No
 
     session.open_pgn("game1.pgn", pgn_text)
     assert renderer.calls[-1][1] is None
+    assert renderer.calls[-1][2] is False
 
     session.select_ply(1)
     assert renderer.calls[-1][1] is not None
+
+
+def test_set_board_flipped_updates_selected_game_without_marking_document_dirty(tmp_path: Path) -> None:
+    renderer = RecordingBoardRenderer()
+    session = AnnotateSession(frontend_root=tmp_path, board_renderer=renderer)
+    pgn_text = Path("tests/testdata/game1.pgn").read_text()
+    session.open_pgn("game1.pgn", pgn_text)
+
+    view = session.set_board_flipped(True)
+
+    assert view["session"]["unsaved_changes"] is False
+    assert view["board_flipped"] is True
+    assert renderer.calls[-1][2] is True
+
+
+def test_select_game_uses_stored_orientation_for_each_game(tmp_path: Path) -> None:
+    session = AnnotateSession(frontend_root=tmp_path)
+    pgn_text = Path("tests/testdata/annotate-multi.pgn").read_text()
+    session.open_pgn("annotate-multi.pgn", pgn_text)
+    session.set_board_flipped(True)
+
+    first_game_view = session.current_view()
+    second_game_view = session.select_game(1)
+    restored_first_game_view = session.select_game(0)
+
+    assert first_game_view["board_flipped"] is True
+    assert second_game_view["board_flipped"] is False
+    assert restored_first_game_view["board_flipped"] is True
 
 
 def test_cancel_annotation_returns_current_stored_state(tmp_path: Path) -> None:

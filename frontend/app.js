@@ -11,6 +11,7 @@ const rightPane = document.querySelector(".right-pane");
 const mainSplitter = document.getElementById("main-splitter");
 const rightSplitter = document.getElementById("right-splitter");
 const gameSelect = document.getElementById("game-select");
+const boardFlipCheckbox = document.getElementById("board-flip-checkbox");
 const commentEditor = document.getElementById("comment-editor");
 const diagramCheckbox = document.getElementById("diagram-checkbox");
 const clearCommentsButton = document.getElementById("clear-comments-button");
@@ -48,6 +49,8 @@ function renderClosedState() {
   gameSelect.disabled = true;
   openButton.disabled = true;
   saveButton.disabled = true;
+  boardFlipCheckbox.checked = false;
+  boardFlipCheckbox.disabled = true;
   closeButton.disabled = true;
   commentEditor.value = "";
   commentEditor.disabled = true;
@@ -161,6 +164,8 @@ function renderIdle(session) {
   gameSelect.innerHTML = "<option>No games loaded</option>";
   gameSelect.disabled = true;
   saveButton.disabled = true;
+  boardFlipCheckbox.checked = false;
+  boardFlipCheckbox.disabled = true;
   commentEditor.value = "";
   commentEditor.disabled = true;
   diagramCheckbox.checked = false;
@@ -372,6 +377,8 @@ function renderView(view) {
   const dirtySuffix = session.unsaved_changes ? " | Unsaved changes" : "";
   documentMeta.textContent = `${sourceLabel}${savedSuffix}${dirtySuffix}`;
   saveButton.disabled = !session.unsaved_changes;
+  boardFlipCheckbox.checked = Boolean(view.board_flipped);
+  boardFlipCheckbox.disabled = !view.flip_enabled;
   renderBoard(view.board_svg);
   renderGames(view.games, view.selected_game);
   gameSelect.dataset.currentValue = view.selected_game ? String(view.selected_game.index) : "";
@@ -517,6 +524,25 @@ commentEditor.addEventListener("input", () => {
 
 diagramCheckbox.addEventListener("change", () => {
   updateDraftFromControls();
+});
+
+boardFlipCheckbox.addEventListener("change", async () => {
+  try {
+    const view = await fetchJson("/api/set-board-flipped", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        flipped: boardFlipCheckbox.checked,
+      }),
+    });
+    renderView(view);
+    setStatus(`Board orientation ${boardFlipCheckbox.checked ? "flipped" : "reset"}.`);
+  } catch (error) {
+    boardFlipCheckbox.checked = !boardFlipCheckbox.checked;
+    setStatus(`Unable to update board orientation: ${error.message}`);
+  }
 });
 
 applyButton.addEventListener("click", async () => {

@@ -91,6 +91,8 @@ def test_open_route_returns_document_view_with_zeroth_ply() -> None:
     assert payload["selected_ply"] == 0
     assert payload["move_rows"][0]["is_initial_position"] is True
     assert payload["diagram_enabled"] is False
+    assert payload["board_flipped"] is False
+    assert payload["flip_enabled"] is True
 
 
 def test_select_ply_and_navigate_routes_update_selection() -> None:
@@ -169,3 +171,15 @@ def test_game_view_route_reports_current_selection() -> None:
     assert payload["selected_game"]["index"] == 1
     assert payload["selected_ply"] == 10
     assert payload["editor"]["diagram"] is True
+
+
+def test_set_board_flipped_route_updates_game_orientation() -> None:
+    pgn_text = Path("tests/testdata/game1.pgn").read_text()
+
+    with running_server() as server:
+        post_json(server, "/api/open", {"display_name": "game1.pgn", "pgn_text": pgn_text})
+        status, payload = post_json(server, "/api/set-board-flipped", {"flipped": True})
+
+    assert status == 200
+    assert payload["board_flipped"] is True
+    assert payload["session"]["unsaved_changes"] is False

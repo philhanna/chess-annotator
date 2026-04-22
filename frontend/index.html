@@ -29,7 +29,13 @@
 
       <main class="workspace">
         <section class="left-pane">
-          <div class="pane-title">Board</div>
+          <div class="pane-header">
+            <div class="pane-title">Board</div>
+            <label class="checkbox-row pane-toggle">
+              <input type="checkbox" id="board-flip-checkbox" disabled>
+              Flip
+            </label>
+          </div>
           <div class="board-pane" id="board-pane">
             <div class="board-placeholder">Board SVG will render here.</div>
           </div>

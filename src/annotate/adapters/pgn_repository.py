@@ -49,6 +49,7 @@ class ParsedGame:
     summary: GameSummary
     moves: tuple[MoveEntry, ...]
     initial_fen: str
+    flipped: bool
     game: chess.pgn.Game
 
 
@@ -72,13 +73,14 @@ def parse_pgn_collection(pgn_text: str) -> tuple[ParsedGame, ...]:
     return tuple(games)
 
 
-def parse_game(game: chess.pgn.Game, index: int) -> ParsedGame:
+def parse_game(game: chess.pgn.Game, index: int, flipped: bool = False) -> ParsedGame:
     """Build the parsed annotate representation for one game."""
 
     return ParsedGame(
         summary=build_game_summary(game, index=index),
         moves=tuple(build_move_entries(game)),
         initial_fen=game.board().fen(),
+        flipped=flipped,
         game=game,
     )
 
