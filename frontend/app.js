@@ -28,6 +28,7 @@ let currentSession = {
   status: "idle",
   unsaved_changes: false,
 };
+let appClosed = false;
 
 const layoutStorageKeys = {
   workspaceLeft: "annotate.workspace.left",
@@ -36,6 +37,29 @@ const layoutStorageKeys = {
 
 function setStatus(message) {
   statusBar.textContent = message;
+}
+
+function renderClosedState() {
+  appClosed = true;
+  documentMeta.textContent = "Application closed";
+  boardPane.innerHTML = '<div class="board-placeholder">The annotate server has shut down.</div>';
+  movesPane.innerHTML = '<div class="moves-placeholder">This browser tab can now be closed.</div>';
+  gameSelect.innerHTML = "<option>Application closed</option>";
+  gameSelect.disabled = true;
+  openButton.disabled = true;
+  saveButton.disabled = true;
+  closeButton.disabled = true;
+  commentEditor.value = "";
+  commentEditor.disabled = true;
+  diagramCheckbox.checked = false;
+  diagramCheckbox.disabled = true;
+  clearCommentsButton.disabled = true;
+  applyButton.disabled = true;
+  cancelButton.disabled = true;
+  navButtons.forEach((button) => {
+    button.disabled = true;
+  });
+  setStatus("Application closed. You may close this browser tab.");
 }
 
 function clamp(value, min, max) {
@@ -109,6 +133,10 @@ function enableSplitters() {
 }
 
 async function fetchJson(url, options = {}) {
+  if (appClosed) {
+    throw new Error("application is closed");
+  }
+
   const response = await fetch(url, options);
   let payload = null;
 
@@ -543,7 +571,10 @@ closeButton.addEventListener("click", async () => {
       },
       body: JSON.stringify({}),
     });
-    setStatus("Closing application…");
+    renderClosedState();
+    window.setTimeout(() => {
+      window.close();
+    }, 100);
   } catch (error) {
     setStatus(`Unable to close application: ${error.message}`);
   }
