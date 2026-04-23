@@ -161,14 +161,13 @@ def serialize_pgn_collection(games: tuple[ParsedGame, ...]) -> str:
     """Serialize the current PGN collection in export form."""
 
     parts: list[str] = []
-    exporter = chess.pgn.StringExporter(
-        headers=True,
-        variations=True,
-        comments=True,
-        columns=80,
-    )
-
     for parsed_game in games:
+        exporter = chess.pgn.StringExporter(
+            headers=True,
+            variations=True,
+            comments=True,
+            columns=80,
+        )
         parts.append(parsed_game.game.accept(exporter).strip())
 
     if not parts:
