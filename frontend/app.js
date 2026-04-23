@@ -14,7 +14,6 @@ const gameSelect = document.getElementById("game-select");
 const boardFlipButton = document.getElementById("board-flip-button");
 const commentEditor = document.getElementById("comment-editor");
 const diagramCheckbox = document.getElementById("diagram-checkbox");
-const clearCommentsButton = document.getElementById("clear-comments-button");
 const applyButton = document.getElementById("apply-button");
 const cancelButton = document.getElementById("cancel-button");
 const navButtons = Array.from(document.querySelectorAll(".nav-button"));
@@ -56,7 +55,6 @@ function renderClosedState() {
   commentEditor.disabled = true;
   diagramCheckbox.checked = false;
   diagramCheckbox.disabled = true;
-  clearCommentsButton.disabled = true;
   applyButton.disabled = true;
   cancelButton.disabled = true;
   navButtons.forEach((button) => {
@@ -170,7 +168,6 @@ function renderIdle(session) {
   commentEditor.disabled = true;
   diagramCheckbox.checked = false;
   diagramCheckbox.disabled = true;
-  clearCommentsButton.disabled = true;
   applyButton.disabled = true;
   cancelButton.disabled = true;
   navButtons.forEach((button) => {
@@ -358,7 +355,6 @@ function renderEditor(editor, enabled, diagramEnabled) {
   commentEditor.disabled = !enabled;
   diagramCheckbox.checked = editorDraft.diagram;
   diagramCheckbox.disabled = !diagramEnabled;
-  clearCommentsButton.disabled = !enabled;
   syncDraftButtons(enabled);
 }
 
@@ -629,29 +625,6 @@ closeButton.addEventListener("click", async () => {
   }
 });
 
-clearCommentsButton.addEventListener("click", async () => {
-  if (!confirmDiscardDraftIfNeeded()) {
-    return;
-  }
-
-  if (!window.confirm("Clear all comments in the current game? Diagram markers will be preserved.")) {
-    return;
-  }
-
-  try {
-    const view = await fetchJson("/api/clear-comments", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({}),
-    });
-    renderView(view);
-    setStatus("Comments cleared for the current game.");
-  } catch (error) {
-    setStatus(`Unable to clear comments: ${error.message}`);
-  }
-});
 
 saveButton.addEventListener("click", async () => {
   if (editorDraft.dirty) {
