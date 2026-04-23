@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.1] - 2026-04-22
+
+### Changed
+- Clear Comments button removed from the UI (server-side logic retained)
+- README updated
+
 ## [2.1.0] - 2026-04-22
 
 ### Added
