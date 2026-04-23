@@ -12,7 +12,7 @@ from pathlib import Path
 
 from render.adapters.chess_svg_diagram_renderer import ChessSvgDiagramRenderer
 from render.adapters.pdf_renderer import ReportLabPdfRenderer
-from render.domain.render_model import parse_pgn
+from render.domain.render_model import parse_all_pgn
 
 
 def parse_args() -> argparse.Namespace:
@@ -43,6 +43,13 @@ def parse_args() -> argparse.Namespace:
         default="white",
         help="Board diagram orientation (default: white)",
     )
+    parser.add_argument(
+        "-g", "--game",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Render only game N (1-based). Default: render all games.",
+    )
     return parser.parse_args()
 
 
@@ -71,9 +78,27 @@ def main() -> None:
         sys.exit(1)
 
     try:
-        model = parse_pgn(pgn_path.read_text())
+        all_models = parse_all_pgn(pgn_path.read_text())
+    except ValueError as exc:
+        print(f"chess-render: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    if args.game is not None:
+        n = args.game
+        if n < 1 or n > len(all_models):
+            print(
+                f"chess-render: game {n} not found"
+                f" (file has {len(all_models)} game(s))",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        models = [all_models[n - 1]]
+    else:
+        models = all_models
+
+    try:
         renderer = ReportLabPdfRenderer(diagram_renderer=ChessSvgDiagramRenderer())
-        renderer.render(model, output_path, args.orientation)
+        renderer.render_collection(models, output_path, args.orientation)
         print(f"PDF written to: {output_path.resolve()}")
     except ValueError as exc:
         print(f"chess-render: {exc}", file=sys.stderr)

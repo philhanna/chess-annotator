@@ -25,3 +25,11 @@ def test_smoke_render_black_orientation(tmp_path):
     render_pdf(pgn_text, output_path=output_path, orientation="black")
     assert output_path.exists()
     assert output_path.stat().st_size > 0
+
+
+def test_smoke_render_multi_game(tmp_path):
+    pgn_text = (TESTDATA / "annotate-multi.pgn").read_text()
+    output_path = tmp_path / "multi.pdf"
+    render_pdf(pgn_text, output_path=output_path)
+    assert output_path.exists()
+    assert output_path.stat().st_size > 0

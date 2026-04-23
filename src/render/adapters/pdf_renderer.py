@@ -27,7 +27,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 from svglib.svglib import svg2rlg
 
 from render.adapters.chess_svg_diagram_renderer import ChessSvgDiagramRenderer
@@ -36,6 +36,7 @@ from render.domain.plied_move import PliedMove
 from render.domain.render_model import (
     caption_text,
     moves_text,
+    parse_all_pgn,
     parse_pgn,
     subtitle_text,
 )
@@ -79,6 +80,7 @@ def build_styles() -> dict[str, ParagraphStyle]:
                         alignment=TA_CENTER, spaceAfter=4),
         "Moves":    ParagraphStyle("Moves",
                         fontName="Helvetica-Bold", fontSize=12,
+                        leading=18,
                         alignment=TA_LEFT, spaceAfter=6),
         "Comment":  ParagraphStyle("Comment",
                         fontName="Helvetica", fontSize=12,
@@ -117,7 +119,7 @@ class ReportLabPdfRenderer:
         output_path: Path,
         orientation: str = "white",
     ) -> None:
-        """Build a PDF from ``model`` and write it to ``output_path``.
+        """Build a PDF from a single ``model`` and write it to ``output_path``.
 
         Args:
             model: The parsed game data including headers and all segments.
@@ -127,13 +129,34 @@ class ReportLabPdfRenderer:
                 is used for all board diagrams.  Defaults to ``"white"``.
         """
 
+        self.render_collection([model], output_path, orientation)
+
+    def render_collection(
+        self,
+        models: list[RenderModel],
+        output_path: Path,
+        orientation: str = "white",
+    ) -> None:
+        """Build a PDF from one or more models and write it to ``output_path``.
+
+        Each game starts on a new page after the first.
+
+        Args:
+            models: Ordered list of parsed games to render.
+            output_path: Destination path for the PDF file.
+            orientation: ``"white"`` or ``"black"`` — board diagram perspective.
+        """
+
         styles = build_styles()
         story: list = []
-        story.extend(self.title_flowables(model.headers, styles))
-        if model.pre_game_comment:
-            story.append(Paragraph(html.escape(model.pre_game_comment), styles["Comment"]))
-        for segment in model.segments:
-            story.extend(self.segment_flowables(segment, orientation, styles))
+        for i, model in enumerate(models):
+            if i > 0:
+                story.append(PageBreak())
+            story.extend(self.title_flowables(model.headers, styles))
+            if model.pre_game_comment:
+                story.append(Paragraph(html.escape(model.pre_game_comment), styles["Comment"]))
+            for segment in model.segments:
+                story.extend(self.segment_flowables(segment, orientation, styles))
         doc = SimpleDocTemplate(
             str(output_path),
             pagesize=LETTER,
@@ -270,7 +293,7 @@ def render_pdf(
     Raises:
         ValueError: If ``pgn_text`` contains no parseable game.
     """
-    model = parse_pgn(pgn_text)
-    ReportLabPdfRenderer(diagram_renderer=ChessSvgDiagramRenderer()).render(
-        model, output_path, orientation
+    models = parse_all_pgn(pgn_text)
+    ReportLabPdfRenderer(diagram_renderer=ChessSvgDiagramRenderer()).render_collection(
+        models, output_path, orientation
     )

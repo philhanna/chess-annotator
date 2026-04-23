@@ -287,30 +287,49 @@ def build_segments(moves: list[PliedMove]) -> tuple:
     return tuple(segments)
 
 
-def parse_pgn(pgn_text: str) -> RenderModel:
-    """Parse a PGN string into the immutable render model consumed by adapters.
-
-    This is the primary entry point for the domain layer.  It delegates to
-    :func:`parse_headers`, :func:`collect_moves`, and :func:`build_segments`
-    in sequence and wraps the results in a :class:`RenderModel`.
+def parse_all_pgn(pgn_text: str) -> list[RenderModel]:
+    """Parse every game in a PGN string into a list of render models.
 
     Args:
-        pgn_text: The full text of a PGN file.  Only the first game is parsed;
-            any subsequent games are ignored.
+        pgn_text: The full text of a PGN file, which may contain one or more
+            games.
 
     Returns:
-        A fully-populated :class:`~render.domain.render_model_data.RenderModel`
-        ready to pass to a document renderer.
+        An ordered list of :class:`~render.domain.render_model_data.RenderModel`
+        instances, one per game in the file.
 
     Raises:
         ValueError: If ``pgn_text`` contains no parseable game.
     """
 
-    game = chess.pgn.read_game(io.StringIO(pgn_text))
-    if game is None:
+    handle = io.StringIO(pgn_text)
+    models: list[RenderModel] = []
+    while True:
+        game = chess.pgn.read_game(handle)
+        if game is None:
+            break
+        models.append(RenderModel(
+            headers=parse_headers(game),
+            segments=build_segments(collect_moves(game)),
+            pre_game_comment=game.comment.strip(),
+        ))
+    if not models:
         raise ValueError("PGN contains no game")
-    return RenderModel(
-        headers=parse_headers(game),
-        segments=build_segments(collect_moves(game)),
-        pre_game_comment=game.comment.strip(),
-    )
+    return models
+
+
+def parse_pgn(pgn_text: str) -> RenderModel:
+    """Parse the first game in a PGN string into a render model.
+
+    Args:
+        pgn_text: The full text of a PGN file.
+
+    Returns:
+        A fully-populated :class:`~render.domain.render_model_data.RenderModel`
+        for the first game.
+
+    Raises:
+        ValueError: If ``pgn_text`` contains no parseable game.
+    """
+
+    return parse_all_pgn(pgn_text)[0]
