@@ -1,5 +1,7 @@
 # Chess Annotator
 
+**NOTE: Ignore all this - I need to write a full README in the near future.**
+
 Chess Annotator is a single-author tool for annotating your own games for a coach.
 
 ## Configuration
