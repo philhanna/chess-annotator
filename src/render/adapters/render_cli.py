@@ -8,6 +8,7 @@ so callers can detect failures in shell scripts or CI pipelines.
 
 import argparse
 import sys
+from importlib.metadata import version
 from pathlib import Path
 
 from render.adapters.chess_svg_diagram_renderer import ChessSvgDiagramRenderer
@@ -34,6 +35,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="chess-render",
         description="Render an annotated PGN file as a PDF.",
+    )
+    parser.add_argument(
+        "-v", "--version",
+        action="version",
+        version=f"%(prog)s {version('chess-annotator')}",
     )
     parser.add_argument("pgn_file", help="Path to the annotated .pgn input file")
     parser.add_argument("-o", "--output", default=None, help="Path for the PDF output file (default: input file with .pdf extension)")

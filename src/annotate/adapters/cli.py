@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import webbrowser
+from importlib.metadata import version
 
 from annotate.adapters.web_app import create_server
 
@@ -14,6 +15,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="chess-annotate",
         description="Launch the local chess annotation web application.",
+    )
+    parser.add_argument(
+        "-v", "--version",
+        action="version",
+        version=f"%(prog)s {version('chess-annotator')}",
     )
     parser.add_argument(
         "--browser",
