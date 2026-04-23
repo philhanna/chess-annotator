@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2026-04-22
+
+### Added
+- `-v` / `--version` flag to both `chess-annotate` and `chess-render`
+- `chess-render` now renders all games in a multi-game PGN by default, each on a new page
+- `-g` / `--game N` flag to `chess-render` to select a single game by number
+- Pre-game PGN comments (before move 1) are now rendered in PDF output
+
+### Fixed
+- Duplicate games in annotate save output (StringExporter was reused across games)
+
+### Changed
+- Annotate move list rows dark-highlighted when they have comments, with white lettering
+- Move list rows equal height; comment preview inline and truncated
+- Close button prompts when there are unsaved annotation changes
+- `GameSummary`, `MoveEntry`, `ParsedGame` moved to `annotate.domain`
+
 ## [2.0.0] - 2026-04-22
 
 ### Added
